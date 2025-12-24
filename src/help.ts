@@ -45,6 +45,25 @@ const unwrapSchema = (schema: ZodTypeAny): ZodTypeAny => {
 };
 
 /**
+ * Interface representing a ZodObject-like schema with shape.
+ */
+interface ZodObjectLike {
+  shape: Record<string, ZodTypeAny>;
+}
+
+/**
+ * Get the inner ZodObject from a schema (unwrapping pipes/transforms). Returns
+ * the inner object schema that has .shape for iterating fields.
+ */
+const getInnerObject = (schema: ZodTypeAny): ZodObjectLike => {
+  const type = getSchemaType(schema);
+  if (type === 'pipe') {
+    return getInnerObject(getInnerSchema(schema));
+  }
+  return schema as unknown as ZodObjectLike;
+};
+
+/**
  * Get type label for help display.
  */
 const getTypeLabel = (schema: ZodTypeAny): string => {
@@ -193,7 +212,7 @@ export const generateHelp = (config: BargsConfig): string => {
     : ((config as SimpleBargsConfig).aliases ?? {});
 
   if (optionsSchema) {
-    const shape = optionsSchema.shape;
+    const shape = getInnerObject(optionsSchema).shape;
 
     // Group options by group metadata
     const groups = new Map<
@@ -203,13 +222,13 @@ export const generateHelp = (config: BargsConfig): string => {
     const ungrouped: Array<{ name: string; schema: ZodTypeAny }> = [];
 
     for (const [name, fieldSchema] of Object.entries(shape)) {
-      const meta = getSchemaMetadata(fieldSchema as ZodTypeAny);
+      const meta = getSchemaMetadata(fieldSchema);
       if (meta.group) {
         const group = groups.get(meta.group) ?? [];
-        group.push({ name, schema: fieldSchema as ZodTypeAny });
+        group.push({ name, schema: fieldSchema });
         groups.set(meta.group, group);
       } else {
-        ungrouped.push({ name, schema: fieldSchema as ZodTypeAny });
+        ungrouped.push({ name, schema: fieldSchema });
       }
     }
 
@@ -284,15 +303,11 @@ export const generateCommandHelp = (
   // Command options
   if (command.options) {
     lines.push(yellow('OPTIONS'));
-    const shape = command.options.shape;
+    const shape = getInnerObject(command.options).shape;
     const aliases = command.aliases ?? {};
     for (const [name, fieldSchema] of Object.entries(shape)) {
       lines.push(
-        formatOptionHelp(
-          name,
-          fieldSchema as ZodTypeAny,
-          aliases as Aliases<ZodRawShape>,
-        ),
+        formatOptionHelp(name, fieldSchema, aliases as Aliases<ZodRawShape>),
       );
     }
     lines.push('');
@@ -301,15 +316,11 @@ export const generateCommandHelp = (
   // Global options
   if (config.globalOptions) {
     lines.push(yellow('GLOBAL OPTIONS'));
-    const shape = config.globalOptions.shape;
+    const shape = getInnerObject(config.globalOptions).shape;
     const aliases = config.globalAliases ?? {};
     for (const [name, fieldSchema] of Object.entries(shape)) {
       lines.push(
-        formatOptionHelp(
-          name,
-          fieldSchema as ZodTypeAny,
-          aliases as Aliases<ZodRawShape>,
-        ),
+        formatOptionHelp(name, fieldSchema, aliases as Aliases<ZodRawShape>),
       );
     }
     lines.push('');

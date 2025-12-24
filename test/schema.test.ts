@@ -46,14 +46,19 @@ describe('schema introspection', () => {
       });
     });
 
-    it('should handle default types', () => {
+    it('should not pass schema defaults to parseArgs (let Zod handle them)', () => {
+      // Schema defaults are intentionally NOT passed to parseArgs.
+      // This allows user-provided defaults (e.g., from config files) to take
+      // precedence. Zod applies schema defaults during validation.
       const schema = z.object({
         verbose: z.boolean().default(false),
       });
       const config = extractParseArgsConfig(schema, {});
       expect(config, 'to satisfy', {
-        verbose: { default: false, type: 'boolean' },
+        verbose: { type: 'boolean' },
       });
+      // Verify no default key is present
+      expect(config.verbose, 'not to have key', 'default');
     });
 
     it('should apply aliases', () => {

@@ -1,11 +1,4 @@
-import {
-  z,
-  type ZodArray,
-  type ZodObject,
-  type ZodRawShape,
-  type ZodTuple,
-  type ZodTypeAny,
-} from 'zod';
+import { z, type ZodArray, type ZodTuple, type ZodTypeAny } from 'zod';
 
 import type {
   BargsConfig,
@@ -68,26 +61,37 @@ const checkBuiltinFlags = async (
 };
 
 /**
- * Main bargs function - simple CLI with handler.
+ * Main bargs function - command-based CLI. Accepts any ZodTypeAny for
+ * globalOptions to support .transform() schemas. Must be first overload to
+ * ensure configs with `commands` match this.
+ */
+export async function bargs<TGlobalOptions extends ZodTypeAny>(
+  config: CommandBargsConfig<TGlobalOptions>,
+): Promise<void>;
+
+/**
+ * Main bargs function - simple CLI with handler. Accepts any ZodTypeAny for
+ * options to support .transform() schemas.
  */
 export async function bargs<
   TOptions extends ZodTypeAny,
   TPositionals extends undefined | ZodArray<ZodTypeAny> | ZodTuple = undefined,
 >(
-  config: SimpleBargsConfig<ZodObject<ZodRawShape>, TPositionals> & {
+  config: SimpleBargsConfig<TOptions, TPositionals> & {
     handler: Handler<z.infer<TOptions>>;
     options: TOptions;
   },
 ): Promise<void>;
 
 /**
- * Main bargs function - simple CLI without handler.
+ * Main bargs function - simple CLI without handler. Accepts any ZodTypeAny for
+ * options to support .transform() schemas.
  */
 export async function bargs<
   TOptions extends ZodTypeAny,
   TPositionals extends undefined | ZodArray<ZodTypeAny> | ZodTuple = undefined,
 >(
-  config: SimpleBargsConfig<ZodObject<ZodRawShape>, TPositionals> & {
+  config: SimpleBargsConfig<TOptions, TPositionals> & {
     options: TOptions;
   },
 ): Promise<
@@ -96,11 +100,6 @@ export async function bargs<
     : object) &
     z.infer<TOptions>
 >;
-
-/**
- * Main bargs function - command-based CLI.
- */
-export async function bargs(config: CommandBargsConfig): Promise<void>;
 
 /**
  * Main bargs function implementation.

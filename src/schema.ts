@@ -3,10 +3,11 @@ import { z, type ZodObject, type ZodRawShape, type ZodTypeAny } from 'zod';
 import type { Aliases } from './types.js';
 
 /**
- * ParseArgs option config.
+ * ParseArgs option config. Note: We intentionally omit 'default' - schema
+ * defaults are handled by Zod during validation to allow user-provided defaults
+ * (e.g., from config files) to take precedence.
  */
 export interface ParseArgsOptionConfig {
-  default?: boolean | boolean[] | string | string[];
   multiple?: boolean;
   short?: string;
   type: 'boolean' | 'string';
@@ -88,30 +89,6 @@ const getArrayElement = (schema: ZodTypeAny): ZodTypeAny => {
 };
 
 /**
- * Get the default value from a schema if it has one.
- */
-const getDefaultValue = (schema: ZodTypeAny): unknown => {
-  const type = getSchemaType(schema);
-
-  if (type === 'default') {
-    const def = (
-      schema as unknown as { _zod: { def: { defaultValue: unknown } } }
-    )._zod.def;
-    const defaultVal = def.defaultValue;
-    // Can be a function or a value
-    return typeof defaultVal === 'function'
-      ? (defaultVal as () => unknown)()
-      : defaultVal;
-  }
-
-  if (type === 'optional' || type === 'nullable') {
-    return getDefaultValue(getInnerSchema(schema));
-  }
-
-  return undefined;
-};
-
-/**
  * Extract metadata from a Zod schema's global registry.
  */
 export const getSchemaMetadata = (schema: ZodTypeAny): SchemaMetadata => {
@@ -154,24 +131,12 @@ export const extractParseArgsConfig = <T extends ZodRawShape>(
       optionConfig.type = getParseArgsType(getArrayElement(base));
     }
 
-    // Only include defaults that match parseArgs expectations:
-    // - boolean defaults for boolean type
-    // - string defaults for string type
-    // Zod will handle other defaults (like numbers) during validation
-    const defaultValue = getDefaultValue(fieldSchema as ZodTypeAny);
-    if (defaultValue !== undefined) {
-      if (
-        optionConfig.type === 'boolean' &&
-        typeof defaultValue === 'boolean'
-      ) {
-        optionConfig.default = defaultValue;
-      } else if (
-        optionConfig.type === 'string' &&
-        typeof defaultValue === 'string'
-      ) {
-        optionConfig.default = defaultValue;
-      }
-    }
+    // NOTE: We intentionally do NOT pass schema defaults to parseArgs.
+    // This allows user-provided defaults (e.g., from config files) to take
+    // precedence over schema defaults. Zod will apply schema defaults during
+    // validation for any values not provided by CLI or user defaults.
+    //
+    // Precedence: CLI args > user defaults > schema defaults
 
     // Apply aliases - use first single-char alias as short
     const keyAliases = aliases[key as keyof T];

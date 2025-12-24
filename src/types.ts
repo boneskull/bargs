@@ -1,4 +1,4 @@
-import type { z, ZodArray, ZodObject, ZodRawShape, ZodTuple } from 'zod';
+import type { z, ZodArray, ZodRawShape, ZodTuple, ZodTypeAny } from 'zod';
 
 /**
  * Aliases map canonical option names to arrays of alias strings.
@@ -16,9 +16,12 @@ export type BargsConfig = CommandBargsConfig | SimpleBargsConfig;
 
 /**
  * Command-based CLI config.
+ *
+ * TGlobalOptions accepts ZodTypeAny to support schemas with .transform(). At
+ * runtime, we unwrap to the inner ZodObject for parseArgs config extraction.
  */
 export interface CommandBargsConfig<
-  TGlobalOptions extends ZodObject<ZodRawShape> = ZodObject<ZodRawShape>,
+  TGlobalOptions extends ZodTypeAny = ZodTypeAny,
   TCommands extends Record<string, CommandConfig> = Record<
     string,
     CommandConfig
@@ -28,9 +31,7 @@ export interface CommandBargsConfig<
   commands: TCommands;
   defaultHandler?: DefaultHandler<Inferred<TGlobalOptions>, TCommands>;
   description?: string;
-  globalAliases?: TGlobalOptions extends ZodObject<infer S>
-    ? Aliases<S>
-    : never;
+  globalAliases?: Aliases<ZodRawShape>;
   globalOptions?: TGlobalOptions;
   name: string;
   version?: string;
@@ -38,11 +39,11 @@ export interface CommandBargsConfig<
 
 /**
  * Command definition.
+ *
+ * TOptions accepts ZodTypeAny to support schemas with .transform().
  */
-export interface CommandConfig<
-  TOptions extends ZodObject<ZodRawShape> = ZodObject<ZodRawShape>,
-> {
-  aliases?: TOptions extends ZodObject<infer S> ? Aliases<S> : never;
+export interface CommandConfig<TOptions extends ZodTypeAny = ZodTypeAny> {
+  aliases?: Aliases<ZodRawShape>;
   description: string;
   handler: Handler<Inferred<TOptions> & { positionals?: unknown[] }>;
   options?: TOptions;
@@ -69,13 +70,16 @@ export type Inferred<T extends z.ZodTypeAny> = z.infer<T>;
 
 /**
  * Simple CLI config (no commands).
+ *
+ * TOptions accepts ZodTypeAny to support schemas with .transform(). At runtime,
+ * we unwrap to the inner ZodObject for parseArgs config extraction.
  */
 export interface SimpleBargsConfig<
-  TOptions extends ZodObject<ZodRawShape> = ZodObject<ZodRawShape>,
+  TOptions extends ZodTypeAny = ZodTypeAny,
   TPositionals extends undefined | ZodArray<z.ZodTypeAny> | ZodTuple =
     undefined,
 > {
-  aliases?: TOptions extends ZodObject<infer S> ? Aliases<S> : never;
+  aliases?: Aliases<ZodRawShape>;
   args?: string[];
   defaults?: Partial<Inferred<TOptions>>;
   description?: string;
