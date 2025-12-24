@@ -146,9 +146,18 @@ export const extractParseArgsConfig = <T extends ZodRawShape>(
       optionConfig.type = getParseArgsType(getArrayElement(base));
     }
 
+    // Only include defaults that match parseArgs expectations:
+    // - boolean defaults for boolean type
+    // - string defaults for string type
+    // Zod will handle other defaults (like numbers) during validation
     const defaultValue = getDefaultValue(fieldSchema as ZodTypeAny);
     if (defaultValue !== undefined) {
-      optionConfig.default = defaultValue;
+      const isValidDefault =
+        (optionConfig.type === 'boolean' && typeof defaultValue === 'boolean') ||
+        (optionConfig.type === 'string' && typeof defaultValue === 'string');
+      if (isValidDefault) {
+        optionConfig.default = defaultValue;
+      }
     }
 
     // Apply aliases - use first single-char alias as short
