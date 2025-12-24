@@ -121,5 +121,8 @@
       ".": "./src/index.ts",
       "./package.json": "./package.json"
     }
+  },
+  "dependencies": {
+    "zod": "4.2.1"
   }
 }
