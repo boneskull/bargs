@@ -1,8 +1,9 @@
-import { describe, it } from 'node:test';
 import { expect } from 'bupkis';
+import { describe, it } from 'node:test';
 import { z } from 'zod';
-import { formatZodError, BargsError } from '../src/errors.js';
+
 import { stripAnsi } from '../src/ansi.js';
+import { BargsError, formatZodError } from '../src/errors.js';
 
 describe('error formatting', () => {
   describe('formatZodError', () => {
@@ -11,7 +12,9 @@ describe('error formatting', () => {
         count: z.number(),
       });
       const result = schema.safeParse({ count: 'not a number' });
-      if (result.success) throw new Error('Expected failure');
+      if (result.success) {
+        throw new Error('Expected failure');
+      }
 
       const formatted = formatZodError(result.error);
       const plain = stripAnsi(formatted);
@@ -22,11 +25,13 @@ describe('error formatting', () => {
 
     it('should format multiple errors', () => {
       const schema = z.object({
-        name: z.string(),
         age: z.number(),
+        name: z.string(),
       });
-      const result = schema.safeParse({ name: 123, age: 'old' });
-      if (result.success) throw new Error('Expected failure');
+      const result = schema.safeParse({ age: 'old', name: 123 });
+      if (result.success) {
+        throw new Error('Expected failure');
+      }
 
       const formatted = formatZodError(result.error);
       const plain = stripAnsi(formatted);
@@ -42,7 +47,9 @@ describe('error formatting', () => {
         }),
       });
       const result = schema.safeParse({ config: { port: 'abc' } });
-      if (result.success) throw new Error('Expected failure');
+      if (result.success) {
+        throw new Error('Expected failure');
+      }
 
       const formatted = formatZodError(result.error);
       const plain = stripAnsi(formatted);

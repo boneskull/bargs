@@ -1,6 +1,7 @@
-import { describe, it } from 'node:test';
 import { expect } from 'bupkis';
-import { ansi, bold, dim, red, green, yellow, cyan, stripAnsi } from '../src/ansi.js';
+import { describe, it } from 'node:test';
+
+import { bold, cyan, dim, green, red, stripAnsi, yellow } from '../src/ansi.js';
 
 describe('ansi', () => {
   it('should wrap text in bold', () => {

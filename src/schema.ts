@@ -1,23 +1,24 @@
 import { z, type ZodObject, type ZodRawShape, type ZodTypeAny } from 'zod';
+
 import type { Aliases } from './types.js';
+
+/**
+ * ParseArgs option config.
+ */
+export interface ParseArgsOptionConfig {
+  default?: boolean | boolean[] | string | string[];
+  multiple?: boolean;
+  short?: string;
+  type: 'boolean' | 'string';
+}
 
 /**
  * Metadata extracted from a Zod schema via .meta().
  */
 export interface SchemaMetadata {
   description?: string;
-  group?: string;
   examples?: unknown[];
-}
-
-/**
- * parseArgs option config.
- */
-export interface ParseArgsOptionConfig {
-  type: 'string' | 'boolean';
-  multiple?: boolean;
-  short?: string;
-  default?: unknown;
+  group?: string;
 }
 
 /**
@@ -25,14 +26,16 @@ export interface ParseArgsOptionConfig {
  */
 const getSchemaType = (schema: ZodTypeAny): string => {
   // Zod v4 uses _zod.def.type for introspection
-  return (schema as unknown as { _zod: { def: { type: string } } })._zod.def.type;
+  return (schema as unknown as { _zod: { def: { type: string } } })._zod.def
+    .type;
 };
 
 /**
  * Get the inner schema from wrapper types.
  */
 const getInnerSchema = (schema: ZodTypeAny): ZodTypeAny => {
-  const def = (schema as unknown as { _zod: { def: Record<string, unknown> } })._zod.def;
+  const def = (schema as unknown as { _zod: { def: Record<string, unknown> } })
+    ._zod.def;
   return (def.innerType ?? def.schema ?? def.wrapped) as ZodTypeAny;
 };
 
@@ -43,9 +46,9 @@ const unwrapSchema = (schema: ZodTypeAny): ZodTypeAny => {
   const type = getSchemaType(schema);
 
   switch (type) {
-    case 'optional':
-    case 'nullable':
     case 'default':
+    case 'nullable':
+    case 'optional':
     case 'pipe':
       return unwrapSchema(getInnerSchema(schema));
     default:
@@ -56,7 +59,7 @@ const unwrapSchema = (schema: ZodTypeAny): ZodTypeAny => {
 /**
  * Get the parseArgs type for a Zod schema.
  */
-const getParseArgsType = (schema: ZodTypeAny): 'string' | 'boolean' => {
+const getParseArgsType = (schema: ZodTypeAny): 'boolean' | 'string' => {
   const base = unwrapSchema(schema);
   const type = getSchemaType(base);
 
@@ -79,7 +82,8 @@ const isArraySchema = (schema: ZodTypeAny): boolean => {
  * Get the element schema from an array schema.
  */
 const getArrayElement = (schema: ZodTypeAny): ZodTypeAny => {
-  const def = (schema as unknown as { _zod: { def: { element: ZodTypeAny } } })._zod.def;
+  const def = (schema as unknown as { _zod: { def: { element: ZodTypeAny } } })
+    ._zod.def;
   return def.element;
 };
 
@@ -90,10 +94,14 @@ const getDefaultValue = (schema: ZodTypeAny): unknown => {
   const type = getSchemaType(schema);
 
   if (type === 'default') {
-    const def = (schema as unknown as { _zod: { def: { defaultValue: unknown } } })._zod.def;
+    const def = (
+      schema as unknown as { _zod: { def: { defaultValue: unknown } } }
+    )._zod.def;
     const defaultVal = def.defaultValue;
     // Can be a function or a value
-    return typeof defaultVal === 'function' ? defaultVal() : defaultVal;
+    return typeof defaultVal === 'function'
+      ? (defaultVal as () => unknown)()
+      : defaultVal;
   }
 
   if (type === 'optional' || type === 'nullable') {
@@ -152,10 +160,15 @@ export const extractParseArgsConfig = <T extends ZodRawShape>(
     // Zod will handle other defaults (like numbers) during validation
     const defaultValue = getDefaultValue(fieldSchema as ZodTypeAny);
     if (defaultValue !== undefined) {
-      const isValidDefault =
-        (optionConfig.type === 'boolean' && typeof defaultValue === 'boolean') ||
-        (optionConfig.type === 'string' && typeof defaultValue === 'string');
-      if (isValidDefault) {
+      if (
+        optionConfig.type === 'boolean' &&
+        typeof defaultValue === 'boolean'
+      ) {
+        optionConfig.default = defaultValue;
+      } else if (
+        optionConfig.type === 'string' &&
+        typeof defaultValue === 'string'
+      ) {
         optionConfig.default = defaultValue;
       }
     }

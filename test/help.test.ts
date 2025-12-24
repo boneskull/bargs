@@ -1,13 +1,16 @@
-import { describe, it } from 'node:test';
 import { expect } from 'bupkis';
+import { describe, it } from 'node:test';
 import { z } from 'zod';
-import { generateHelp, formatOptionHelp } from '../src/help.js';
+
 import { stripAnsi } from '../src/ansi.js';
+import { formatOptionHelp, generateHelp } from '../src/help.js';
 
 describe('help generation', () => {
   describe('formatOptionHelp', () => {
     it('should format a simple boolean option', () => {
-      const result = formatOptionHelp('verbose', z.boolean(), { verbose: ['v'] });
+      const result = formatOptionHelp('verbose', z.boolean(), {
+        verbose: ['v'],
+      });
       const plain = stripAnsi(result);
       expect(plain, 'to contain', '-v, --verbose');
       expect(plain, 'to contain', '[boolean]');
@@ -33,14 +36,17 @@ describe('help generation', () => {
   describe('generateHelp', () => {
     it('should generate help for simple CLI', () => {
       const config = {
-        name: 'mycli',
+        aliases: { output: ['o'], verbose: ['v'] },
         description: 'A test CLI',
-        version: '1.0.0',
+        name: 'mycli',
         options: z.object({
-          verbose: z.boolean().default(false).meta({ description: 'Enable verbose output' }),
           output: z.string().optional().meta({ description: 'Output file' }),
+          verbose: z
+            .boolean()
+            .default(false)
+            .meta({ description: 'Enable verbose output' }),
         }),
-        aliases: { verbose: ['v'], output: ['o'] },
+        version: '1.0.0',
       };
       const help = generateHelp(config);
       const plain = stripAnsi(help);
@@ -54,15 +60,15 @@ describe('help generation', () => {
 
     it('should generate help for CLI with commands', () => {
       const config = {
-        name: 'mycli',
-        description: 'A test CLI',
-        globalOptions: z.object({
-          verbose: z.boolean().default(false),
-        }),
         commands: {
           add: { description: 'Add files', handler: async () => {} },
           commit: { description: 'Commit changes', handler: async () => {} },
         },
+        description: 'A test CLI',
+        globalOptions: z.object({
+          verbose: z.boolean().default(false),
+        }),
+        name: 'mycli',
       };
       const help = generateHelp(config);
       const plain = stripAnsi(help);
@@ -78,9 +84,11 @@ describe('help generation', () => {
       const config = {
         name: 'mycli',
         options: z.object({
-          verbose: z.boolean().meta({ description: 'Verbose', group: 'Output' }),
-          quiet: z.boolean().meta({ description: 'Quiet', group: 'Output' }),
           input: z.string().meta({ description: 'Input file', group: 'Input' }),
+          quiet: z.boolean().meta({ description: 'Quiet', group: 'Output' }),
+          verbose: z
+            .boolean()
+            .meta({ description: 'Verbose', group: 'Output' }),
         }),
       };
       const help = generateHelp(config);

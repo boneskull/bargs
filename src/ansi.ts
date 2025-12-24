@@ -4,24 +4,25 @@ import { stripVTControlCharacters } from 'node:util';
  * ANSI escape code constants.
  */
 export const ansi = {
-  reset: '\x1b[0m',
-  bold: '\x1b[1m',
-  dim: '\x1b[2m',
-  boldOff: '\x1b[22m',
-  red: '\x1b[31m',
-  green: '\x1b[32m',
-  yellow: '\x1b[33m',
   blue: '\x1b[34m',
-  magenta: '\x1b[35m',
-  cyan: '\x1b[36m',
-  white: '\x1b[37m',
+  bold: '\x1b[1m',
+  boldOff: '\x1b[22m',
   colorOff: '\x1b[39m',
+  cyan: '\x1b[36m',
+  dim: '\x1b[2m',
+  green: '\x1b[32m',
+  magenta: '\x1b[35m',
+  red: '\x1b[31m',
+  reset: '\x1b[0m',
+  white: '\x1b[37m',
+  yellow: '\x1b[33m',
 } as const;
 
 /**
  * Wrap text with ANSI codes.
  */
-const wrap = (open: string, close: string) => (text: string) => `${open}${text}${close}`;
+const wrap = (open: string, close: string) => (text: string) =>
+  `${open}${text}${close}`;
 
 export const bold = wrap(ansi.bold, ansi.boldOff);
 export const dim = wrap(ansi.dim, ansi.boldOff);

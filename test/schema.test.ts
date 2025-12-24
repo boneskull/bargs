@@ -1,6 +1,7 @@
-import { describe, it } from 'node:test';
 import { expect } from 'bupkis';
+import { describe, it } from 'node:test';
 import { z } from 'zod';
+
 import { extractParseArgsConfig, getSchemaMetadata } from '../src/schema.js';
 
 describe('schema introspection', () => {
@@ -31,7 +32,7 @@ describe('schema introspection', () => {
       });
       const config = extractParseArgsConfig(schema, {});
       expect(config, 'to satisfy', {
-        files: { type: 'string', multiple: true },
+        files: { multiple: true, type: 'string' },
       });
     });
 
@@ -51,7 +52,7 @@ describe('schema introspection', () => {
       });
       const config = extractParseArgsConfig(schema, {});
       expect(config, 'to satisfy', {
-        verbose: { type: 'boolean', default: false },
+        verbose: { default: false, type: 'boolean' },
       });
     });
 
@@ -61,7 +62,7 @@ describe('schema introspection', () => {
       });
       const config = extractParseArgsConfig(schema, { verbose: ['v'] });
       expect(config, 'to satisfy', {
-        verbose: { type: 'boolean', short: 'v' },
+        verbose: { short: 'v', type: 'boolean' },
       });
     });
 
@@ -69,9 +70,11 @@ describe('schema introspection', () => {
       const schema = z.object({
         config: z.string(),
       });
-      const config = extractParseArgsConfig(schema, { config: ['config-file', 'c'] });
+      const config = extractParseArgsConfig(schema, {
+        config: ['config-file', 'c'],
+      });
       expect(config, 'to satisfy', {
-        config: { type: 'string', short: 'c' },
+        config: { short: 'c', type: 'string' },
       });
     });
   });

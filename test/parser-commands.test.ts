@@ -1,6 +1,7 @@
-import { describe, it } from 'node:test';
 import { expect } from 'bupkis';
+import { describe, it } from 'node:test';
 import { z } from 'zod';
+
 import { parseCommands } from '../src/parser.js';
 
 describe('parseCommands', () => {
@@ -9,23 +10,23 @@ describe('parseCommands', () => {
     let receivedArgs: unknown;
 
     await parseCommands({
-      name: 'mycli',
-      globalOptions: z.object({
-        verbose: z.boolean().default(false),
-      }),
+      args: ['add', '--force'],
       commands: {
         add: {
           description: 'Add files',
-          options: z.object({
-            force: z.boolean().default(false),
-          }),
           handler: async (args) => {
             handlerCalled = true;
             receivedArgs = args;
           },
+          options: z.object({
+            force: z.boolean().default(false),
+          }),
         },
       },
-      args: ['add', '--force'],
+      globalOptions: z.object({
+        verbose: z.boolean().default(false),
+      }),
+      name: 'mycli',
     });
 
     expect(handlerCalled, 'to be true');
@@ -36,34 +37,33 @@ describe('parseCommands', () => {
     let receivedArgs: unknown;
 
     await parseCommands({
-      name: 'mycli',
-      globalOptions: z.object({
-        verbose: z.boolean().default(false),
-      }),
-      globalAliases: { verbose: ['v'] },
+      args: ['add', '-v', '--force'],
       commands: {
         add: {
           description: 'Add files',
-          options: z.object({
-            force: z.boolean().default(false),
-          }),
           handler: async (args) => {
             receivedArgs = args;
           },
+          options: z.object({
+            force: z.boolean().default(false),
+          }),
         },
       },
-      args: ['add', '-v', '--force'],
+      globalAliases: { verbose: ['v'] },
+      globalOptions: z.object({
+        verbose: z.boolean().default(false),
+      }),
+      name: 'mycli',
     });
 
-    expect(receivedArgs, 'to satisfy', { verbose: true, force: true });
+    expect(receivedArgs, 'to satisfy', { force: true, verbose: true });
   });
 
   it('should run defaultHandler when no command given (string)', async () => {
     let addCalled = false;
 
     await parseCommands({
-      name: 'mycli',
-      globalOptions: z.object({}),
+      args: [],
       commands: {
         add: {
           description: 'Add files',
@@ -73,7 +73,8 @@ describe('parseCommands', () => {
         },
       },
       defaultHandler: 'add',
-      args: [],
+      globalOptions: z.object({}),
+      name: 'mycli',
     });
 
     expect(addCalled, 'to be true');
@@ -83,8 +84,7 @@ describe('parseCommands', () => {
     let defaultCalled = false;
 
     await parseCommands({
-      name: 'mycli',
-      globalOptions: z.object({}),
+      args: [],
       commands: {
         add: {
           description: 'Add files',
@@ -94,7 +94,8 @@ describe('parseCommands', () => {
       defaultHandler: async () => {
         defaultCalled = true;
       },
-      args: [],
+      globalOptions: z.object({}),
+      name: 'mycli',
     });
 
     expect(defaultCalled, 'to be true');
@@ -104,20 +105,22 @@ describe('parseCommands', () => {
     let receivedArgs: unknown;
 
     await parseCommands({
-      name: 'mycli',
-      globalOptions: z.object({}),
+      args: ['add', 'file1.txt', 'file2.txt'],
       commands: {
         add: {
           description: 'Add files',
-          positionals: z.string().array(),
           handler: async (args) => {
             receivedArgs = args;
           },
+          positionals: z.string().array(),
         },
       },
-      args: ['add', 'file1.txt', 'file2.txt'],
+      globalOptions: z.object({}),
+      name: 'mycli',
     });
 
-    expect(receivedArgs, 'to satisfy', { positionals: ['file1.txt', 'file2.txt'] });
+    expect(receivedArgs, 'to satisfy', {
+      positionals: ['file1.txt', 'file2.txt'],
+    });
   });
 });

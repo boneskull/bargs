@@ -4,7 +4,9 @@ import { dirname, join } from 'node:path';
 /**
  * Find package.json by walking up from startDir.
  */
-const findPackageJson = async (startDir: string): Promise<string | undefined> => {
+const findPackageJson = async (
+  startDir: string,
+): Promise<string | undefined> => {
   let dir = startDir;
   const root = dirname(dir);
 
@@ -24,7 +26,9 @@ const findPackageJson = async (startDir: string): Promise<string | undefined> =>
 /**
  * Read version from package.json.
  */
-const readVersionFromPackageJson = async (pkgPath: string): Promise<string | undefined> => {
+const readVersionFromPackageJson = async (
+  pkgPath: string,
+): Promise<string | undefined> => {
   try {
     const content = await readFile(pkgPath, 'utf-8');
     const pkg = JSON.parse(content) as { version?: string };

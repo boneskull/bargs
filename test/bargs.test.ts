@@ -1,16 +1,17 @@
-import { describe, it, mock } from 'node:test';
 import { expect } from 'bupkis';
+import { describe, it, mock } from 'node:test';
 import { z } from 'zod';
+
 import { bargs } from '../src/index.js';
 
 describe('bargs', () => {
   it('should parse simple CLI and return args', async () => {
     const result = await bargs({
+      args: ['--verbose'],
       name: 'mycli',
       options: z.object({
         verbose: z.boolean().default(false),
       }),
-      args: ['--verbose'],
     });
     expect(result, 'to satisfy', { verbose: true });
   });
@@ -18,15 +19,15 @@ describe('bargs', () => {
   it('should run handler and return void', async () => {
     let called = false;
     const result = await bargs({
-      name: 'mycli',
-      options: z.object({
-        verbose: z.boolean().default(false),
-      }),
+      args: ['--verbose'],
       handler: async (args) => {
         called = true;
         expect(args.verbose, 'to be true');
       },
-      args: ['--verbose'],
+      name: 'mycli',
+      options: z.object({
+        verbose: z.boolean().default(false),
+      }),
     });
     expect(called, 'to be true');
     expect(result, 'to be undefined');
@@ -45,12 +46,12 @@ describe('bargs', () => {
 
     try {
       await bargs({
-        name: 'mycli',
+        args: ['--help'],
         description: 'A test CLI',
+        name: 'mycli',
         options: z.object({
           verbose: z.boolean().default(false),
         }),
-        args: ['--help'],
       });
     } catch (e) {
       expect((e as Error).message, 'to equal', 'EXIT');
@@ -76,10 +77,10 @@ describe('bargs', () => {
 
     try {
       await bargs({
-        name: 'mycli',
-        version: '1.2.3',
-        options: z.object({}),
         args: ['--version'],
+        name: 'mycli',
+        options: z.object({}),
+        version: '1.2.3',
       });
     } catch (e) {
       expect((e as Error).message, 'to equal', 'EXIT');
@@ -94,8 +95,7 @@ describe('bargs', () => {
   it('should run command handler', async () => {
     let called = false;
     await bargs({
-      name: 'mycli',
-      globalOptions: z.object({}),
+      args: ['test'],
       commands: {
         test: {
           description: 'Test command',
@@ -104,7 +104,8 @@ describe('bargs', () => {
           },
         },
       },
-      args: ['test'],
+      globalOptions: z.object({}),
+      name: 'mycli',
     });
     expect(called, 'to be true');
   });

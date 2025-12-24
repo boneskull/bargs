@@ -1,15 +1,15 @@
 {
-  "name": "packagename",
+  "name": "bargs",
   "version": "0.0.0",
   "type": "module",
-  "description": "Shankle short loin porchetta strip steak tongue drumstick shoulder shank turkey pork loin picanha flank.",
+  "description": "A TypeScript-first CLI argument parser wrapping util.parseArgs() with Zod schema validation",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/boneskull/packagename.git"
+    "url": "git+https://github.com/boneskull/bargs.git"
   },
   "author": "Christopher Hiller <boneskull@boneskull.com> (https://boneskull.com/)",
   "license": "BlueOak-1.0.0",
-  "private": true,
+  "private": false,
   "engines": {
     "node": ">=22.0.0"
   },
@@ -27,7 +27,15 @@
   "files": [
     "dist"
   ],
-  "keywords": [],
+  "keywords": [
+    "cli",
+    "args",
+    "arguments",
+    "parser",
+    "zod",
+    "typescript",
+    "parseArgs"
+  ],
   "scripts": {
     "build": "zshy",
     "commitlint": "commitlint",
@@ -48,6 +56,9 @@
     "test": "run-s test:runtime",
     "test:runtime": "node --import tsx --test --test-reporter=spec \"test/**/*.test.ts\"",
     "test:watch": "node --import tsx --test --test-reporter=spec --watch \"test/**/*.test.ts\""
+  },
+  "dependencies": {
+    "zod": "4.2.1"
   },
   "devDependencies": {
     "@commitlint/cli": "20.2.0",
@@ -121,8 +132,5 @@
       ".": "./src/index.ts",
       "./package.json": "./package.json"
     }
-  },
-  "dependencies": {
-    "zod": "4.2.1"
   }
 }

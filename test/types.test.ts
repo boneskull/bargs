@@ -1,7 +1,8 @@
-import { describe, it } from 'node:test';
 import { expect } from 'bupkis';
+import { describe, it } from 'node:test';
 import { z } from 'zod';
-import type { BargsConfig, SimpleBargsConfig, CommandBargsConfig } from '../src/types.js';
+
+import type { CommandBargsConfig, SimpleBargsConfig } from '../src/types.js';
 
 describe('types', () => {
   it('should allow a simple config without commands', () => {
@@ -16,16 +17,16 @@ describe('types', () => {
 
   it('should allow a config with commands', () => {
     const config: CommandBargsConfig = {
-      name: 'mycli',
-      globalOptions: z.object({
-        verbose: z.boolean().default(false),
-      }),
       commands: {
         add: {
           description: 'Add files',
           handler: async () => {},
         },
       },
+      globalOptions: z.object({
+        verbose: z.boolean().default(false),
+      }),
+      name: 'mycli',
     };
     expect(config.name, 'to equal', 'mycli');
   });

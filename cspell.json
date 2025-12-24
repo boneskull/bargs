@@ -42,5 +42,17 @@
     "huskyrc",
     "commitlintrc"
   ],
-  "words": ["shankle", "picanha", "bupkis", "andouille"]
+  "words": [
+    "andouille",
+    "bargs",
+    "bupkis",
+    "mhello",
+    "minfo",
+    "msuccess",
+    "mwarning",
+    "mycli",
+    "positionals",
+    "subcommand",
+    "subcommands"
+  ]
 }

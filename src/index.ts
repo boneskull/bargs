@@ -1,21 +1,30 @@
-import { z, type ZodObject, type ZodRawShape, type ZodTypeAny, type ZodTuple, type ZodArray } from 'zod';
-import { parseSimple, parseCommands } from './parser.js';
-import { generateHelp, generateCommandHelp } from './help.js';
-import { exitWithZodError } from './errors.js';
-import { detectVersion } from './version.js';
+import {
+  z,
+  type ZodArray,
+  type ZodObject,
+  type ZodRawShape,
+  type ZodTuple,
+  type ZodTypeAny,
+} from 'zod';
+
 import type {
-  SimpleBargsConfig,
-  CommandBargsConfig,
   BargsConfig,
+  CommandBargsConfig,
   Handler,
+  SimpleBargsConfig,
 } from './types.js';
 
-export * from './types.js';
+import { exitWithZodError } from './errors.js';
+import { generateCommandHelp, generateHelp } from './help.js';
+import { parseCommands, parseSimple } from './parser.js';
+import { detectVersion } from './version.js';
+
 export * from './ansi.js';
 export * from './errors.js';
 export * from './help.js';
+export { parseCommands, parseSimple } from './parser.js';
 export * from './schema.js';
-export { parseSimple, parseCommands } from './parser.js';
+export type * from './types.js';
 
 /**
  * Check if config has commands.
@@ -34,11 +43,13 @@ const checkBuiltinFlags = async (
   if (args.includes('--help') || args.includes('-h')) {
     // Check if it's command-specific help
     if (hasCommands(config)) {
-      const commandIndex = args.findIndex((arg) => !arg.startsWith('-') && arg !== '--help' && arg !== '-h');
+      const commandIndex = args.findIndex(
+        (arg) => !arg.startsWith('-') && arg !== '--help' && arg !== '-h',
+      );
       if (commandIndex >= 0) {
-        const commandName = args[commandIndex];
+        const commandName = args[commandIndex] as string;
         if (config.commands[commandName]) {
-          console.log(generateCommandHelp(config as CommandBargsConfig, commandName));
+          console.log(generateCommandHelp(config, commandName));
           process.exit(0);
         }
       }
@@ -60,28 +71,30 @@ const checkBuiltinFlags = async (
  * Main bargs function - simple CLI with handler.
  */
 export async function bargs<
-  TOptions extends ZodObject<ZodRawShape> | z.ZodEffects<ZodObject<ZodRawShape>>,
-  TPositionals extends ZodTuple | ZodArray<ZodTypeAny> | undefined = undefined,
+  TOptions extends ZodTypeAny,
+  TPositionals extends undefined | ZodArray<ZodTypeAny> | ZodTuple = undefined,
 >(
-  config: SimpleBargsConfig<
-    TOptions extends z.ZodEffects<infer I> ? (I extends ZodObject<ZodRawShape> ? I : never) : TOptions,
-    TPositionals
-  > & { options: TOptions; handler: Handler<unknown> },
+  config: SimpleBargsConfig<ZodObject<ZodRawShape>, TPositionals> & {
+    handler: Handler<z.infer<TOptions>>;
+    options: TOptions;
+  },
 ): Promise<void>;
 
 /**
  * Main bargs function - simple CLI without handler.
  */
 export async function bargs<
-  TOptions extends ZodObject<ZodRawShape> | z.ZodEffects<ZodObject<ZodRawShape>>,
-  TPositionals extends ZodTuple | ZodArray<ZodTypeAny> | undefined = undefined,
+  TOptions extends ZodTypeAny,
+  TPositionals extends undefined | ZodArray<ZodTypeAny> | ZodTuple = undefined,
 >(
-  config: SimpleBargsConfig<
-    TOptions extends z.ZodEffects<infer I> ? (I extends ZodObject<ZodRawShape> ? I : never) : TOptions,
-    TPositionals
-  > & { options: TOptions },
+  config: SimpleBargsConfig<ZodObject<ZodRawShape>, TPositionals> & {
+    options: TOptions;
+  },
 ): Promise<
-  z.infer<TOptions> & (TPositionals extends ZodTypeAny ? { positionals: z.infer<TPositionals> } : object)
+  (TPositionals extends ZodTypeAny
+    ? { positionals: z.infer<TPositionals> }
+    : object) &
+    z.infer<TOptions>
 >;
 
 /**
@@ -101,12 +114,15 @@ export async function bargs(config: BargsConfig): Promise<unknown> {
   try {
     if (hasCommands(config)) {
       await parseCommands({
-        name: config.name,
-        globalOptions: config.globalOptions,
-        globalAliases: config.globalAliases,
-        commands: config.commands,
-        defaultHandler: config.defaultHandler,
         args,
+        commands: config.commands,
+        defaultHandler: config.defaultHandler as
+          | Handler<unknown>
+          | string
+          | undefined,
+        globalAliases: config.globalAliases,
+        globalOptions: config.globalOptions,
+        name: config.name,
       });
       return;
     }
@@ -114,11 +130,11 @@ export async function bargs(config: BargsConfig): Promise<unknown> {
     // Simple CLI
     const simpleConfig = config as SimpleBargsConfig;
     const result = await parseSimple({
+      aliases: simpleConfig.aliases,
+      args,
+      defaults: simpleConfig.defaults,
       options: simpleConfig.options ?? z.object({}),
       positionals: simpleConfig.positionals,
-      aliases: simpleConfig.aliases,
-      defaults: simpleConfig.defaults,
-      args,
     });
 
     if (simpleConfig.handler) {

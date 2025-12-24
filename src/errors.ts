@@ -1,5 +1,6 @@
 import type { ZodError } from 'zod';
-import { bold, red, dim } from './ansi.js';
+
+import { bold, dim, red } from './ansi.js';
 
 /**
  * Custom error class for bargs errors.
@@ -40,6 +41,8 @@ export const exitWithError = (message: string, cliName: string): never => {
   console.error(message);
   console.error(dim(`Run '${cliName} --help' for usage.`));
   process.exit(1);
+  // TypeScript doesn't know process.exit never returns
+  throw new Error('Unreachable');
 };
 
 /**
@@ -47,5 +50,5 @@ export const exitWithError = (message: string, cliName: string): never => {
  */
 export const exitWithZodError = (error: ZodError, cliName: string): never => {
   const formatted = formatZodError(error);
-  exitWithError(formatted, cliName);
+  return exitWithError(formatted, cliName);
 };

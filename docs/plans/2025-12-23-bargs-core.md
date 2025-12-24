@@ -23,7 +23,11 @@
 import { describe, it } from 'node:test';
 import { expect } from 'bupkis';
 import { z } from 'zod';
-import type { BargsConfig, SimpleBargsConfig, CommandBargsConfig } from '../src/types.js';
+import type {
+  BargsConfig,
+  SimpleBargsConfig,
+  CommandBargsConfig,
+} from '../src/types.js';
 
 describe('types', () => {
   it('should allow a simple config without commands', () => {
@@ -67,8 +71,7 @@ import type { z, ZodObject, ZodTuple, ZodArray, ZodRawShape } from 'zod';
 /**
  * Aliases map canonical option names to arrays of alias strings.
  *
- * @example
- *   { verbose: ['v'], config: ['c', 'config-file'] }
+ * @example {verbose: ['v'], config: ['c', 'config-file']}
  */
 export type Aliases<T extends ZodRawShape> = {
   [K in keyof T]?: string[];
@@ -89,14 +92,18 @@ export type Handler<TArgs> = (args: TArgs) => Promise<void> | void;
  */
 export interface CommandConfig<
   TOptions extends ZodObject<ZodRawShape> = ZodObject<ZodRawShape>,
-  TPositionals extends ZodTuple | ZodArray<z.ZodTypeAny> | undefined = undefined,
+  TPositionals extends ZodTuple | ZodArray<z.ZodTypeAny> | undefined =
+    undefined,
 > {
   description: string;
   options?: TOptions;
   positionals?: TPositionals;
   aliases?: TOptions extends ZodObject<infer S> ? Aliases<S> : never;
   handler: Handler<
-    Inferred<TOptions> & (TPositionals extends z.ZodTypeAny ? { positionals: Inferred<TPositionals> } : object)
+    Inferred<TOptions> &
+      (TPositionals extends z.ZodTypeAny
+        ? { positionals: Inferred<TPositionals> }
+        : object)
   >;
 }
 
@@ -105,7 +112,8 @@ export interface CommandConfig<
  */
 export interface SimpleBargsConfig<
   TOptions extends ZodObject<ZodRawShape> = ZodObject<ZodRawShape>,
-  TPositionals extends ZodTuple | ZodArray<z.ZodTypeAny> | undefined = undefined,
+  TPositionals extends ZodTuple | ZodArray<z.ZodTypeAny> | undefined =
+    undefined,
 > {
   name: string;
   description?: string;
@@ -115,7 +123,10 @@ export interface SimpleBargsConfig<
   aliases?: TOptions extends ZodObject<infer S> ? Aliases<S> : never;
   defaults?: Partial<Inferred<TOptions>>;
   handler?: Handler<
-    Inferred<TOptions> & (TPositionals extends z.ZodTypeAny ? { positionals: Inferred<TPositionals> } : object)
+    Inferred<TOptions> &
+      (TPositionals extends z.ZodTypeAny
+        ? { positionals: Inferred<TPositionals> }
+        : object)
   >;
   args?: string[];
 }
@@ -123,22 +134,28 @@ export interface SimpleBargsConfig<
 /**
  * Default handler: either a command name or a handler function.
  */
-export type DefaultHandler<TGlobalOptions, TCommands extends Record<string, CommandConfig>> =
-  | keyof TCommands
-  | Handler<TGlobalOptions>;
+export type DefaultHandler<
+  TGlobalOptions,
+  TCommands extends Record<string, CommandConfig>,
+> = keyof TCommands | Handler<TGlobalOptions>;
 
 /**
  * Command-based CLI config.
  */
 export interface CommandBargsConfig<
   TGlobalOptions extends ZodObject<ZodRawShape> = ZodObject<ZodRawShape>,
-  TCommands extends Record<string, CommandConfig> = Record<string, CommandConfig>,
+  TCommands extends Record<string, CommandConfig> = Record<
+    string,
+    CommandConfig
+  >,
 > {
   name: string;
   description?: string;
   version?: string;
   globalOptions?: TGlobalOptions;
-  globalAliases?: TGlobalOptions extends ZodObject<infer S> ? Aliases<S> : never;
+  globalAliases?: TGlobalOptions extends ZodObject<infer S>
+    ? Aliases<S>
+    : never;
   commands: TCommands;
   defaultHandler?: DefaultHandler<Inferred<TGlobalOptions>, TCommands>;
   args?: string[];
@@ -176,7 +193,16 @@ git commit -m "feat: add core type definitions"
 ```typescript
 import { describe, it } from 'node:test';
 import { expect } from 'bupkis';
-import { ansi, bold, dim, red, green, yellow, cyan, stripAnsi } from '../src/ansi.js';
+import {
+  ansi,
+  bold,
+  dim,
+  red,
+  green,
+  yellow,
+  cyan,
+  stripAnsi,
+} from '../src/ansi.js';
 
 describe('ansi', () => {
   it('should wrap text in bold', () => {
@@ -252,7 +278,8 @@ export const ansi = {
 /**
  * Wrap text with ANSI codes.
  */
-const wrap = (open: string, close: string) => (text: string) => `${open}${text}${close}`;
+const wrap = (open: string, close: string) => (text: string) =>
+  `${open}${text}${close}`;
 
 export const bold = wrap(ansi.bold, ansi.boldOff);
 export const dim = wrap(ansi.dim, ansi.boldOff);
@@ -366,7 +393,9 @@ describe('schema introspection', () => {
       const schema = z.object({
         config: z.string(),
       });
-      const config = extractParseArgsConfig(schema, { config: ['config-file', 'c'] });
+      const config = extractParseArgsConfig(schema, {
+        config: ['config-file', 'c'],
+      });
       expect(config, 'to satisfy', {
         config: { type: 'string', short: 'c' },
       });
@@ -416,7 +445,7 @@ export interface SchemaMetadata {
 }
 
 /**
- * parseArgs option config.
+ * ParseArgs option config.
  */
 export interface ParseArgsOptionConfig {
   type: 'string' | 'boolean';
@@ -568,7 +597,9 @@ import { stripAnsi } from '../src/ansi.js';
 describe('help generation', () => {
   describe('formatOptionHelp', () => {
     it('should format a simple boolean option', () => {
-      const result = formatOptionHelp('verbose', z.boolean(), { verbose: ['v'] });
+      const result = formatOptionHelp('verbose', z.boolean(), {
+        verbose: ['v'],
+      });
       const plain = stripAnsi(result);
       expect(plain, 'to contain', '-v, --verbose');
       expect(plain, 'to contain', '[boolean]');
@@ -598,7 +629,10 @@ describe('help generation', () => {
         description: 'A test CLI',
         version: '1.0.0',
         options: z.object({
-          verbose: z.boolean().default(false).meta({ description: 'Enable verbose output' }),
+          verbose: z
+            .boolean()
+            .default(false)
+            .meta({ description: 'Enable verbose output' }),
           output: z.string().optional().meta({ description: 'Output file' }),
         }),
         aliases: { verbose: ['v'], output: ['o'] },
@@ -639,7 +673,9 @@ describe('help generation', () => {
       const config = {
         name: 'mycli',
         options: z.object({
-          verbose: z.boolean().meta({ description: 'Verbose', group: 'Output' }),
+          verbose: z
+            .boolean()
+            .meta({ description: 'Verbose', group: 'Output' }),
           quiet: z.boolean().meta({ description: 'Quiet', group: 'Output' }),
           input: z.string().meta({ description: 'Input file', group: 'Input' }),
         }),
@@ -665,7 +701,12 @@ Expected: FAIL with "Cannot find module '../src/help.js'"
 import { z, type ZodTypeAny, type ZodObject, type ZodRawShape } from 'zod';
 import { bold, cyan, dim, yellow } from './ansi.js';
 import { getSchemaMetadata } from './schema.js';
-import type { Aliases, SimpleBargsConfig, CommandBargsConfig, BargsConfig } from './types.js';
+import type {
+  Aliases,
+  SimpleBargsConfig,
+  CommandBargsConfig,
+  BargsConfig,
+} from './types.js';
 
 /**
  * Unwrap schema to get base type.
@@ -799,14 +840,21 @@ export const generateHelp = (config: BargsConfig): string => {
   }
 
   // Options
-  const optionsSchema = hasCommands(config) ? config.globalOptions : (config as SimpleBargsConfig).options;
-  const aliases = hasCommands(config) ? (config.globalAliases ?? {}) : ((config as SimpleBargsConfig).aliases ?? {});
+  const optionsSchema = hasCommands(config)
+    ? config.globalOptions
+    : (config as SimpleBargsConfig).options;
+  const aliases = hasCommands(config)
+    ? (config.globalAliases ?? {})
+    : ((config as SimpleBargsConfig).aliases ?? {});
 
   if (optionsSchema) {
     const shape = optionsSchema.shape;
 
     // Group options by group metadata
-    const groups = new Map<string, Array<{ name: string; schema: ZodTypeAny }>>();
+    const groups = new Map<
+      string,
+      Array<{ name: string; schema: ZodTypeAny }>
+    >();
     const ungrouped: Array<{ name: string; schema: ZodTypeAny }> = [];
 
     for (const [name, fieldSchema] of Object.entries(shape)) {
@@ -824,7 +872,13 @@ export const generateHelp = (config: BargsConfig): string => {
     for (const [groupName, options] of groups) {
       lines.push(yellow(groupName.toUpperCase()));
       for (const opt of options) {
-        lines.push(formatOptionHelp(opt.name, opt.schema, aliases as Aliases<ZodRawShape>));
+        lines.push(
+          formatOptionHelp(
+            opt.name,
+            opt.schema,
+            aliases as Aliases<ZodRawShape>,
+          ),
+        );
       }
       lines.push('');
     }
@@ -834,7 +888,13 @@ export const generateHelp = (config: BargsConfig): string => {
       const label = hasCommands(config) ? 'GLOBAL OPTIONS' : 'OPTIONS';
       lines.push(yellow(label));
       for (const opt of ungrouped) {
-        lines.push(formatOptionHelp(opt.name, opt.schema, aliases as Aliases<ZodRawShape>));
+        lines.push(
+          formatOptionHelp(
+            opt.name,
+            opt.schema,
+            aliases as Aliases<ZodRawShape>,
+          ),
+        );
       }
       lines.push('');
     }
@@ -842,7 +902,9 @@ export const generateHelp = (config: BargsConfig): string => {
 
   // Footer for commands
   if (hasCommands(config)) {
-    lines.push(dim(`Run '${config.name} <command> --help' for command-specific help.`));
+    lines.push(
+      dim(`Run '${config.name} <command> --help' for command-specific help.`),
+    );
     lines.push('');
   }
 
@@ -880,7 +942,13 @@ export const generateCommandHelp = (
     const shape = command.options.shape;
     const aliases = command.aliases ?? {};
     for (const [name, fieldSchema] of Object.entries(shape)) {
-      lines.push(formatOptionHelp(name, fieldSchema as ZodTypeAny, aliases as Aliases<ZodRawShape>));
+      lines.push(
+        formatOptionHelp(
+          name,
+          fieldSchema as ZodTypeAny,
+          aliases as Aliases<ZodRawShape>,
+        ),
+      );
     }
     lines.push('');
   }
@@ -891,7 +959,13 @@ export const generateCommandHelp = (
     const shape = config.globalOptions.shape;
     const aliases = config.globalAliases ?? {};
     for (const [name, fieldSchema] of Object.entries(shape)) {
-      lines.push(formatOptionHelp(name, fieldSchema as ZodTypeAny, aliases as Aliases<ZodRawShape>));
+      lines.push(
+        formatOptionHelp(
+          name,
+          fieldSchema as ZodTypeAny,
+          aliases as Aliases<ZodRawShape>,
+        ),
+      );
     }
     lines.push('');
   }
@@ -1121,7 +1195,9 @@ import { dirname, join } from 'node:path';
 /**
  * Find package.json by walking up from startDir.
  */
-const findPackageJson = async (startDir: string): Promise<string | undefined> => {
+const findPackageJson = async (
+  startDir: string,
+): Promise<string | undefined> => {
   let dir = startDir;
   const root = dirname(dir);
 
@@ -1141,7 +1217,9 @@ const findPackageJson = async (startDir: string): Promise<string | undefined> =>
 /**
  * Read version from package.json.
  */
-const readVersionFromPackageJson = async (pkgPath: string): Promise<string | undefined> => {
+const readVersionFromPackageJson = async (
+  pkgPath: string,
+): Promise<string | undefined> => {
   try {
     const content = await readFile(pkgPath, 'utf-8');
     const pkg = JSON.parse(content) as { version?: string };
@@ -1336,7 +1414,14 @@ Expected: FAIL with "Cannot find module '../src/parser.js'"
 
 ```typescript
 import { parseArgs } from 'node:util';
-import { z, type ZodObject, type ZodRawShape, type ZodTypeAny, type ZodTuple, type ZodArray } from 'zod';
+import {
+  z,
+  type ZodObject,
+  type ZodRawShape,
+  type ZodTypeAny,
+  type ZodTuple,
+  type ZodArray,
+} from 'zod';
 import { extractParseArgsConfig } from './schema.js';
 import type { Aliases } from './types.js';
 
@@ -1344,7 +1429,9 @@ import type { Aliases } from './types.js';
  * Options for parseSimple.
  */
 export interface ParseSimpleOptions<
-  TOptions extends ZodObject<ZodRawShape> | z.ZodEffects<ZodObject<ZodRawShape>>,
+  TOptions extends
+    | ZodObject<ZodRawShape>
+    | z.ZodEffects<ZodObject<ZodRawShape>>,
   TPositionals extends ZodTuple | ZodArray<ZodTypeAny> | undefined = undefined,
 > {
   options: TOptions;
@@ -1404,7 +1491,11 @@ const coerceValues = (
     }
 
     // Handle arrays of numbers
-    if (base instanceof z.ZodArray && base.element instanceof z.ZodNumber && Array.isArray(value)) {
+    if (
+      base instanceof z.ZodArray &&
+      base.element instanceof z.ZodNumber &&
+      Array.isArray(value)
+    ) {
       result[key] = value.map((v) => (typeof v === 'string' ? Number(v) : v));
     }
   }
@@ -1416,18 +1507,32 @@ const coerceValues = (
  * Parse arguments for a simple CLI (no commands).
  */
 export const parseSimple = async <
-  TOptions extends ZodObject<ZodRawShape> | z.ZodEffects<ZodObject<ZodRawShape>>,
+  TOptions extends
+    | ZodObject<ZodRawShape>
+    | z.ZodEffects<ZodObject<ZodRawShape>>,
   TPositionals extends ZodTuple | ZodArray<ZodTypeAny> | undefined = undefined,
 >(
   options: ParseSimpleOptions<TOptions, TPositionals>,
 ): Promise<
-  z.infer<TOptions> & (TPositionals extends ZodTypeAny ? { positionals: z.infer<TPositionals> } : object)
+  z.infer<TOptions> &
+    (TPositionals extends ZodTypeAny
+      ? { positionals: z.infer<TPositionals> }
+      : object)
 > => {
-  const { options: schema, positionals: positionalsSchema, aliases = {}, defaults = {}, args = process.argv.slice(2) } = options;
+  const {
+    options: schema,
+    positionals: positionalsSchema,
+    aliases = {},
+    defaults = {},
+    args = process.argv.slice(2),
+  } = options;
 
   // Get inner object schema for parseArgs config
   const innerSchema = getInnerObject(schema);
-  const parseArgsOptions = extractParseArgsConfig(innerSchema, aliases as Aliases<ZodRawShape>);
+  const parseArgsOptions = extractParseArgsConfig(
+    innerSchema,
+    aliases as Aliases<ZodRawShape>,
+  );
 
   // Call util.parseArgs
   const { values, positionals } = parseArgs({
@@ -1448,13 +1553,21 @@ export const parseSimple = async <
 
   // Add positionals if schema provided
   if (positionalsSchema) {
-    const validatedPositionals = await positionalsSchema.parseAsync(positionals);
-    return { ...validated, positionals: validatedPositionals } as z.infer<TOptions> &
-      (TPositionals extends ZodTypeAny ? { positionals: z.infer<TPositionals> } : object);
+    const validatedPositionals =
+      await positionalsSchema.parseAsync(positionals);
+    return {
+      ...validated,
+      positionals: validatedPositionals,
+    } as z.infer<TOptions> &
+      (TPositionals extends ZodTypeAny
+        ? { positionals: z.infer<TPositionals> }
+        : object);
   }
 
   return validated as z.infer<TOptions> &
-    (TPositionals extends ZodTypeAny ? { positionals: z.infer<TPositionals> } : object);
+    (TPositionals extends ZodTypeAny
+      ? { positionals: z.infer<TPositionals> }
+      : object);
 };
 ```
 
@@ -1602,7 +1715,9 @@ describe('parseCommands', () => {
       args: ['add', 'file1.txt', 'file2.txt'],
     });
 
-    expect(receivedArgs, 'to satisfy', { positionals: ['file1.txt', 'file2.txt'] });
+    expect(receivedArgs, 'to satisfy', {
+      positionals: ['file1.txt', 'file2.txt'],
+    });
   });
 });
 ```
@@ -1634,7 +1749,9 @@ export interface ParseCommandsOptions {
 /**
  * Parse arguments for a command-based CLI.
  */
-export const parseCommands = async (options: ParseCommandsOptions): Promise<void> => {
+export const parseCommands = async (
+  options: ParseCommandsOptions,
+): Promise<void> => {
   const {
     name,
     globalOptions = z.object({}),
@@ -1667,7 +1784,10 @@ export const parseCommands = async (options: ParseCommandsOptions): Promise<void
     } else if (typeof defaultHandler === 'function') {
       // Run the default handler function
       const innerGlobal = getInnerObject(globalOptions);
-      const parseArgsOptions = extractParseArgsConfig(innerGlobal, globalAliases);
+      const parseArgsOptions = extractParseArgsConfig(
+        innerGlobal,
+        globalAliases,
+      );
       const { values } = parseArgs({
         args: remainingArgs,
         options: parseArgsOptions,
@@ -1686,7 +1806,9 @@ export const parseCommands = async (options: ParseCommandsOptions): Promise<void
   // Get command config
   const command = commands[commandName];
   if (!command) {
-    throw new Error(`Unknown command: ${commandName}. Run '${name} --help' for usage.`);
+    throw new Error(
+      `Unknown command: ${commandName}. Run '${name} --help' for usage.`,
+    );
   }
 
   // Build merged schema: global + command options
@@ -1699,7 +1821,10 @@ export const parseCommands = async (options: ParseCommandsOptions): Promise<void
 
   // Build parseArgs config from both schemas
   const globalConfig = extractParseArgsConfig(innerGlobal, globalAliases);
-  const commandConfig = extractParseArgsConfig(innerCommand, command.aliases ?? {});
+  const commandConfig = extractParseArgsConfig(
+    innerCommand,
+    command.aliases ?? {},
+  );
   const mergedConfig = { ...globalConfig, ...commandConfig };
 
   // Parse
@@ -1722,7 +1847,8 @@ export const parseCommands = async (options: ParseCommandsOptions): Promise<void
 
   // Add positionals if schema provided
   if (command.positionals) {
-    const validatedPositionals = await command.positionals.parseAsync(positionals);
+    const validatedPositionals =
+      await command.positionals.parseAsync(positionals);
     (validated as Record<string, unknown>).positionals = validatedPositionals;
   }
 
@@ -1876,7 +2002,14 @@ Expected: FAIL with "bargs is not exported" or similar
 **Step 3: Write implementation in `src/index.ts`**
 
 ```typescript
-import { z, type ZodObject, type ZodRawShape, type ZodTypeAny, type ZodTuple, type ZodArray } from 'zod';
+import {
+  z,
+  type ZodObject,
+  type ZodRawShape,
+  type ZodTypeAny,
+  type ZodTuple,
+  type ZodArray,
+} from 'zod';
 import { parseSimple, parseCommands } from './parser.js';
 import { generateHelp, generateCommandHelp } from './help.js';
 import { exitWithZodError } from './errors.js';
@@ -1913,11 +2046,15 @@ const checkBuiltinFlags = async (
   if (args.includes('--help') || args.includes('-h')) {
     // Check if it's command-specific help
     if (hasCommands(config)) {
-      const commandIndex = args.findIndex((arg) => !arg.startsWith('-') && arg !== '--help' && arg !== '-h');
+      const commandIndex = args.findIndex(
+        (arg) => !arg.startsWith('-') && arg !== '--help' && arg !== '-h',
+      );
       if (commandIndex >= 0) {
         const commandName = args[commandIndex];
         if (config.commands[commandName]) {
-          console.log(generateCommandHelp(config as CommandBargsConfig, commandName));
+          console.log(
+            generateCommandHelp(config as CommandBargsConfig, commandName),
+          );
           process.exit(0);
         }
       }
@@ -1939,20 +2076,33 @@ const checkBuiltinFlags = async (
  * Main bargs function.
  */
 export async function bargs<
-  TOptions extends ZodObject<ZodRawShape> | z.ZodEffects<ZodObject<ZodRawShape>>,
+  TOptions extends
+    | ZodObject<ZodRawShape>
+    | z.ZodEffects<ZodObject<ZodRawShape>>,
   TPositionals extends ZodTuple | ZodArray<ZodTypeAny> | undefined = undefined,
 >(
   config: SimpleBargsConfig<
-    TOptions extends z.ZodEffects<infer I> ? (I extends ZodObject<ZodRawShape> ? I : never) : TOptions,
+    TOptions extends z.ZodEffects<infer I>
+      ? I extends ZodObject<ZodRawShape>
+        ? I
+        : never
+      : TOptions,
     TPositionals
   > & { options: TOptions },
 ): Promise<
   SimpleBargsConfig<
-    TOptions extends z.ZodEffects<infer I> ? (I extends ZodObject<ZodRawShape> ? I : never) : TOptions,
+    TOptions extends z.ZodEffects<infer I>
+      ? I extends ZodObject<ZodRawShape>
+        ? I
+        : never
+      : TOptions,
     TPositionals
   >['handler'] extends Handler<unknown>
     ? void
-    : z.infer<TOptions> & (TPositionals extends ZodTypeAny ? { positionals: z.infer<TPositionals> } : object)
+    : z.infer<TOptions> &
+        (TPositionals extends ZodTypeAny
+          ? { positionals: z.infer<TPositionals> }
+          : object)
 >;
 
 export async function bargs(config: CommandBargsConfig): Promise<void>;
@@ -2093,8 +2243,14 @@ describe('integration', () => {
       version: '1.0.0',
       globalOptions: z
         .object({
-          verbose: z.boolean().default(false).meta({ description: 'Enable verbose output' }),
-          config: z.string().optional().meta({ description: 'Config file path' }),
+          verbose: z
+            .boolean()
+            .default(false)
+            .meta({ description: 'Enable verbose output' }),
+          config: z
+            .string()
+            .optional()
+            .meta({ description: 'Config file path' }),
         })
         .transform((args) => {
           if (args.verbose) {
@@ -2107,12 +2263,17 @@ describe('integration', () => {
         add: {
           description: 'Add files to staging',
           options: z.object({
-            force: z.boolean().default(false).meta({ description: 'Force add' }),
+            force: z
+              .boolean()
+              .default(false)
+              .meta({ description: 'Force add' }),
           }),
           aliases: { force: ['f'] },
           positionals: z.string().array().meta({ description: 'Files to add' }),
           handler: async (args) => {
-            actions.push(`add: force=${args.force}, files=${args.positionals.join(',')}`);
+            actions.push(
+              `add: force=${args.force}, files=${args.positionals.join(',')}`,
+            );
           },
         },
         commit: {
@@ -2209,6 +2370,7 @@ After completing all tasks, you will have:
 8. **Main entry** (`src/index.ts`) - The `bargs()` function with all integrations
 
 The library supports:
+
 - Simple CLIs (no commands) with optional handlers
 - Command-based CLIs with global options
 - Zod transforms as middleware
