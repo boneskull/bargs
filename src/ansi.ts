@@ -1,3 +1,5 @@
+import { stripVTControlCharacters } from 'node:util';
+
 /**
  * ANSI escape code constants.
  */
@@ -34,5 +36,4 @@ export const white = wrap(ansi.white, ansi.colorOff);
 /**
  * Strip all ANSI escape codes from a string.
  */
-// eslint-disable-next-line no-control-regex
-export const stripAnsi = (text: string) => text.replace(/\x1b\[[0-9;]*m/g, '');
+export const stripAnsi = stripVTControlCharacters;
