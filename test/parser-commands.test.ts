@@ -23,20 +23,23 @@ describe('parseCommands', () => {
           }),
         },
       },
-      globalOptions: z.object({
+      name: 'mycli',
+      options: z.object({
         verbose: z.boolean().default(false),
       }),
-      name: 'mycli',
     });
 
     expect(handlerCalled, 'to be true');
-    expect(receivedArgs, 'to satisfy', { force: true, verbose: false });
+    expect(receivedArgs, 'to satisfy', {
+      values: { force: true, verbose: false },
+    });
   });
 
   it('should merge global and command options', async () => {
     let receivedArgs: unknown;
 
     await parseCommands({
+      aliases: { verbose: ['v'] },
       args: ['add', '-v', '--force'],
       commands: {
         add: {
@@ -49,14 +52,15 @@ describe('parseCommands', () => {
           }),
         },
       },
-      globalAliases: { verbose: ['v'] },
-      globalOptions: z.object({
+      name: 'mycli',
+      options: z.object({
         verbose: z.boolean().default(false),
       }),
-      name: 'mycli',
     });
 
-    expect(receivedArgs, 'to satisfy', { force: true, verbose: true });
+    expect(receivedArgs, 'to satisfy', {
+      values: { force: true, verbose: true },
+    });
   });
 
   it('should run defaultHandler when no command given (string)', async () => {
@@ -73,8 +77,8 @@ describe('parseCommands', () => {
         },
       },
       defaultHandler: 'add',
-      globalOptions: z.object({}),
       name: 'mycli',
+      options: z.object({}),
     });
 
     expect(addCalled, 'to be true');
@@ -94,8 +98,8 @@ describe('parseCommands', () => {
       defaultHandler: async () => {
         defaultCalled = true;
       },
-      globalOptions: z.object({}),
       name: 'mycli',
+      options: z.object({}),
     });
 
     expect(defaultCalled, 'to be true');
@@ -115,12 +119,14 @@ describe('parseCommands', () => {
           positionals: z.string().array(),
         },
       },
-      globalOptions: z.object({}),
       name: 'mycli',
+      options: z.object({}),
     });
 
     expect(receivedArgs, 'to satisfy', {
+      command: 'add',
       positionals: ['file1.txt', 'file2.txt'],
+      values: {},
     });
   });
 });

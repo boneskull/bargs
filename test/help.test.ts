@@ -65,10 +65,10 @@ describe('help generation', () => {
           commit: { description: 'Commit changes', handler: async () => {} },
         },
         description: 'A test CLI',
-        globalOptions: z.object({
+        name: 'mycli',
+        options: z.object({
           verbose: z.boolean().default(false),
         }),
-        name: 'mycli',
       };
       const help = generateHelp(config);
       const plain = stripAnsi(help);

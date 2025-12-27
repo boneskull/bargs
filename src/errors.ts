@@ -37,7 +37,7 @@ export const formatZodError = (error: ZodError): string => {
 /**
  * Print error and exit.
  */
-export const exitWithError = (message: string, cliName: string): never => {
+const exitWithError = (message: string, cliName: string): never => {
   console.error(message);
   console.error(dim(`Run '${cliName} --help' for usage.`));
   process.exit(1);

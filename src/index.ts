@@ -1,38 +1,72 @@
-import { z, type ZodArray, type ZodTuple, type ZodTypeAny } from 'zod';
+import { z, type ZodArray, type ZodTuple, type ZodType } from 'zod';
 
 import type {
+  AnyCommandConfig,
   BargsConfig,
-  CommandBargsConfig,
-  Handler,
-  SimpleBargsConfig,
+  BargsConfigWithCommands,
+  BargsResult,
+  InferredPositionals,
 } from './types.js';
 
 import { exitWithZodError } from './errors.js';
 import { generateCommandHelp, generateHelp } from './help.js';
 import { parseCommands, parseSimple } from './parser.js';
+import { hasCommands } from './util.js';
 import { detectVersion } from './version.js';
 
-export * from './ansi.js';
-export * from './errors.js';
-export * from './help.js';
-export { parseCommands, parseSimple } from './parser.js';
-export * from './schema.js';
-export type * from './types.js';
+// Public API: Only export what users need
+export { BargsError } from './errors.js';
+export type {
+  AnyCommandConfig,
+  BargsConfig,
+  BargsConfigWithCommands,
+  BargsResult,
+  CommandConfig,
+  Handler,
+  InferredPositionals,
+  SchemaAliases,
+} from './types.js';
+
+import type { CommandConfig } from './types.js';
 
 /**
- * Check if config has commands.
+ * Helper to define a command with proper type inference.
+ *
+ * TypeScript can't infer handler parameter types from sibling properties in
+ * nested objects. This function guides inference so the handler receives
+ * correctly typed `values` and `positionals` based on the command's schemas.
+ *
+ * @example
+ *
+ * ```ts
+ * commands: {
+ *   add: defineCommand({
+ *     options: z.object({ force: z.boolean() }),
+ *     handler: ({ values }) => {
+ *       // values.force is correctly typed as boolean
+ *     },
+ *   }),
+ * }
+ * ```
  */
-const hasCommands = (config: BargsConfig): config is CommandBargsConfig => {
-  return 'commands' in config && config.commands !== undefined;
-};
+export const defineCommand = <
+  TOptions extends ZodType = ZodType,
+  TPositionals extends undefined | ZodArray | ZodTuple = undefined,
+>(
+  config: CommandConfig<TOptions, TPositionals>,
+): CommandConfig<TOptions, TPositionals> => config;
 
 /**
  * Check for --help or --version flags.
  */
-const checkBuiltinFlags = async (
+const checkBuiltinFlags = async <
+  TOptions extends ZodType,
+  TPositionals extends undefined | ZodArray | ZodTuple,
+  TCommands extends Record<string, AnyCommandConfig> | undefined,
+>(
   args: string[],
-  config: BargsConfig,
-): Promise<boolean> => {
+  config: BargsConfig<TOptions, TPositionals, TCommands>,
+): Promise<void> => {
   if (args.includes('--help') || args.includes('-h')) {
     // Check if it's command-specific help
     if (hasCommands(config)) {
@@ -41,7 +75,8 @@ const checkBuiltinFlags = async (
       );
       if (commandIndex >= 0) {
         const commandName = args[commandIndex] as string;
-        if (config.commands[commandName]) {
+        const commands = config.commands;
+        if (commands[commandName]) {
           console.log(generateCommandHelp(config, commandName));
           process.exit(0);
         }
@@ -56,92 +91,100 @@ const checkBuiltinFlags = async (
     console.log(version ?? 'unknown');
     process.exit(0);
   }
-
-  return false;
 };
 
 /**
- * Main bargs function - command-based CLI. Accepts any ZodTypeAny for
- * globalOptions to support .transform() schemas. Must be first overload to
- * ensure configs with `commands` match this.
- */
-export async function bargs<TGlobalOptions extends ZodTypeAny>(
-  config: CommandBargsConfig<TGlobalOptions>,
-): Promise<void>;
-
-/**
- * Main bargs function - simple CLI with handler. Accepts any ZodTypeAny for
- * options to support .transform() schemas.
+ * Main bargs function for simple CLI (no commands).
  */
 export async function bargs<
-  TOptions extends ZodTypeAny,
-  TPositionals extends undefined | ZodArray<ZodTypeAny> | ZodTuple = undefined,
+  TOptions extends ZodType,
+  TPositionals extends undefined | ZodArray | ZodTuple = undefined,
 >(
-  config: SimpleBargsConfig<TOptions, TPositionals> & {
-    handler: Handler<z.infer<TOptions>>;
-    options: TOptions;
-  },
-): Promise<void>;
-
-/**
- * Main bargs function - simple CLI without handler. Accepts any ZodTypeAny for
- * options to support .transform() schemas.
- */
-export async function bargs<
-  TOptions extends ZodTypeAny,
-  TPositionals extends undefined | ZodArray<ZodTypeAny> | ZodTuple = undefined,
->(
-  config: SimpleBargsConfig<TOptions, TPositionals> & {
-    options: TOptions;
-  },
+  config: BargsConfig<TOptions, TPositionals, undefined>,
 ): Promise<
-  (TPositionals extends ZodTypeAny
-    ? { positionals: z.infer<TPositionals> }
-    : object) &
-    z.infer<TOptions>
+  BargsResult<z.infer<TOptions>, InferredPositionals<TPositionals>, undefined>
 >;
 
 /**
- * Main bargs function implementation.
+ * Main bargs function for command-based CLI.
  */
-export async function bargs(config: BargsConfig): Promise<unknown> {
+export async function bargs<
+  TOptions extends ZodType = ZodType,
+  TPositionals extends undefined | ZodArray | ZodTuple = undefined,
+  TCommands extends Record<string, AnyCommandConfig> = Record<
+    string,
+    AnyCommandConfig
+  >,
+>(
+  config: BargsConfigWithCommands<TOptions, TPositionals, TCommands>,
+): Promise<BargsResult<z.infer<TOptions>, [], string | undefined>>;
+
+/**
+ * Main bargs function - parses CLI arguments.
+ */
+export async function bargs<
+  TOptions extends ZodType = ZodType,
+  TPositionals extends undefined | ZodArray | ZodTuple = undefined,
+  TCommands extends Record<string, AnyCommandConfig> | undefined = undefined,
+>(
+  config:
+    | BargsConfig<TOptions, TPositionals, TCommands>
+    | BargsConfigWithCommands<TOptions, TPositionals, NonNullable<TCommands>>,
+): Promise<
+  BargsResult<
+    z.infer<TOptions>,
+    InferredPositionals<TPositionals>,
+    TCommands extends undefined ? undefined : string | undefined
+  >
+> {
   const args = config.args ?? process.argv.slice(2);
 
   // Check for --help and --version
-  await checkBuiltinFlags(args, config);
+  await checkBuiltinFlags(
+    args,
+    config as BargsConfig<ZodType, undefined, undefined>,
+  );
 
   try {
     if (hasCommands(config)) {
-      await parseCommands({
+      const commandConfig = config as BargsConfigWithCommands;
+      const result = await parseCommands({
+        aliases: commandConfig.aliases,
         args,
-        commands: config.commands,
-        defaultHandler: config.defaultHandler as
-          | Handler<unknown>
-          | string
-          | undefined,
-        globalAliases: config.globalAliases,
-        globalOptions: config.globalOptions,
-        name: config.name,
+        commands: commandConfig.commands,
+        defaultHandler: commandConfig.defaultHandler,
+        name: commandConfig.name,
+        options: commandConfig.options,
       });
-      return;
+      return result as BargsResult<
+        z.infer<TOptions>,
+        InferredPositionals<TPositionals>,
+        TCommands extends undefined ? undefined : string | undefined
+      >;
     }
 
     // Simple CLI
-    const simpleConfig = config as SimpleBargsConfig;
+    const simpleConfig = config as BargsConfig;
     const result = await parseSimple({
       aliases: simpleConfig.aliases,
       args,
-      defaults: simpleConfig.defaults,
+      config: simpleConfig.config,
       options: simpleConfig.options ?? z.object({}),
       positionals: simpleConfig.positionals,
     });
 
+    // Run handler if provided, then return result
     if (simpleConfig.handler) {
-      await simpleConfig.handler(result);
-      return;
+      await simpleConfig.handler(
+        result as BargsResult<Record<string, unknown>, [], undefined>,
+      );
     }
 
-    return result;
+    return result as BargsResult<
+      z.infer<TOptions>,
+      InferredPositionals<TPositionals>,
+      TCommands extends undefined ? undefined : string | undefined
+    >;
   } catch (error) {
     if (error instanceof z.ZodError) {
       exitWithZodError(error, config.name);

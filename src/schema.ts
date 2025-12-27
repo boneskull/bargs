@@ -1,13 +1,19 @@
-import { z, type ZodObject, type ZodRawShape, type ZodTypeAny } from 'zod';
+import { z, type ZodObject, type ZodRawShape, type ZodType } from 'zod';
 
 import type { Aliases } from './types.js';
+
+import {
+  getArrayElement,
+  getDefType,
+  unwrapToBase,
+} from './zod-introspection.js';
 
 /**
  * ParseArgs option config. Note: We intentionally omit 'default' - schema
  * defaults are handled by Zod during validation to allow user-provided defaults
  * (e.g., from config files) to take precedence.
  */
-export interface ParseArgsOptionConfig {
+interface ParseArgsOptionConfig {
   multiple?: boolean;
   short?: string;
   type: 'boolean' | 'string';
@@ -16,53 +22,18 @@ export interface ParseArgsOptionConfig {
 /**
  * Metadata extracted from a Zod schema via .meta().
  */
-export interface SchemaMetadata {
+interface SchemaMetadata {
   description?: string;
   examples?: unknown[];
   group?: string;
 }
 
 /**
- * Get the schema type name from Zod v4's introspection API.
- */
-const getSchemaType = (schema: ZodTypeAny): string => {
-  // Zod v4 uses _zod.def.type for introspection
-  return (schema as unknown as { _zod: { def: { type: string } } })._zod.def
-    .type;
-};
-
-/**
- * Get the inner schema from wrapper types.
- */
-const getInnerSchema = (schema: ZodTypeAny): ZodTypeAny => {
-  const def = (schema as unknown as { _zod: { def: Record<string, unknown> } })
-    ._zod.def;
-  return (def.innerType ?? def.schema ?? def.wrapped) as ZodTypeAny;
-};
-
-/**
- * Get the base type of a Zod schema, unwrapping optionals, defaults, etc.
- */
-const unwrapSchema = (schema: ZodTypeAny): ZodTypeAny => {
-  const type = getSchemaType(schema);
-
-  switch (type) {
-    case 'default':
-    case 'nullable':
-    case 'optional':
-    case 'pipe':
-      return unwrapSchema(getInnerSchema(schema));
-    default:
-      return schema;
-  }
-};
-
-/**
  * Get the parseArgs type for a Zod schema.
  */
-const getParseArgsType = (schema: ZodTypeAny): 'boolean' | 'string' => {
-  const base = unwrapSchema(schema);
-  const type = getSchemaType(base);
+const getParseArgsType = (schema: ZodType): 'boolean' | 'string' => {
+  const base = unwrapToBase(schema);
+  const type = getDefType(base);
 
   if (type === 'boolean') {
     return 'boolean';
@@ -74,24 +45,15 @@ const getParseArgsType = (schema: ZodTypeAny): 'boolean' | 'string' => {
 /**
  * Check if schema represents an array/multiple value.
  */
-const isArraySchema = (schema: ZodTypeAny): boolean => {
-  const base = unwrapSchema(schema);
-  return getSchemaType(base) === 'array';
-};
-
-/**
- * Get the element schema from an array schema.
- */
-const getArrayElement = (schema: ZodTypeAny): ZodTypeAny => {
-  const def = (schema as unknown as { _zod: { def: { element: ZodTypeAny } } })
-    ._zod.def;
-  return def.element;
+const isArraySchema = (schema: ZodType): boolean => {
+  const base = unwrapToBase(schema);
+  return getDefType(base) === 'array';
 };
 
 /**
  * Extract metadata from a Zod schema's global registry.
  */
-export const getSchemaMetadata = (schema: ZodTypeAny): SchemaMetadata => {
+export const getSchemaMetadata = (schema: ZodType): SchemaMetadata => {
   const meta = z.globalRegistry.get(schema);
   if (!meta || Object.keys(meta).length === 0) {
     return {};
@@ -121,13 +83,13 @@ export const extractParseArgsConfig = <T extends ZodRawShape>(
 
   for (const [key, fieldSchema] of Object.entries(shape)) {
     const optionConfig: ParseArgsOptionConfig = {
-      type: getParseArgsType(fieldSchema as ZodTypeAny),
+      type: getParseArgsType(fieldSchema as ZodType),
     };
 
-    if (isArraySchema(fieldSchema as ZodTypeAny)) {
+    if (isArraySchema(fieldSchema as ZodType)) {
       optionConfig.multiple = true;
       // For arrays, get the element type
-      const base = unwrapSchema(fieldSchema as ZodTypeAny);
+      const base = unwrapToBase(fieldSchema as ZodType);
       optionConfig.type = getParseArgsType(getArrayElement(base));
     }
 

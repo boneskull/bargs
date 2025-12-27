@@ -5,85 +5,65 @@ import {
   type ZodObject,
   type ZodRawShape,
   type ZodTuple,
-  type ZodTypeAny,
+  type ZodType,
 } from 'zod';
 
-import type { Aliases, CommandConfig, Handler } from './types.js';
+import type {
+  Aliases,
+  AnyCommandConfig,
+  BargsConfigWithCommands,
+  BargsResult,
+  InferredPositionals,
+} from './types.js';
 
 import { extractParseArgsConfig } from './schema.js';
+import {
+  getArrayElement,
+  getDefType,
+  getInnerObject as getInnerObjectUtil,
+  unwrapToBase,
+} from './zod-introspection.js';
 
 /**
- * Get the schema type name from Zod v4's introspection API.
+ * Options for parseSimple (internal).
  */
-const getSchemaType = (schema: ZodTypeAny): string => {
-  return (schema as unknown as { _zod: { def: { type: string } } })._zod.def
-    .type;
-};
-
-/**
- * Get the inner schema from wrapper types.
- */
-const getInnerSchema = (schema: ZodTypeAny): ZodTypeAny => {
-  const def = (schema as unknown as { _zod: { def: Record<string, unknown> } })
-    ._zod.def;
-  // 'pipe' uses 'in' for the input schema (from .transform())
-  return (def.in ?? def.innerType ?? def.schema ?? def.wrapped) as ZodTypeAny;
-};
-
-/**
- * Options for parseSimple.
- *
- * @knipignore - Exported for library consumers
- */
-export interface ParseSimpleOptions<
-  TOptions extends ZodTypeAny = ZodTypeAny,
-  TPositionals extends undefined | ZodArray<ZodTypeAny> | ZodTuple = undefined,
+interface ParseSimpleOptions<
+  TOptions extends ZodType = ZodType,
+  TPositionals extends undefined | ZodArray | ZodTuple = undefined,
 > {
-  aliases?: Aliases<ZodRawShape>;
+  aliases?: { [K in keyof z.input<TOptions>]?: string[] };
   args?: string[];
-  defaults?: Record<string, unknown>;
-  options: TOptions;
+  config?: Partial<z.infer<TOptions>>;
+  options?: TOptions;
   positionals?: TPositionals;
 }
 
 /**
  * Get the inner ZodObject from a schema (unwrapping pipes/transforms).
  */
-const getInnerObject = (schema: ZodTypeAny): ZodObject<ZodRawShape> => {
-  const type = getSchemaType(schema);
-  if (type === 'pipe') {
-    return getInnerObject(getInnerSchema(schema) as ZodObject<ZodRawShape>);
-  }
-  return schema as ZodObject<ZodRawShape>;
+const getInnerObject = (schema: ZodType): ZodObject<ZodRawShape> => {
+  const inner = getInnerObjectUtil(schema);
+  return (inner ?? schema) as ZodObject<ZodRawShape>;
 };
 
 /**
  * Coerce string values to their expected types based on schema.
  */
-const coerceValues = (
+const coerceValues = <TOptions extends ZodObject<ZodRawShape>>(
   values: Record<string, unknown>,
-  schema: ZodObject<ZodRawShape>,
+  schema: TOptions,
 ): Record<string, unknown> => {
   const shape = schema.shape;
   const result: Record<string, unknown> = { ...values };
 
   for (const [key, value] of Object.entries(values)) {
-    const fieldSchema = shape[key] as undefined | ZodTypeAny;
+    const fieldSchema = shape[key] as undefined | ZodType;
     if (!fieldSchema) {
       continue;
     }
 
-    // Unwrap to get base type
-    let base = fieldSchema;
-    let schemaType = getSchemaType(base);
-    while (
-      schemaType === 'optional' ||
-      schemaType === 'nullable' ||
-      schemaType === 'default'
-    ) {
-      base = getInnerSchema(base);
-      schemaType = getSchemaType(base);
-    }
+    const base = unwrapToBase(fieldSchema);
+    const schemaType = getDefType(base);
 
     // Coerce numbers
     if (schemaType === 'number' && typeof value === 'string') {
@@ -92,13 +72,8 @@ const coerceValues = (
 
     // Handle arrays of numbers
     if (schemaType === 'array') {
-      const elementDef = (
-        base as unknown as { _zod: { def: { element: ZodTypeAny } } }
-      )._zod.def;
-      if (
-        getSchemaType(elementDef.element) === 'number' &&
-        Array.isArray(value)
-      ) {
+      const element = getArrayElement(base);
+      if (getDefType(element) === 'number' && Array.isArray(value)) {
         result[key] = (value as unknown[]).map((v) =>
           typeof v === 'string' ? Number(v) : v,
         );
@@ -113,21 +88,18 @@ const coerceValues = (
  * Parse arguments for a simple CLI (no commands).
  */
 export const parseSimple = async <
-  TOptions extends ZodTypeAny = ZodTypeAny,
-  TPositionals extends undefined | ZodArray<ZodTypeAny> | ZodTuple = undefined,
+  TOptions extends ZodType = ZodType,
+  TPositionals extends undefined | ZodArray | ZodTuple = undefined,
 >(
   options: ParseSimpleOptions<TOptions, TPositionals>,
 ): Promise<
-  (TPositionals extends ZodTypeAny
-    ? { positionals: z.infer<TPositionals> }
-    : object) &
-    z.infer<TOptions>
+  BargsResult<z.infer<TOptions>, InferredPositionals<TPositionals>, undefined>
 > => {
   const {
     aliases = {},
     args = process.argv.slice(2),
-    defaults = {},
-    options: schema,
+    config: defaults = {},
+    options: schema = z.never(),
     positionals: positionalsSchema,
   } = options;
 
@@ -153,58 +125,45 @@ export const parseSimple = async <
   const coerced = coerceValues(merged, innerSchema);
 
   // Validate with Zod (including transforms)
-  const validated = (await schema.parseAsync(coerced)) as Record<
-    string,
-    unknown
-  >;
+  const validatedValues = await schema.parseAsync(coerced);
 
-  // Add positionals if schema provided
-  if (positionalsSchema) {
-    const validatedPositionals =
-      await positionalsSchema.parseAsync(positionals);
-    return {
-      ...validated,
-      positionals: validatedPositionals,
-    } as unknown as (TPositionals extends ZodTypeAny
-      ? { positionals: z.infer<TPositionals> }
-      : object) &
-      z.infer<TOptions>;
-  }
+  // Validate positionals if schema provided, otherwise empty array
+  const validatedPositionals = positionalsSchema
+    ? await positionalsSchema.parseAsync(positionals)
+    : [];
 
-  return validated as unknown as (TPositionals extends ZodTypeAny
-    ? { positionals: z.infer<TPositionals> }
-    : object) &
-    z.infer<TOptions>;
+  return {
+    command: undefined,
+    positionals: validatedPositionals,
+    values: validatedValues,
+  } as BargsResult<z.infer<TOptions>, InferredPositionals<TPositionals>, undefined>;
 };
 
 /**
- * Options for parseCommands.
- *
- * @knipignore - Exported for library consumers
+ * Parse arguments for a command-based CLI. Returns a BargsResult with command
+ * name, values, and positionals.
  */
-export interface ParseCommandsOptions {
-  args?: string[];
-  commands: Record<string, CommandConfig>;
-  defaultHandler?: Handler<unknown> | string;
-  globalAliases?: Aliases<ZodRawShape>;
-  globalOptions?: ZodTypeAny;
-  name: string;
-}
-
-/**
- * Parse arguments for a command-based CLI.
- */
-export const parseCommands = async (
-  options: ParseCommandsOptions,
-): Promise<void> => {
+export const parseCommands = async <
+  TOptions extends ZodType = ZodType,
+  TCommands extends Record<string, AnyCommandConfig> = Record<
+    string,
+    AnyCommandConfig
+  >,
+>(
+  config: BargsConfigWithCommands<TOptions, undefined, TCommands>,
+): Promise<BargsResult<z.infer<TOptions>, [], string | undefined>> => {
   const {
+    aliases = {},
     args = process.argv.slice(2),
     commands,
     defaultHandler,
-    globalAliases = {},
-    globalOptions = z.object({}),
     name,
-  } = options;
+    options: globalOptions,
+  } = config;
+
+  // Commands are required in BargsConfigWithCommands, so this is safe
+  // Cast needed: TCommands generic can't be string-indexed even though it extends Record<string, ...>
+  const commandsRecord = commands as Record<string, AnyCommandConfig>;
 
   // Extract command name (first non-flag argument)
   const commandIndex = args.findIndex((arg) => !arg.startsWith('-'));
@@ -216,22 +175,26 @@ export const parseCommands = async (
   // If no command, use defaultHandler
   if (!commandName) {
     if (typeof defaultHandler === 'string') {
-      // Run the default command
-      const defaultCommand = commands[defaultHandler];
+      // Run the default command by name
+      const defaultCommand = commandsRecord[defaultHandler];
       if (!defaultCommand) {
-        throw new Error(`Default command '${defaultHandler}' not found`);
+        throw new Error(
+          `Default command '${String(defaultHandler)}' not found`,
+        );
       }
+      // Recursively call with the default command injected
       return parseCommands({
-        ...options,
-        args: [defaultHandler, ...args],
+        ...config,
+        args: [String(defaultHandler), ...args],
         defaultHandler: undefined,
       });
     } else if (typeof defaultHandler === 'function') {
-      // Run the default handler function
-      const innerGlobal = getInnerObject(globalOptions);
+      // Run the default handler function with global options only
+      const globalSchema = globalOptions ?? z.object({});
+      const innerGlobal = getInnerObject(globalSchema);
       const parseArgsOptions = extractParseArgsConfig(
         innerGlobal,
-        globalAliases,
+        aliases as Aliases<ZodRawShape>,
       );
       const { values } = parseArgs({
         allowPositionals: false,
@@ -240,16 +203,21 @@ export const parseCommands = async (
         strict: true,
       });
       const coerced = coerceValues(values, innerGlobal);
-      const validated = await globalOptions.parseAsync(coerced);
-      await defaultHandler(validated);
-      return;
+      const validatedValues = await globalSchema.parseAsync(coerced);
+      const result = {
+        command: undefined,
+        positionals: [] as const,
+        values: validatedValues,
+      } as BargsResult<z.infer<TOptions>, [], undefined>;
+      await defaultHandler(result);
+      return result;
     } else {
       throw new Error(`No command specified. Run '${name} --help' for usage.`);
     }
   }
 
   // Get command config
-  const command = commands[commandName];
+  const command = commandsRecord[commandName];
   if (!command) {
     throw new Error(
       `Unknown command: ${commandName}. Run '${name} --help' for usage.`,
@@ -257,15 +225,19 @@ export const parseCommands = async (
   }
 
   // Build merged schema: global + command options
-  const innerGlobal = getInnerObject(globalOptions);
-  const commandOptions = command.options ?? z.object({});
-  const innerCommand = getInnerObject(commandOptions);
+  const globalSchema = globalOptions ?? z.object({});
+  const innerGlobal = getInnerObject(globalSchema);
+  const commandSchema = command.options ?? z.object({});
+  const innerCommand = getInnerObject(commandSchema);
 
   // Build parseArgs config from both schemas
-  const globalConfig = extractParseArgsConfig(innerGlobal, globalAliases);
+  const globalConfig = extractParseArgsConfig(
+    innerGlobal,
+    aliases as Aliases<ZodRawShape>,
+  );
   const commandConfig = extractParseArgsConfig(
     innerCommand,
-    command.aliases ?? {},
+    (command.aliases ?? {}) as Aliases<ZodRawShape>,
   );
   const mergedConfig = { ...globalConfig, ...commandConfig };
 
@@ -282,24 +254,33 @@ export const parseCommands = async (
   const coercedCommand = coerceValues(values, innerCommand);
 
   // Validate both schemas
-  const validatedGlobal = (await globalOptions.parseAsync(
+  const validatedGlobal = (await globalSchema.parseAsync(
     coercedGlobal,
   )) as Record<string, unknown>;
-  const validatedCommand = (await commandOptions.parseAsync(
+  const validatedCommand = (await commandSchema.parseAsync(
     coercedCommand,
   )) as Record<string, unknown>;
-  const validated: Record<string, unknown> = {
+  const validatedValues = {
     ...validatedGlobal,
     ...validatedCommand,
   };
 
-  // Add positionals if schema provided
-  if (command.positionals) {
-    const validatedPositionals =
-      await command.positionals.parseAsync(positionals);
-    validated.positionals = validatedPositionals;
-  }
+  // Validate positionals if schema provided, otherwise empty array
+  const positionalsSchema = command.positionals as undefined | ZodType;
+  const validatedPositionals = positionalsSchema
+    ? await positionalsSchema.parseAsync(positionals)
+    : [];
 
-  // Run handler
-  await command.handler(validated);
+  const result = {
+    command: commandName,
+    positionals: validatedPositionals,
+    values: validatedValues,
+  } as BargsResult<z.infer<TOptions>, [], string>;
+
+  // Run command handler
+  await command.handler(
+    result as BargsResult<Record<string, unknown>, unknown[], string>,
+  );
+
+  return result;
 };

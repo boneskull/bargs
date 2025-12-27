@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { bargs } from '../src/index.js';
 
 describe('bargs', () => {
-  it('should parse simple CLI and return args', async () => {
+  it('should parse simple CLI and return BargsResult', async () => {
     const result = await bargs({
       args: ['--verbose'],
       name: 'mycli',
@@ -13,16 +13,20 @@ describe('bargs', () => {
         verbose: z.boolean().default(false),
       }),
     });
-    expect(result, 'to satisfy', { verbose: true });
+    expect(result, 'to satisfy', {
+      command: undefined,
+      positionals: [],
+      values: { verbose: true },
+    });
   });
 
-  it('should run handler and return void', async () => {
+  it('should run handler and still return result', async () => {
     let called = false;
     const result = await bargs({
       args: ['--verbose'],
-      handler: async (args) => {
+      handler: async ({ values }) => {
         called = true;
-        expect(args.verbose, 'to be true');
+        expect(values.verbose, 'to be true');
       },
       name: 'mycli',
       options: z.object({
@@ -30,7 +34,8 @@ describe('bargs', () => {
       }),
     });
     expect(called, 'to be true');
-    expect(result, 'to be undefined');
+    // Now always returns result, even with handler
+    expect(result.values, 'to satisfy', { verbose: true });
   });
 
   it('should handle --help flag', async () => {
@@ -104,8 +109,8 @@ describe('bargs', () => {
           },
         },
       },
-      globalOptions: z.object({}),
       name: 'mycli',
+      options: z.object({}),
     });
     expect(called, 'to be true');
   });

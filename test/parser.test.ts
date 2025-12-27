@@ -14,7 +14,7 @@ describe('parser', () => {
         args: ['--verbose'],
         options: schema,
       });
-      expect(result.verbose, 'to be true');
+      expect(result.values.verbose, 'to be true');
     });
 
     it('should parse string options', async () => {
@@ -25,7 +25,7 @@ describe('parser', () => {
         args: ['--output', 'file.txt'],
         options: schema,
       });
-      expect(result.output, 'to equal', 'file.txt');
+      expect(result.values.output, 'to equal', 'file.txt');
     });
 
     it('should parse array options', async () => {
@@ -36,7 +36,7 @@ describe('parser', () => {
         args: ['--files', 'a.txt', '--files', 'b.txt'],
         options: schema,
       });
-      expect(result.files, 'to satisfy', ['a.txt', 'b.txt']);
+      expect(result.values.files, 'to satisfy', ['a.txt', 'b.txt']);
     });
 
     it('should apply aliases', async () => {
@@ -48,7 +48,7 @@ describe('parser', () => {
         args: ['-v'],
         options: schema,
       });
-      expect(result.verbose, 'to be true');
+      expect(result.values.verbose, 'to be true');
     });
 
     it('should apply defaults', async () => {
@@ -59,7 +59,7 @@ describe('parser', () => {
         args: [],
         options: schema,
       });
-      expect(result.count, 'to equal', 10);
+      expect(result.values.count, 'to equal', 10);
     });
 
     it('should merge user-provided defaults', async () => {
@@ -68,10 +68,10 @@ describe('parser', () => {
       });
       const result = await parseSimple({
         args: [],
-        defaults: { output: 'default.txt' },
+        config: { output: 'default.txt' },
         options: schema,
       });
-      expect(result.output, 'to equal', 'default.txt');
+      expect(result.values.output, 'to equal', 'default.txt');
     });
 
     it('should let CLI args override defaults', async () => {
@@ -80,10 +80,10 @@ describe('parser', () => {
       });
       const result = await parseSimple({
         args: ['--output', 'override.txt'],
-        defaults: { output: 'default.txt' },
+        config: { output: 'default.txt' },
         options: schema,
       });
-      expect(result.output, 'to equal', 'override.txt');
+      expect(result.values.output, 'to equal', 'override.txt');
     });
 
     it('should parse positionals', async () => {
@@ -110,7 +110,7 @@ describe('parser', () => {
         args: ['--multiplier', '5'],
         options: schema,
       });
-      expect(result.computed, 'to equal', 50);
+      expect(result.values.computed, 'to equal', 50);
     });
 
     it('should throw on unknown options (strict mode)', async () => {
