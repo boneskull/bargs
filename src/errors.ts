@@ -1,5 +1,3 @@
-import type { ZodError } from 'zod';
-
 import { bold, dim, red } from './ansi.js';
 
 /**
@@ -13,22 +11,32 @@ export class BargsError extends Error {
 }
 
 /**
- * Format a Zod error for CLI display.
+ * Error that triggers help text display. Thrown when the user needs guidance.
+ *
+ * @param message - Error message to show before help text
+ * @param command - Command name for command-specific help, undefined for
+ *   general help
  */
-export const formatZodError = (error: ZodError): string => {
+export class HelpError extends BargsError {
+  readonly command?: string;
+
+  constructor(message: string, command?: string) {
+    super(message);
+    this.name = 'HelpError';
+    this.command = command;
+  }
+}
+
+/**
+ * Format a validation error for CLI display.
+ */
+export const formatValidationError = (message: string): string => {
   const lines: string[] = [];
 
   lines.push('');
   lines.push(red(bold('Invalid arguments')));
   lines.push('');
-
-  // Use issues directly for better path handling
-  for (const issue of error.issues) {
-    const path = issue.path.join('.');
-    const flagName = path.includes('.') ? path : `--${path}`;
-    lines.push(`  ${bold(flagName)}  ${issue.message}`);
-  }
-
+  lines.push(`  ${message}`);
   lines.push('');
 
   return lines.join('\n');
@@ -37,18 +45,8 @@ export const formatZodError = (error: ZodError): string => {
 /**
  * Print error and exit.
  */
-const exitWithError = (message: string, cliName: string): never => {
+export const exitWithError = (message: string, cliName: string): never => {
   console.error(message);
   console.error(dim(`Run '${cliName} --help' for usage.`));
   process.exit(1);
-  // TypeScript doesn't know process.exit never returns
-  throw new Error('Unreachable');
-};
-
-/**
- * Print Zod error and exit.
- */
-export const exitWithZodError = (error: ZodError, cliName: string): never => {
-  const formatted = formatZodError(error);
-  return exitWithError(formatted, cliName);
 };

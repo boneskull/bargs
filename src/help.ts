@@ -1,84 +1,62 @@
-import type { ZodArray, ZodRawShape, ZodTuple, ZodType } from 'zod';
-
+// src/help.ts
 import type {
-  Aliases,
   AnyCommandConfig,
   BargsConfig,
   BargsConfigWithCommands,
+  OptionDef,
+  OptionsSchema,
+  PositionalsSchema,
 } from './types.js';
 
 import { bold, cyan, dim, yellow } from './ansi.js';
-import { getSchemaMetadata } from './schema.js';
-import { hasCommands } from './util.js';
-import {
-  getArrayElement,
-  getDefaultValue,
-  getDefType,
-  getEnumEntries,
-  getInnerObject,
-  unwrapToBase,
-} from './zod-introspection.js';
 
 /**
  * Get type label for help display.
  */
-const getTypeLabel = (schema: ZodType): string => {
-  const base = unwrapToBase(schema);
-  const type = getDefType(base);
-
-  switch (type) {
-    case 'array': {
-      return `${getTypeLabel(getArrayElement(base))}[]`;
-    }
+const getTypeLabel = (def: OptionDef): string => {
+  switch (def.type) {
     case 'boolean':
       return 'boolean';
-    case 'enum': {
-      return getEnumEntries(base).join(' | ');
-    }
     case 'number':
       return 'number';
+    case 'string':
+      return 'string';
+    case 'count':
+      return 'count';
+    case 'enum':
+      return def.choices.join(' | ');
+    case 'array':
+      return `${def.items}[]`;
     default:
       return 'string';
   }
 };
 
 /**
- * Internal type for aliases used in help formatting.
- */
-type AliasMap = Record<string, string[] | undefined>;
-
-/**
  * Format a single option for help output.
  */
-export const formatOptionHelp = <T extends ZodRawShape>(
-  name: string,
-  schema: ZodType,
-  aliases: Aliases<T>,
-): string => {
-  const meta = getSchemaMetadata(schema);
-  const typeLabel = getTypeLabel(schema);
-  const defaultValue = getDefaultValue(schema);
+const formatOptionHelp = (name: string, def: OptionDef): string => {
+  const parts: string[] = [];
 
   // Build flag string: -v, --verbose
-  const optionAliases = (aliases as AliasMap)[name] ?? [];
-  const shortAlias = optionAliases.find((a) => a.length === 1);
-  const flagStr = shortAlias ? `-${shortAlias}, --${name}` : `--${name}`;
-
-  // Build parts
-  const parts: string[] = [`  ${bold(flagStr)}`];
+  const shortAlias = def.aliases?.find((a) => a.length === 1);
+  const flagStr = shortAlias ? `-${shortAlias}, --${name}` : `    --${name}`;
+  parts.push(`  ${flagStr}`);
 
   // Pad to align descriptions
   const padding = Math.max(0, 24 - flagStr.length - 2);
   parts.push(' '.repeat(padding));
 
-  if (meta.description) {
-    parts.push(meta.description);
+  // Description
+  if (def.description) {
+    parts.push(def.description);
   }
 
   // Type and default
+  const typeLabel = getTypeLabel(def);
   const suffixParts = [cyan(`[${typeLabel}]`)];
-  if (defaultValue !== undefined) {
-    suffixParts.push(dim(`default: ${JSON.stringify(defaultValue)}`));
+  if ('default' in def && def.default !== undefined) {
+    suffixParts.push(dim(`default: ${JSON.stringify(def.default)}`));
   }
 
   parts.push('  ', suffixParts.join(' '));
@@ -87,27 +65,19 @@ export const formatOptionHelp = <T extends ZodRawShape>(
 };
 
 /**
- * Render options section for help output.
+ * Check if config has commands.
  */
-const renderOptionsSection = (
-  lines: string[],
-  label: string,
-  shape: Record<string, ZodType>,
-  aliases: AliasMap,
-): void => {
-  lines.push(yellow(label));
-  for (const [name, fieldSchema] of Object.entries(shape)) {
-    lines.push(formatOptionHelp(name, fieldSchema, aliases as Aliases<ZodRawShape>));
-  }
-  lines.push('');
-};
+const hasCommands = <T extends { commands?: Record<string, AnyCommandConfig> }>(
+  config: T,
+): config is T & { commands: Record<string, AnyCommandConfig> } =>
+  config.commands !== undefined && Object.keys(config.commands).length > 0;
 
 /**
  * Generate help text for a bargs config.
  */
 export const generateHelp = <
-  TOptions extends ZodType,
-  TPositionals extends undefined | ZodArray | ZodTuple = undefined,
+  TOptions extends OptionsSchema = OptionsSchema,
+  TPositionals extends PositionalsSchema = PositionalsSchema,
   TCommands extends Record<string, AnyCommandConfig> | undefined = undefined,
 >(
   config: BargsConfig<TOptions, TPositionals, TCommands>,
@@ -132,7 +102,7 @@ export const generateHelp = <
   }
   lines.push('');
 
-  // Commands (if any)
+  // Commands
   if (hasCommands(config)) {
     lines.push(yellow('COMMANDS'));
     for (const [name, cmd] of Object.entries(config.commands)) {
@@ -143,68 +113,46 @@ export const generateHelp = <
   }
 
   // Options
-  const optionsSchema = config.options;
-  const aliases = config.aliases ?? {};
+  if (config.options && Object.keys(config.options).length > 0) {
+    // Group options
+    const groups = new Map<string, Array<{ name: string; def: OptionDef }>>();
+    const ungrouped: Array<{ name: string; def: OptionDef }> = [];
 
-  if (optionsSchema) {
-    const innerObj = getInnerObject(optionsSchema);
-    if (!innerObj) {
-      return lines.join('\n');
-    }
-    const shape = innerObj.shape;
+    for (const [name, def] of Object.entries(config.options)) {
+      if (def.hidden) continue;
 
-    // Group options by group metadata
-    const groups = new Map<string, Array<{ name: string; schema: ZodType }>>();
-    const ungrouped: Array<{ name: string; schema: ZodType }> = [];
-
-    for (const [name, fieldSchema] of Object.entries(shape)) {
-      const meta = getSchemaMetadata(fieldSchema);
-      if (meta.group) {
-        const group = groups.get(meta.group) ?? [];
-        group.push({ name, schema: fieldSchema });
-        groups.set(meta.group, group);
+      if (def.group) {
+        const group = groups.get(def.group) ?? [];
+        group.push({ name, def });
+        groups.set(def.group, group);
       } else {
-        ungrouped.push({ name, schema: fieldSchema });
+        ungrouped.push({ name, def });
       }
     }
 
     // Print grouped options
-    for (const [groupName, options] of groups) {
+    for (const [groupName, options] of Array.from(groups.entries())) {
       lines.push(yellow(groupName.toUpperCase()));
       for (const opt of options) {
-        lines.push(
-          formatOptionHelp(
-            opt.name,
-            opt.schema,
-            aliases as Aliases<ZodRawShape>,
-          ),
-        );
+        lines.push(formatOptionHelp(opt.name, opt.def));
       }
       lines.push('');
     }
 
-    // Print ungrouped options
+    // Print ungrouped
     if (ungrouped.length > 0) {
       const label = hasCommands(config) ? 'GLOBAL OPTIONS' : 'OPTIONS';
       lines.push(yellow(label));
       for (const opt of ungrouped) {
-        lines.push(
-          formatOptionHelp(
-            opt.name,
-            opt.schema,
-            aliases as Aliases<ZodRawShape>,
-          ),
-        );
+        lines.push(formatOptionHelp(opt.name, opt.def));
       }
       lines.push('');
     }
   }
 
-  // Footer for commands
+  // Footer
   if (hasCommands(config)) {
-    lines.push(
-      dim(`Run '${config.name} <command> --help' for command-specific help.`),
-    );
+    lines.push(dim(`Run '${config.name} <command> --help' for command-specific help.`));
     lines.push('');
   }
 
@@ -215,12 +163,9 @@ export const generateHelp = <
  * Generate help text for a specific command.
  */
 export const generateCommandHelp = <
-  TOptions extends ZodType,
-  TPositionals extends undefined | ZodArray | ZodTuple = undefined,
-  TCommands extends Record<string, AnyCommandConfig> = Record<
-    string,
-    AnyCommandConfig
-  >,
+  TOptions extends OptionsSchema = OptionsSchema,
+  TPositionals extends PositionalsSchema = PositionalsSchema,
+  TCommands extends Record<string, AnyCommandConfig> = Record<string, AnyCommandConfig>,
 >(
   config: BargsConfigWithCommands<TOptions, TPositionals, TCommands>,
   commandName: string,
@@ -245,19 +190,23 @@ export const generateCommandHelp = <
   lines.push('');
 
   // Command options
-  if (command.options) {
-    const innerObj = getInnerObject(command.options);
-    if (innerObj) {
-      renderOptionsSection(lines, 'OPTIONS', innerObj.shape, command.aliases ?? {});
+  if (command.options && Object.keys(command.options).length > 0) {
+    lines.push(yellow('OPTIONS'));
+    for (const [name, def] of Object.entries(command.options as OptionsSchema)) {
+      if (def.hidden) continue;
+      lines.push(formatOptionHelp(name, def));
     }
+    lines.push('');
   }
 
-  // Global options (from config.options when commands are present)
-  if (config.options) {
-    const innerObj = getInnerObject(config.options);
-    if (innerObj) {
-      renderOptionsSection(lines, 'GLOBAL OPTIONS', innerObj.shape, config.aliases ?? {});
+  // Global options
+  if (config.options && Object.keys(config.options).length > 0) {
+    lines.push(yellow('GLOBAL OPTIONS'));
+    for (const [name, def] of Object.entries(config.options)) {
+      if (def.hidden) continue;
+      lines.push(formatOptionHelp(name, def));
     }
+    lines.push('');
   }
 
   return lines.join('\n');

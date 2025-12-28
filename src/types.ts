@@ -1,215 +1,275 @@
-import type { z, ZodArray, ZodRawShape, ZodTuple, ZodType } from 'zod';
+// src/types-new.ts
 
 /**
- * Aliases map canonical option names to arrays of alias strings. Used
- * internally with unwrapped ZodRawShape.
- *
- * @example {verbose: ['v'], config: ['c', 'config-file']}
+ * Base properties shared by all option definitions.
  */
-export type Aliases<T extends ZodRawShape> = {
-  [K in keyof T]?: string[];
-};
-
-/**
- * Any command configuration. Used internally where specific type inference
- * isn't needed.
- */
-export type AnyCommandConfig = CommandConfig<
-  ZodType,
-  undefined | ZodArray | ZodTuple
->;
-
-/**
- * CLI configuration.
- *
- * TOptions accepts ZodType to support schemas with .transform(). At runtime, we
- * unwrap to the inner ZodObject for parseArgs config extraction.
- */
-export interface BargsConfig<
-  TOptions extends ZodType = ZodType,
-  TPositionals extends undefined | ZodArray | ZodTuple = undefined,
-  TCommands extends Record<string, AnyCommandConfig> | undefined = undefined,
-> {
-  /**
-   * Aliases for options. Maps canonical option names to arrays of alias
-   * strings. Single-character aliases become short flags (e.g., `-v`).
-   */
-  aliases?: SchemaAliases<TOptions>;
-
-  /**
-   * CLI arguments to parse. Defaults to `process.argv.slice(2)`.
-   */
-  args?: string[];
-
-  /**
-   * Map of command names to their configurations.
-   */
-  commands?: TCommands;
-
-  /**
-   * Pre-populated option values (e.g., from a config file). These have lower
-   * priority than CLI arguments but higher priority than schema defaults.
-   *
-   * Precedence: CLI args > config values > schema defaults
-   */
-  config?: Partial<z.infer<TOptions>>;
-
-  /**
-   * CLI description displayed in help text.
-   */
+interface OptionBase {
+  /** Option description displayed in help text */
   description?: string;
-
-  /**
-   * Function invoked after parsing. Receives the parsed result. Return value is
-   * ignored; bargs() always returns the parsed result.
-   */
-  handler?: Handler<
-    BargsResult<z.infer<TOptions>, InferredPositionals<TPositionals>, undefined>
-  >;
-
-  /**
-   * CLI name displayed in help text and error messages.
-   */
-  name: string;
-
-  /**
-   * Zod schema for CLI options. Supports `.transform()` for post-parse
-   * processing and `.default()` for fallback values.
-   */
-  options?: TOptions;
-
-  /**
-   * Zod schema for positional arguments. Use `z.tuple()` for fixed positionals
-   * or `z.array()` for variadic. Validated after options parsing.
-   */
-  positionals?: TPositionals;
-
-  /**
-   * Version string displayed in help text (e.g., "1.0.0").
-   */
-  version?: string;
+  /** Aliases for this option (e.g., ['v'] for --verbose) */
+  aliases?: string[];
+  /** Group name for help text organization */
+  group?: string;
+  /** Whether this option is required */
+  required?: boolean;
+  /** Whether this option is hidden from help */
+  hidden?: boolean;
 }
 
 /**
- * CLI config with commands. Requires commands and allows defaultHandler.
- *
- * When commands are present, `options` and `aliases` from BargsConfig serve as
- * global options shared across all commands.
+ * String option definition.
  */
-export type BargsConfigWithCommands<
-  TOptions extends ZodType = ZodType,
-  TPositionals extends undefined | ZodArray | ZodTuple = undefined,
-  TCommands extends Record<string, AnyCommandConfig> = Record<
-    string,
-    AnyCommandConfig
-  >,
-> = Omit<BargsConfig<TOptions, TPositionals, TCommands>, 'handler'> & {
-  commands: TCommands;
+export interface StringOption extends OptionBase {
+  type: 'string';
+  default?: string;
+}
 
-  /**
-   * Default handler when no command is specified. Can be a command name
-   * (string) or a function that receives global options only.
-   */
-  defaultHandler?:
-    | Handler<BargsResult<z.infer<TOptions>, [], undefined>>
-    | keyof TCommands;
+/**
+ * Number option definition.
+ */
+export interface NumberOption extends OptionBase {
+  type: 'number';
+  default?: number;
+}
+
+/**
+ * Boolean option definition.
+ */
+export interface BooleanOption extends OptionBase {
+  type: 'boolean';
+  default?: boolean;
+}
+
+/**
+ * Enum option definition with string choices.
+ */
+export interface EnumOption<T extends string = string> extends OptionBase {
+  type: 'enum';
+  choices: readonly T[];
+  default?: T;
+}
+
+/**
+ * Array option definition (--flag value --flag value2).
+ */
+export interface ArrayOption extends OptionBase {
+  type: 'array';
+  /** Element type of the array */
+  items: 'string' | 'number';
+  default?: string[] | number[];
+}
+
+/**
+ * Count option definition (--verbose --verbose = 2).
+ */
+export interface CountOption extends OptionBase {
+  type: 'count';
+  default?: number;
+}
+
+/**
+ * Union of all option definitions.
+ */
+export type OptionDef =
+  | ArrayOption
+  | BooleanOption
+  | CountOption
+  | EnumOption<string>
+  | NumberOption
+  | StringOption;
+
+/**
+ * Options schema: a record of option names to their definitions.
+ */
+export type OptionsSchema = Record<string, OptionDef>;
+
+/**
+ * Base properties for positional definitions.
+ */
+interface PositionalBase {
+  description?: string;
+  required?: boolean;
+}
+
+/**
+ * String positional.
+ */
+export interface StringPositional extends PositionalBase {
+  type: 'string';
+  default?: string;
+}
+
+/**
+ * Number positional.
+ */
+export interface NumberPositional extends PositionalBase {
+  type: 'number';
+  default?: number;
+}
+
+/**
+ * Variadic positional (rest args).
+ */
+export interface VariadicPositional extends PositionalBase {
+  type: 'variadic';
+  items: 'string' | 'number';
+}
+
+/**
+ * Union of positional definitions.
+ */
+export type PositionalDef = NumberPositional | StringPositional | VariadicPositional;
+
+/**
+ * Positionals can be a tuple (ordered) or a single variadic.
+ */
+export type PositionalsSchema = PositionalDef[];
+
+/**
+ * Infer the TypeScript type from an option definition.
+ */
+export type InferOption<T extends OptionDef> = T extends BooleanOption
+  ? T['required'] extends true
+    ? boolean
+    : T['default'] extends boolean
+      ? boolean
+      : boolean | undefined
+  : T extends NumberOption
+    ? T['required'] extends true
+      ? number
+      : T['default'] extends number
+        ? number
+        : number | undefined
+    : T extends StringOption
+      ? T['required'] extends true
+        ? string
+        : T['default'] extends string
+          ? string
+          : string | undefined
+      : T extends EnumOption<infer E>
+        ? T['required'] extends true
+          ? E
+          : T['default'] extends E
+            ? E
+            : E | undefined
+        : T extends ArrayOption
+          ? T['items'] extends 'number'
+            ? number[]
+            : string[]
+          : T extends CountOption
+            ? number
+            : never;
+
+/**
+ * Infer values type from an options schema.
+ */
+export type InferOptions<T extends OptionsSchema> = {
+  [K in keyof T]: InferOption<T[K]>;
 };
 
 /**
- * Result from parsing CLI arguments. Always contains all three properties.
- *
- * @remarks
- * TValues is intentionally unconstrained to support ZodType inference. At
- * runtime, options schemas are always object-like (ZodObject or ZodPipe
- * wrapping one).
+ * Infer a single positional's type.
+ */
+export type InferPositional<T extends PositionalDef> = T extends NumberPositional
+  ? T['required'] extends true
+    ? number
+    : T['default'] extends number
+      ? number
+      : number | undefined
+  : T extends StringPositional
+    ? T['required'] extends true
+      ? string
+      : T['default'] extends string
+        ? string
+        : string | undefined
+    : T extends VariadicPositional
+      ? T['items'] extends 'number'
+        ? number[]
+        : string[]
+      : never;
+
+/**
+ * Infer positionals tuple type from schema.
+ */
+export type InferPositionals<T extends PositionalsSchema> = {
+  [K in keyof T]: T[K] extends PositionalDef ? InferPositional<T[K]> : never;
+};
+
+/**
+ * Handler function signature.
+ */
+export type Handler<TResult> = (result: TResult) => Promise<void> | void;
+
+/**
+ * Result from parsing CLI arguments.
  */
 export interface BargsResult<
   TValues = Record<string, unknown>,
   TPositionals extends readonly unknown[] = [],
   TCommand extends string | undefined = string | undefined,
 > {
-  /**
-   * The command that was invoked, or `undefined` for simple CLIs.
-   */
   command: TCommand;
-
-  /**
-   * Validated positional arguments, or empty array if none expected.
-   */
   positionals: TPositionals;
-
-  /**
-   * Validated option values (after Zod parsing and transforms).
-   */
   values: TValues;
 }
 
 /**
- * Command definition.
- *
- * TOptions accepts ZodType to support schemas with .transform(). TPositionals
- * accepts ZodType for positional argument validation.
- *
- * @remarks
- * No default type parameters - this enables TypeScript to infer the handler's
- * result type from the options schema in the same object.
+ * Command configuration.
  */
 export interface CommandConfig<
-  TOptions extends ZodType,
-  TPositionals extends undefined | ZodArray | ZodTuple,
+  TOptions extends OptionsSchema = OptionsSchema,
+  TPositionals extends PositionalsSchema = PositionalsSchema,
 > {
-  /**
-   * Aliases for command-specific options. Maps canonical option names to arrays
-   * of alias strings. Single-character aliases become short flags (e.g.,
-   * `-f`).
-   */
-  aliases?: SchemaAliases<TOptions>;
-
-  /**
-   * Command description displayed in help text.
-   */
   description: string;
-
-  /**
-   * Function invoked when this command is executed. Receives the parsed result.
-   * Return value is ignored; bargs() always returns the parsed result.
-   */
-  handler: Handler<
-    BargsResult<z.infer<TOptions>, InferredPositionals<TPositionals>, string>
-  >;
-
-  /**
-   * Zod schema for command-specific options. Merged with global options at
-   * parse time. Supports `.transform()` for post-parse processing.
-   */
   options?: TOptions;
-
-  /**
-   * Zod schema for positional arguments. Use `z.tuple()` for fixed positionals
-   * or `z.array()` for variadic. Validated after options parsing.
-   */
   positionals?: TPositionals;
+  handler: Handler<
+    BargsResult<InferOptions<TOptions>, InferPositionals<TPositionals>, string>
+  >;
 }
 
 /**
- * Handler function signature. Receives parsed result and can perform side
- * effects. Return value is ignored; bargs() always returns the parsed result.
+ * Any command config (type-erased for collections).
+ * Uses a permissive handler type to avoid variance issues.
  */
-export type Handler<TResult> = (result: TResult) => Promise<void> | void;
+export interface AnyCommandConfig {
+  description: string;
+  options?: OptionsSchema;
+  positionals?: PositionalsSchema;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  handler: (result: any) => Promise<void> | void;
+}
 
 /**
- * Inferred positionals type. Resolves to the inferred array type or empty tuple.
+ * Main bargs configuration.
  */
-export type InferredPositionals<T> = T extends ZodArray | ZodTuple
-  ? z.infer<T>
-  : [];
+export interface BargsConfig<
+  TOptions extends OptionsSchema = OptionsSchema,
+  TPositionals extends PositionalsSchema = PositionalsSchema,
+  TCommands extends Record<string, AnyCommandConfig> | undefined = undefined,
+> {
+  name: string;
+  version?: string;
+  description?: string;
+  options?: TOptions;
+  positionals?: TPositionals;
+  commands?: TCommands;
+  handler?: Handler<
+    BargsResult<InferOptions<TOptions>, InferPositionals<TPositionals>, undefined>
+  >;
+  args?: string[];
+}
 
 /**
- * Aliases for a Zod schema, keyed by the schema's input property names.
- * Supports schemas with `.transform()` by using `z.input<T>`.
- *
- * @example {verbose: ['v'], config: ['c', 'config-file']}
+ * Bargs config with commands (requires commands, allows defaultHandler).
  */
-export type SchemaAliases<T extends ZodType> = {
-  [K in keyof z.input<T>]?: string[];
+export type BargsConfigWithCommands<
+  TOptions extends OptionsSchema = OptionsSchema,
+  TPositionals extends PositionalsSchema = PositionalsSchema,
+  TCommands extends Record<string, AnyCommandConfig> = Record<string, AnyCommandConfig>,
+> = Omit<BargsConfig<TOptions, TPositionals, TCommands>, 'handler'> & {
+  commands: TCommands;
+  defaultHandler?:
+    | Handler<BargsResult<InferOptions<TOptions>, [], undefined>>
+    | keyof TCommands;
 };

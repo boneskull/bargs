@@ -8,11 +8,11 @@ import type {
   InferPositionals,
   OptionsSchema,
   PositionalsSchema,
-} from './types-new.js';
+} from './types.js';
 
 import { HelpError } from './errors.js';
-import { generateCommandHelp, generateHelp } from './help-new.js';
-import { parseCommands, parseSimple } from './parser-new.js';
+import { generateCommandHelp, generateHelp } from './help.js';
+import { parseCommands, parseSimple } from './parser.js';
 
 /**
  * Check if config has commands.
@@ -70,7 +70,7 @@ export async function bargs(
         const commandIndex = args.findIndex((a) => !a.startsWith('-'));
 
         if (commandIndex >= 0 && commandIndex < helpIndex) {
-          const commandName = args[commandIndex];
+          const commandName = args[commandIndex]!;
           console.log(generateCommandHelp(config, commandName));
         } else {
           console.log(generateHelp(config));

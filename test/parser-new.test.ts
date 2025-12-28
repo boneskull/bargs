@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import { opt } from '../src/opt.js';
-import { parseSimple } from '../src/parser-new.js';
+import { parseSimple } from '../src/parser.js';
 
 describe('parseSimple', () => {
   it('parses string options', async () => {

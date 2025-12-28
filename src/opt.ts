@@ -12,7 +12,7 @@ import type {
   StringOption,
   StringPositional,
   VariadicPositional,
-} from './types-new.js';
+} from './types.js';
 
 import { BargsError } from './errors.js';
 
@@ -37,6 +37,15 @@ const validateAliasConflicts = (schema: OptionsSchema): void => {
     }
   }
 };
+
+/**
+ * Compose multiple option schemas into one.
+ */
+function optionsImpl(...schemas: OptionsSchema[]): OptionsSchema {
+  const merged = Object.assign({}, ...schemas) as OptionsSchema;
+  validateAliasConflicts(merged);
+  return merged;
+}
 
 /**
  * Namespaced option builders.
@@ -170,14 +179,15 @@ export const opt = {
    *
    * @throws BargsError if multiple options use the same alias
    */
-  options: (<A extends OptionsSchema>(a: A) => A) &
-    (<A extends OptionsSchema, B extends OptionsSchema>(a: A, b: B) => A & B) &
-    (<A extends OptionsSchema, B extends OptionsSchema, C extends OptionsSchema>(
+  options: optionsImpl as {
+    <A extends OptionsSchema>(a: A): A;
+    <A extends OptionsSchema, B extends OptionsSchema>(a: A, b: B): A & B;
+    <A extends OptionsSchema, B extends OptionsSchema, C extends OptionsSchema>(
       a: A,
       b: B,
       c: C,
-    ) => A & B & C) &
-    (<
+    ): A & B & C;
+    <
       A extends OptionsSchema,
       B extends OptionsSchema,
       C extends OptionsSchema,
@@ -187,8 +197,9 @@ export const opt = {
       b: B,
       c: C,
       d: D,
-    ) => A & B & C & D) &
-    ((...schemas: OptionsSchema[]) => OptionsSchema),
+    ): A & B & C & D;
+    (...schemas: OptionsSchema[]): OptionsSchema;
+  },
 
   // ─── Command Builder ───────────────────────────────────────────────
 
@@ -212,13 +223,4 @@ export const opt = {
   command: <TOptions extends OptionsSchema, TPositionals extends PositionalsSchema>(
     config: CommandConfig<TOptions, TPositionals>,
   ): CommandConfig<TOptions, TPositionals> => config,
-};
-
-// Implementation of opt.options (separate for cleaner typing)
-(opt as { options: (...schemas: OptionsSchema[]) => OptionsSchema }).options = (
-  ...schemas: OptionsSchema[]
-): OptionsSchema => {
-  const merged = Object.assign({}, ...schemas) as OptionsSchema;
-  validateAliasConflicts(merged);
-  return merged;
 };

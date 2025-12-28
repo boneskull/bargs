@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import { opt } from '../src/opt.js';
-import { parseCommands } from '../src/parser-new.js';
+import { parseCommands } from '../src/parser.js';
 
 describe('parseCommands', () => {
   it('parses a command with options', async () => {
@@ -122,7 +122,8 @@ describe('parseCommands', () => {
     assert.equal(result.command, 'test');
     assert.equal(result.values.verbose, true);
     assert.equal(result.values.debug, false);
-    assert.equal(result.values.filter, 'foo');
+    // Command-specific options are merged at runtime but not in the return type
+    assert.equal((result.values as Record<string, unknown>).filter, 'foo');
   });
 
   it('uses named default command when no command given', async () => {

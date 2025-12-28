@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { generateCommandHelp, generateHelp } from '../src/help-new.js';
+import { generateCommandHelp, generateHelp } from '../src/help.js';
 import { opt } from '../src/opt.js';
 import { stripAnsi } from '../src/ansi.js';
 
