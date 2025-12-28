@@ -2,6 +2,8 @@
 import { parseArgs } from 'node:util';
 
 import type {
+  AnyCommandConfig,
+  BargsConfigWithCommands,
   BargsResult,
   InferOptions,
   InferPositionals,
@@ -10,6 +12,8 @@ import type {
   PositionalDef,
   PositionalsSchema,
 } from './types-new.js';
+
+import { HelpError } from './errors.js';
 
 /**
  * Build parseArgs options config from our options schema.
@@ -188,6 +192,102 @@ export const parseSimple = async <
     positionals: coercedPositionals as InferPositionals<TPositionals>,
     values: coercedValues as InferOptions<TOptions>,
   };
+};
+
+/**
+ * Parse arguments for a command-based CLI.
+ */
+export const parseCommands = async <
+  TOptions extends OptionsSchema = OptionsSchema,
+  TCommands extends Record<string, AnyCommandConfig> = Record<string, AnyCommandConfig>,
+>(
+  config: BargsConfigWithCommands<TOptions, PositionalsSchema, TCommands>,
+): Promise<BargsResult<InferOptions<TOptions>, unknown[], string | undefined>> => {
+  const {
+    options: globalOptions = {} as TOptions,
+    commands,
+    defaultHandler,
+    args = process.argv.slice(2),
+  } = config;
+
+  const commandsRecord = commands as Record<string, AnyCommandConfig>;
+
+  // Find command name (first non-flag argument)
+  const commandIndex = args.findIndex((arg) => !arg.startsWith('-'));
+  const commandName = commandIndex >= 0 ? args[commandIndex] : undefined;
+  const remainingArgs = commandName
+    ? [...args.slice(0, commandIndex), ...args.slice(commandIndex + 1)]
+    : args;
+
+  // No command specified
+  if (!commandName) {
+    if (typeof defaultHandler === 'string') {
+      // Use named default command
+      return parseCommands({
+        ...config,
+        args: [defaultHandler, ...args],
+        defaultHandler: undefined,
+      });
+    } else if (typeof defaultHandler === 'function') {
+      // Parse global options and call default handler
+      const parseArgsOptions = buildParseArgsConfig(globalOptions);
+      const { values } = parseArgs({
+        args: remainingArgs,
+        options: parseArgsOptions,
+        strict: true,
+        allowPositionals: false,
+      });
+      const coercedValues = coerceValues(values, globalOptions);
+
+      const result = {
+        command: undefined,
+        positionals: [] as const,
+        values: coercedValues as InferOptions<TOptions>,
+      };
+
+      await defaultHandler(result as BargsResult<InferOptions<TOptions>, [], undefined>);
+      return result;
+    } else {
+      throw new HelpError('No command specified.');
+    }
+  }
+
+  // Find command config
+  const command = commandsRecord[commandName];
+  if (!command) {
+    throw new HelpError(`Unknown command: ${commandName}`);
+  }
+
+  // Merge global and command options
+  const commandOptions = (command.options ?? {}) as OptionsSchema;
+  const mergedOptionsSchema = { ...globalOptions, ...commandOptions };
+  const commandPositionals = (command.positionals ?? []) as PositionalsSchema;
+
+  // Build parseArgs config
+  const parseArgsOptions = buildParseArgsConfig(mergedOptionsSchema);
+
+  // Parse
+  const { positionals, values } = parseArgs({
+    args: remainingArgs,
+    options: parseArgsOptions,
+    strict: true,
+    allowPositionals: commandPositionals.length > 0,
+  });
+
+  // Coerce
+  const coercedValues = coerceValues(values, mergedOptionsSchema);
+  const coercedPositionals = coercePositionals(positionals, commandPositionals);
+
+  const result = {
+    command: commandName,
+    positionals: coercedPositionals,
+    values: coercedValues,
+  } as BargsResult<InferOptions<TOptions>, unknown[], string>;
+
+  // Call handler
+  await command.handler(result as BargsResult<Record<string, unknown>, unknown[], string>);
+
+  return result;
 };
 
 // Export types and helpers that will be needed by other modules
