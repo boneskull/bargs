@@ -8,15 +8,12 @@
  * - Global options (--verbose, --file)
  * - Command-specific options (--priority for add)
  * - Command positionals (task text)
- * - opt.command() for type inference
- * - defaultHandler for no-command case
+ * - Opt.command() for type inference
+ * - DefaultHandler for no-command case
  *
- * Usage:
- *   npx tsx examples/tasks.ts add "Buy groceries" --priority high
- *   npx tsx examples/tasks.ts list
- *   npx tsx examples/tasks.ts done 1
- *   npx tsx examples/tasks.ts --help
- *   npx tsx examples/tasks.ts add --help
+ * Usage: npx tsx examples/tasks.ts add "Buy groceries" --priority high npx tsx
+ * examples/tasks.ts list npx tsx examples/tasks.ts done 1 npx tsx
+ * examples/tasks.ts --help npx tsx examples/tasks.ts add --help
  */
 import { bargs, opt } from '../src/index.js';
 
@@ -69,7 +66,8 @@ await bargs({
       ],
       handler: async ({ positionals, values }) => {
         const [text] = positionals;
-        const priority = (values as { priority: 'low' | 'medium' | 'high' }).priority;
+        const priority = (values as { priority: 'low' | 'medium' | 'high' })
+          .priority;
         const verbose = (values as { verbose: boolean }).verbose;
 
         const task: Task = {
@@ -127,9 +125,7 @@ await bargs({
 
     done: opt.command({
       description: 'Mark a task as complete',
-      positionals: [
-        opt.stringPos({ description: 'Task ID', required: true }),
-      ],
+      positionals: [opt.stringPos({ description: 'Task ID', required: true })],
       handler: async ({ positionals, values }) => {
         const [idStr] = positionals;
         const id = parseInt(idStr as string, 10);

@@ -9,11 +9,9 @@
  * - Positional arguments (name)
  * - Aliases (-s, -v, -g)
  *
- * Usage:
- *   npx tsx examples/greeter.ts World
- *   npx tsx examples/greeter.ts World --shout
- *   npx tsx examples/greeter.ts World -g "Hey there"
- *   npx tsx examples/greeter.ts --help
+ * Usage: npx tsx examples/greeter.ts World npx tsx examples/greeter.ts World
+ * --shout npx tsx examples/greeter.ts World -g "Hey there" npx tsx
+ * examples/greeter.ts --help
  */
 import { bargs, opt } from '../src/index.js';
 

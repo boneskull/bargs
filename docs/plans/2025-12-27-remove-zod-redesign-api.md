@@ -15,6 +15,7 @@
 ### Task 1: Create New Type Definitions
 
 **Files:**
+
 - Create: `src/types-new.ts` (will replace `src/types.ts` after full migration)
 
 **Step 1: Define the core option types**
@@ -144,7 +145,10 @@ export interface VariadicPositional extends PositionalBase {
 /**
  * Union of positional definitions.
  */
-export type PositionalDef = StringPositional | NumberPositional | VariadicPositional;
+export type PositionalDef =
+  | StringPositional
+  | NumberPositional
+  | VariadicPositional;
 
 /**
  * Positionals can be a tuple (ordered) or a single variadic.
@@ -170,25 +174,25 @@ export type InferOption<T extends OptionDef> = T extends BooleanOption
       : T['default'] extends number
         ? number
         : number | undefined
-  : T extends StringOption
-    ? T['required'] extends true
-      ? string
-      : T['default'] extends string
+    : T extends StringOption
+      ? T['required'] extends true
         ? string
-        : string | undefined
-  : T extends EnumOption<infer E>
-    ? T['required'] extends true
-      ? E
-      : T['default'] extends E
-        ? E
-        : E | undefined
-  : T extends ArrayOption
-    ? T['items'] extends 'number'
-      ? number[]
-      : string[]
-  : T extends CountOption
-    ? number
-    : never;
+        : T['default'] extends string
+          ? string
+          : string | undefined
+      : T extends EnumOption<infer E>
+        ? T['required'] extends true
+          ? E
+          : T['default'] extends E
+            ? E
+            : E | undefined
+        : T extends ArrayOption
+          ? T['items'] extends 'number'
+            ? number[]
+            : string[]
+          : T extends CountOption
+            ? number
+            : never;
 
 /**
  * Infer values type from an options schema.
@@ -200,23 +204,24 @@ export type InferOptions<T extends OptionsSchema> = {
 /**
  * Infer a single positional's type.
  */
-export type InferPositional<T extends PositionalDef> = T extends NumberPositional
-  ? T['required'] extends true
-    ? number
-    : T['default'] extends number
-      ? number
-      : number | undefined
-  : T extends StringPositional
+export type InferPositional<T extends PositionalDef> =
+  T extends NumberPositional
     ? T['required'] extends true
-      ? string
-      : T['default'] extends string
+      ? number
+      : T['default'] extends number
+        ? number
+        : number | undefined
+    : T extends StringPositional
+      ? T['required'] extends true
         ? string
-        : string | undefined
-  : T extends VariadicPositional
-    ? T['items'] extends 'number'
-      ? number[]
-      : string[]
-  : never;
+        : T['default'] extends string
+          ? string
+          : string | undefined
+      : T extends VariadicPositional
+        ? T['items'] extends 'number'
+          ? number[]
+          : string[]
+        : never;
 
 /**
  * Infer positionals tuple type from schema.
@@ -282,7 +287,11 @@ export interface BargsConfig<
   positionals?: TPositionals;
   commands?: TCommands;
   handler?: Handler<
-    BargsResult<InferOptions<TOptions>, InferPositionals<TPositionals>, undefined>
+    BargsResult<
+      InferOptions<TOptions>,
+      InferPositionals<TPositionals>,
+      undefined
+    >
   >;
   args?: string[];
 }
@@ -293,7 +302,10 @@ export interface BargsConfig<
 export type BargsConfigWithCommands<
   TOptions extends OptionsSchema = OptionsSchema,
   TPositionals extends PositionalsSchema = PositionalsSchema,
-  TCommands extends Record<string, AnyCommandConfig> = Record<string, AnyCommandConfig>,
+  TCommands extends Record<string, AnyCommandConfig> = Record<
+    string,
+    AnyCommandConfig
+  >,
 > = Omit<BargsConfig<TOptions, TPositionals, TCommands>, 'handler'> & {
   commands: TCommands;
   defaultHandler?:
@@ -323,11 +335,12 @@ unions that capture type information at definition time."
 ### Task 2: Create Namespaced `opt` Builder
 
 **Files:**
+
 - Create: `src/opt.ts`
 
 **Step 1: Write the namespaced opt object with composition support**
 
-```typescript
+````typescript
 // src/opt.ts
 import type {
   ArrayOption,
@@ -348,8 +361,8 @@ import type {
 import { BargsError } from './errors.js';
 
 /**
- * Validate that no alias conflicts exist in a merged options schema.
- * Throws BargsError if the same alias is used by multiple options.
+ * Validate that no alias conflicts exist in a merged options schema. Throws
+ * BargsError if the same alias is used by multiple options.
  */
 const validateAliasConflicts = (schema: OptionsSchema): void => {
   const aliasToOption = new Map<string, string>();
@@ -372,10 +385,11 @@ const validateAliasConflicts = (schema: OptionsSchema): void => {
 /**
  * Namespaced option builders.
  *
- * Provides ergonomic helpers for defining CLI options, positionals, and commands
- * with full TypeScript type inference.
+ * Provides ergonomic helpers for defining CLI options, positionals, and
+ * commands with full TypeScript type inference.
  *
  * @example
+ *
  * ```typescript
  * import { opt } from 'bargs';
  *
@@ -450,7 +464,9 @@ export const opt = {
   /**
    * Define a string positional argument.
    */
-  stringPos: (props: Omit<StringPositional, 'type'> = {}): StringPositional => ({
+  stringPos: (
+    props: Omit<StringPositional, 'type'> = {},
+  ): StringPositional => ({
     type: 'string',
     ...props,
   }),
@@ -458,7 +474,9 @@ export const opt = {
   /**
    * Define a number positional argument.
    */
-  numberPos: (props: Omit<NumberPositional, 'type'> = {}): NumberPositional => ({
+  numberPos: (
+    props: Omit<NumberPositional, 'type'> = {},
+  ): NumberPositional => ({
     type: 'number',
     ...props,
   }),
@@ -482,6 +500,7 @@ export const opt = {
    * ones for duplicate option names. Validates that no alias conflicts exist.
    *
    * @example
+   *
    * ```typescript
    * // Single schema (identity, enables reuse)
    * const loggingOpts = opt.options({
@@ -490,22 +509,35 @@ export const opt = {
    * });
    *
    * // Merge multiple schemas
-   * const allOpts = opt.options(
-   *   loggingOpts,
-   *   ioOpts,
-   *   { format: opt.enum(['json', 'yaml'] as const) },
-   * );
+   * const allOpts = opt.options(loggingOpts, ioOpts, {
+   *   format: opt.enum(['json', 'yaml'] as const),
+   * });
    * ```
    *
    * @throws BargsError if multiple options use the same alias
    */
-  options: (<A extends OptionsSchema>(a: A) => A) &
+  options:
+    (<A extends OptionsSchema>(a: A) => A) &
     (<A extends OptionsSchema, B extends OptionsSchema>(a: A, b: B) => A & B) &
-    (<A extends OptionsSchema, B extends OptionsSchema, C extends OptionsSchema>(
-      a: A, b: B, c: C,
+    (<
+      A extends OptionsSchema,
+      B extends OptionsSchema,
+      C extends OptionsSchema,
+    >(
+      a: A,
+      b: B,
+      c: C,
     ) => A & B & C) &
-    (<A extends OptionsSchema, B extends OptionsSchema, C extends OptionsSchema, D extends OptionsSchema>(
-      a: A, b: B, c: C, d: D,
+    (<
+      A extends OptionsSchema,
+      B extends OptionsSchema,
+      C extends OptionsSchema,
+      D extends OptionsSchema,
+    >(
+      a: A,
+      b: B,
+      c: C,
+      d: D,
     ) => A & B & C & D) &
     ((...schemas: OptionsSchema[]) => OptionsSchema),
 
@@ -515,6 +547,7 @@ export const opt = {
    * Define a command with proper type inference.
    *
    * @example
+   *
    * ```typescript
    * const greetCmd = opt.command({
    *   description: 'Greet someone',
@@ -527,7 +560,10 @@ export const opt = {
    * });
    * ```
    */
-  command: <TOptions extends OptionsSchema, TPositionals extends PositionalsSchema>(
+  command: <
+    TOptions extends OptionsSchema,
+    TPositionals extends PositionalsSchema,
+  >(
     config: CommandConfig<TOptions, TPositionals>,
   ): CommandConfig<TOptions, TPositionals> => config,
 };
@@ -540,7 +576,7 @@ export const opt = {
   validateAliasConflicts(merged);
   return merged;
 };
-```
+````
 
 **Step 2: Write tests for opt.options() alias conflict detection**
 
@@ -580,8 +616,12 @@ describe('opt.options', () => {
   });
 
   it('allows same alias on same option name (override)', () => {
-    const a = opt.options({ verbose: opt.boolean({ aliases: ['v'], default: false }) });
-    const b = opt.options({ verbose: opt.boolean({ aliases: ['v'], default: true }) });
+    const a = opt.options({
+      verbose: opt.boolean({ aliases: ['v'], default: false }),
+    });
+    const b = opt.options({
+      verbose: opt.boolean({ aliases: ['v'], default: true }),
+    });
 
     // Should not throw - same option name can keep its alias
     const merged = opt.options(a, b);
@@ -613,6 +653,7 @@ detection. Add opt.command() for defining commands."
 ### Task 3: Create New Parser Module
 
 **Files:**
+
 - Create: `src/parser-new.ts`
 
 **Step 1: Write the failing test for parseSimple**
@@ -701,11 +742,21 @@ import type {
  */
 const buildParseArgsConfig = (
   schema: OptionsSchema,
-): Record<string, { type: 'boolean' | 'string'; short?: string; multiple?: boolean }> => {
-  const config: Record<string, { type: 'boolean' | 'string'; short?: string; multiple?: boolean }> = {};
+): Record<
+  string,
+  { type: 'boolean' | 'string'; short?: string; multiple?: boolean }
+> => {
+  const config: Record<
+    string,
+    { type: 'boolean' | 'string'; short?: string; multiple?: boolean }
+  > = {};
 
   for (const [name, def] of Object.entries(schema)) {
-    const opt: { type: 'boolean' | 'string'; short?: string; multiple?: boolean } = {
+    const opt: {
+      type: 'boolean' | 'string';
+      short?: string;
+      multiple?: boolean;
+    } = {
       type: def.type === 'boolean' ? 'boolean' : 'string',
     };
 
@@ -751,14 +802,16 @@ const coerceValues = (
           break;
         case 'array':
           if (def.items === 'number' && Array.isArray(value)) {
-            result[name] = value.map((v) => (typeof v === 'string' ? Number(v) : v));
+            result[name] = value.map((v) =>
+              typeof v === 'string' ? Number(v) : v,
+            );
           } else {
             result[name] = value;
           }
           break;
         case 'count':
           // Count options count occurrences
-          result[name] = typeof value === 'number' ? value : (value ? 1 : 0);
+          result[name] = typeof value === 'number' ? value : value ? 1 : 0;
           break;
         default:
           result[name] = value;
@@ -885,6 +938,7 @@ instead of Zod schema introspection."
 ### Task 4: Add Enum and Array Option Support
 
 **Files:**
+
 - Modify: `src/parser-new.ts`
 - Modify: `test/parser-new.test.ts`
 
@@ -901,7 +955,9 @@ describe('parseSimple', () => {
   it('parses enum options', async () => {
     const result = await parseSimple({
       options: {
-        level: opt.enum(['low', 'medium', 'high'] as const, { default: 'medium' }),
+        level: opt.enum(['low', 'medium', 'high'] as const, {
+          default: 'medium',
+        }),
       },
       args: ['--level', 'high'],
     });
@@ -982,6 +1038,7 @@ git commit -m "feat: add enum validation and array option support"
 ### Task 5: Add Positionals Parsing
 
 **Files:**
+
 - Modify: `test/parser-new.test.ts`
 
 **Step 1: Write failing tests for positionals**
@@ -1055,6 +1112,7 @@ git commit -m "test: add positionals parsing tests"
 ### Task 6: Implement parseCommands
 
 **Files:**
+
 - Modify: `src/parser-new.ts`
 - Create: `test/parser-commands-new.test.ts`
 
@@ -1175,10 +1233,7 @@ Expected: FAIL with "parseCommands is not a function" or similar
 Add to `src/parser-new.ts`:
 
 ```typescript
-import type {
-  AnyCommandConfig,
-  BargsConfigWithCommands,
-} from './types-new.js';
+import type { AnyCommandConfig, BargsConfigWithCommands } from './types-new.js';
 
 import { BargsError, HelpError } from './errors.js';
 
@@ -1187,10 +1242,15 @@ import { BargsError, HelpError } from './errors.js';
  */
 export const parseCommands = async <
   TOptions extends OptionsSchema = OptionsSchema,
-  TCommands extends Record<string, AnyCommandConfig> = Record<string, AnyCommandConfig>,
+  TCommands extends Record<string, AnyCommandConfig> = Record<
+    string,
+    AnyCommandConfig
+  >,
 >(
   config: BargsConfigWithCommands<TOptions, PositionalsSchema, TCommands>,
-): Promise<BargsResult<InferOptions<TOptions>, unknown[], string | undefined>> => {
+): Promise<
+  BargsResult<InferOptions<TOptions>, unknown[], string | undefined>
+> => {
   const {
     options: globalOptions = {} as TOptions,
     commands,
@@ -1233,7 +1293,9 @@ export const parseCommands = async <
         values: coercedValues as InferOptions<TOptions>,
       };
 
-      await defaultHandler(result as BargsResult<InferOptions<TOptions>, [], undefined>);
+      await defaultHandler(
+        result as BargsResult<InferOptions<TOptions>, [], undefined>,
+      );
       return result;
     } else {
       throw new HelpError('No command specified.');
@@ -1273,7 +1335,9 @@ export const parseCommands = async <
   } as BargsResult<InferOptions<TOptions>, unknown[], string>;
 
   // Call handler
-  await command.handler(result as BargsResult<Record<string, unknown>, unknown[], string>);
+  await command.handler(
+    result as BargsResult<Record<string, unknown>, unknown[], string>,
+  );
 
   return result;
 };
@@ -1298,6 +1362,7 @@ git commit -m "feat: add parseCommands for command-based CLIs"
 ### Task 7: Create New Help Generator
 
 **Files:**
+
 - Create: `src/help-new.ts`
 - Create: `test/help-new.test.ts`
 
@@ -1335,7 +1400,10 @@ describe('generateHelp', () => {
     const help = generateHelp({
       name: 'my-cli',
       options: {
-        verbose: opt.boolean({ description: 'Enable verbose output', aliases: ['v'] }),
+        verbose: opt.boolean({
+          description: 'Enable verbose output',
+          aliases: ['v'],
+        }),
       },
     });
 
@@ -1448,9 +1516,16 @@ const formatOptionHelp = (name: string, def: OptionDef): string => {
  * Check if config has commands.
  */
 const hasCommands = (
-  config: BargsConfig<OptionsSchema, [], Record<string, AnyCommandConfig> | undefined>,
-): config is BargsConfigWithCommands<OptionsSchema, [], Record<string, AnyCommandConfig>> =>
-  config.commands !== undefined && Object.keys(config.commands).length > 0;
+  config: BargsConfig<
+    OptionsSchema,
+    [],
+    Record<string, AnyCommandConfig> | undefined
+  >,
+): config is BargsConfigWithCommands<
+  OptionsSchema,
+  [],
+  Record<string, AnyCommandConfig>
+> => config.commands !== undefined && Object.keys(config.commands).length > 0;
 
 /**
  * Generate help text for a bargs config.
@@ -1531,7 +1606,9 @@ export const generateHelp = <
 
   // Footer
   if (hasCommands(config)) {
-    lines.push(dim(`Run '${config.name} <command> --help' for command-specific help.`));
+    lines.push(
+      dim(`Run '${config.name} <command> --help' for command-specific help.`),
+    );
     lines.push('');
   }
 
@@ -1543,7 +1620,10 @@ export const generateHelp = <
  */
 export const generateCommandHelp = <
   TOptions extends OptionsSchema = OptionsSchema,
-  TCommands extends Record<string, AnyCommandConfig> = Record<string, AnyCommandConfig>,
+  TCommands extends Record<string, AnyCommandConfig> = Record<
+    string,
+    AnyCommandConfig
+  >,
 >(
   config: BargsConfigWithCommands<TOptions, [], TCommands>,
   commandName: string,
@@ -1569,7 +1649,9 @@ export const generateCommandHelp = <
   // Command options
   if (command.options && Object.keys(command.options).length > 0) {
     lines.push(yellow('OPTIONS'));
-    for (const [name, def] of Object.entries(command.options as OptionsSchema)) {
+    for (const [name, def] of Object.entries(
+      command.options as OptionsSchema,
+    )) {
       if (def.hidden) continue;
       lines.push(formatOptionHelp(name, def));
     }
@@ -1609,6 +1691,7 @@ git commit -m "feat: add help generator without Zod introspection"
 ### Task 8: Implement New bargs() Function
 
 **Files:**
+
 - Create: `src/bargs-new.ts`
 - Create: `test/bargs-new.test.ts`
 
@@ -1649,7 +1732,9 @@ describe('bargs', () => {
       args: ['--name', 'Bob'],
     });
 
-    assert.deepEqual((handlerResult as { values: unknown }).values, { name: 'Bob' });
+    assert.deepEqual((handlerResult as { values: unknown }).values, {
+      name: 'Bob',
+    });
   });
 
   it('parses command-based CLI', async () => {
@@ -1672,7 +1757,9 @@ describe('bargs', () => {
     });
 
     assert.equal((handlerResult as { command: string }).command, 'greet');
-    assert.deepEqual((handlerResult as { values: unknown }).values, { name: 'Charlie' });
+    assert.deepEqual((handlerResult as { values: unknown }).values, {
+      name: 'Charlie',
+    });
   });
 });
 ```
@@ -1705,9 +1792,16 @@ import { parseCommands, parseSimple } from './parser-new.js';
  * Check if config has commands.
  */
 const hasCommands = (
-  config: BargsConfig<OptionsSchema, PositionalsSchema, Record<string, AnyCommandConfig> | undefined>,
-): config is BargsConfigWithCommands<OptionsSchema, PositionalsSchema, Record<string, AnyCommandConfig>> =>
-  config.commands !== undefined && Object.keys(config.commands).length > 0;
+  config: BargsConfig<
+    OptionsSchema,
+    PositionalsSchema,
+    Record<string, AnyCommandConfig> | undefined
+  >,
+): config is BargsConfigWithCommands<
+  OptionsSchema,
+  PositionalsSchema,
+  Record<string, AnyCommandConfig>
+> => config.commands !== undefined && Object.keys(config.commands).length > 0;
 
 /**
  * Main bargs entry point for simple CLIs (no commands).
@@ -1717,7 +1811,9 @@ export async function bargs<
   TPositionals extends PositionalsSchema,
 >(
   config: BargsConfig<TOptions, TPositionals, undefined>,
-): Promise<BargsResult<InferOptions<TOptions>, InferPositionals<TPositionals>, undefined>>;
+): Promise<
+  BargsResult<InferOptions<TOptions>, InferPositionals<TPositionals>, undefined>
+>;
 
 /**
  * Main bargs entry point for command-based CLIs.
@@ -1733,7 +1829,11 @@ export async function bargs<
  * Main bargs entry point (implementation).
  */
 export async function bargs(
-  config: BargsConfig<OptionsSchema, PositionalsSchema, Record<string, AnyCommandConfig> | undefined>,
+  config: BargsConfig<
+    OptionsSchema,
+    PositionalsSchema,
+    Record<string, AnyCommandConfig> | undefined
+  >,
 ): Promise<BargsResult<unknown, unknown[], string | undefined>> {
   const args = config.args ?? process.argv.slice(2);
 
@@ -1752,7 +1852,11 @@ export async function bargs(
           console.log(generateHelp(config));
         }
       } else {
-        console.log(generateHelp(config as BargsConfig<OptionsSchema, PositionalsSchema, undefined>));
+        console.log(
+          generateHelp(
+            config as BargsConfig<OptionsSchema, PositionalsSchema, undefined>,
+          ),
+        );
       }
       process.exit(0);
     }
@@ -1775,7 +1879,13 @@ export async function bargs(
 
       // Call handler if provided
       if (config.handler) {
-        await config.handler(result as BargsResult<InferOptions<OptionsSchema>, InferPositionals<PositionalsSchema>, undefined>);
+        await config.handler(
+          result as BargsResult<
+            InferOptions<OptionsSchema>,
+            InferPositionals<PositionalsSchema>,
+            undefined
+          >,
+        );
       }
 
       return result;
@@ -1786,7 +1896,11 @@ export async function bargs(
       if (hasCommands(config)) {
         console.log(generateHelp(config));
       } else {
-        console.log(generateHelp(config as BargsConfig<OptionsSchema, PositionalsSchema, undefined>));
+        console.log(
+          generateHelp(
+            config as BargsConfig<OptionsSchema, PositionalsSchema, undefined>,
+          ),
+        );
       }
       process.exit(1);
     }
@@ -1817,6 +1931,7 @@ git commit -m "feat: add main bargs() entry point without Zod"
 ### Task 9: Remove Zod Dependencies
 
 **Files:**
+
 - Delete: `src/zod-introspection.ts`
 - Delete: `src/schema.ts` (the old one)
 - Modify: `src/types.ts` → replace with `src/types-new.ts` content
@@ -1880,6 +1995,7 @@ of Zod schemas. See migration guide for details."
 ### Task 10: Update Examples
 
 **Files:**
+
 - Modify: `examples/greeter.ts`
 - Modify: `examples/tasks.ts`
 
@@ -1894,10 +2010,25 @@ await bargs({
   version: '1.0.0',
   description: 'A friendly greeter CLI',
   options: {
-    greeting: opt.string({ default: 'Hello', description: 'The greeting to use' }),
-    name: opt.string({ default: 'World', description: 'Name to greet', aliases: ['n'] }),
-    shout: opt.boolean({ default: false, description: 'SHOUT THE GREETING', aliases: ['s'] }),
-    verbose: opt.boolean({ default: false, description: 'Show verbose output', aliases: ['v'] }),
+    greeting: opt.string({
+      default: 'Hello',
+      description: 'The greeting to use',
+    }),
+    name: opt.string({
+      default: 'World',
+      description: 'Name to greet',
+      aliases: ['n'],
+    }),
+    shout: opt.boolean({
+      default: false,
+      description: 'SHOUT THE GREETING',
+      aliases: ['s'],
+    }),
+    verbose: opt.boolean({
+      default: false,
+      description: 'Show verbose output',
+      aliases: ['v'],
+    }),
   },
   handler: ({ values }) => {
     let message = `${values.greeting}, ${values.name}!`;
@@ -1933,8 +2064,16 @@ let nextId = 2;
 
 // Reusable global options
 const globalOptions = opt.options({
-  file: opt.string({ default: 'tasks.json', description: 'Task storage file', aliases: ['f'] }),
-  verbose: opt.boolean({ default: false, description: 'Show detailed output', aliases: ['v'] }),
+  file: opt.string({
+    default: 'tasks.json',
+    description: 'Task storage file',
+    aliases: ['f'],
+  }),
+  verbose: opt.boolean({
+    default: false,
+    description: 'Show detailed output',
+    aliases: ['v'],
+  }),
 });
 
 await bargs({
@@ -1952,7 +2091,9 @@ await bargs({
           aliases: ['p'],
         }),
       }),
-      positionals: [opt.stringPos({ required: true, description: 'Task description' })],
+      positionals: [
+        opt.stringPos({ required: true, description: 'Task description' }),
+      ],
       handler: async ({ positionals, values }) => {
         const [text] = positionals;
         const { priority, verbose } = values;
@@ -1968,7 +2109,11 @@ await bargs({
     list: opt.command({
       description: 'List all tasks',
       options: opt.options(globalOptions, {
-        all: opt.boolean({ default: false, description: 'Show completed tasks too', aliases: ['a'] }),
+        all: opt.boolean({
+          default: false,
+          description: 'Show completed tasks too',
+          aliases: ['a'],
+        }),
       }),
       handler: async ({ values }) => {
         const { all, verbose } = values;
@@ -1982,7 +2127,12 @@ await bargs({
         } else {
           for (const task of filtered) {
             const status = task.done ? '[x]' : '[ ]';
-            const priority = task.priority === 'high' ? '!!!' : task.priority === 'low' ? '.' : '';
+            const priority =
+              task.priority === 'high'
+                ? '!!!'
+                : task.priority === 'low'
+                  ? '.'
+                  : '';
             console.log(`${status} #${task.id} ${task.text} ${priority}`);
           }
         }
@@ -2041,6 +2191,7 @@ git commit -m "docs: update examples for new Zod-free API"
 ### Task 11: Update/Remove Old Tests
 
 **Files:**
+
 - Delete: `test/schema.test.ts`
 - Delete: `test/zod-introspection.test.ts` (if exists)
 - Modify: `test/bargs.test.ts` → update for new API
@@ -2085,6 +2236,7 @@ git commit -m "test: update test suite for Zod-free API"
 ### Task 12: Final Cleanup and Documentation
 
 **Files:**
+
 - Delete: `src/types-new.ts`, `src/parser-new.ts`, `src/help-new.ts`, `src/bargs-new.ts` (if not already moved)
 - Delete: `.old-zod-version/` backup directory
 - Modify: `README.md` → update API documentation
@@ -2116,6 +2268,7 @@ git commit -m "chore: final cleanup after Zod removal"
 This plan removes Zod and replaces it with an explicit, traditional argument parser API:
 
 **Before (Zod):**
+
 ```typescript
 import { bargs } from 'bargs';
 import { z } from 'zod';
@@ -2131,6 +2284,7 @@ await bargs({
 ```
 
 **After (No Zod):**
+
 ```typescript
 import { bargs, opt } from 'bargs';
 
@@ -2145,6 +2299,7 @@ await bargs({
 ```
 
 **Composition Example:**
+
 ```typescript
 import { bargs, opt } from 'bargs';
 
@@ -2160,11 +2315,14 @@ const processCmd = opt.command({
   options: opt.options(loggingOptions, {
     format: opt.enum(['json', 'yaml'] as const),
   }),
-  handler: ({ values }) => { /* ... */ },
+  handler: ({ values }) => {
+    /* ... */
+  },
 });
 ```
 
 **Key Changes:**
+
 1. Namespaced `opt` object: `opt.string()`, `opt.boolean()`, `opt.enum()`, etc.
 2. `opt.options()` for composing reusable option sets with alias conflict detection
 3. `opt.command()` for defining commands with type inference

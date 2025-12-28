@@ -24,7 +24,9 @@ const validateAliasConflicts = (schema: OptionsSchema): void => {
   const aliasToOption = new Map<string, string>();
 
   for (const [optionName, def] of Object.entries(schema)) {
-    if (!def.aliases) continue;
+    if (!def.aliases) {
+      continue;
+    }
 
     for (const alias of def.aliases) {
       const existing = aliasToOption.get(alias);
@@ -41,11 +43,11 @@ const validateAliasConflicts = (schema: OptionsSchema): void => {
 /**
  * Compose multiple option schemas into one.
  */
-function optionsImpl(...schemas: OptionsSchema[]): OptionsSchema {
+const optionsImpl = (...schemas: OptionsSchema[]): OptionsSchema => {
   const merged = Object.assign({}, ...schemas) as OptionsSchema;
   validateAliasConflicts(merged);
   return merged;
-}
+};
 
 /**
  * Namespaced option builders.
@@ -69,18 +71,14 @@ export const opt = {
   // ─── Option Builders ───────────────────────────────────────────────
 
   /**
-   * Define a string option.
+   * Define an array option (--flag value --flag value2).
    */
-  string: (props: Omit<StringOption, 'type'> = {}): StringOption => ({
-    type: 'string',
-    ...props,
-  }),
-
-  /**
-   * Define a number option.
-   */
-  number: (props: Omit<NumberOption, 'type'> = {}): NumberOption => ({
-    type: 'number',
+  array: (
+    items: 'number' | 'string',
+    props: Omit<ArrayOption, 'items' | 'type'> = {},
+  ): ArrayOption => ({
+    items,
+    type: 'array',
     ...props,
   }),
 
@@ -93,28 +91,28 @@ export const opt = {
   }),
 
   /**
-   * Define an enum option with string choices.
+   * Define a command with proper type inference.
+   *
+   * @example
+   *
+   * ```typescript
+   * const greetCmd = opt.command({
+   *   description: 'Greet someone',
+   *   options: opt.options({
+   *     name: opt.string({ default: 'world' }),
+   *   }),
+   *   handler: ({ values }) => {
+   *     console.log(`Hello, ${values.name}!`);
+   *   },
+   * });
+   * ```
    */
-  enum: <T extends string>(
-    choices: readonly T[],
-    props: Omit<EnumOption<T>, 'choices' | 'type'> = {},
-  ): EnumOption<T> => ({
-    type: 'enum',
-    choices,
-    ...props,
-  }),
-
-  /**
-   * Define an array option (--flag value --flag value2).
-   */
-  array: (
-    items: 'number' | 'string',
-    props: Omit<ArrayOption, 'items' | 'type'> = {},
-  ): ArrayOption => ({
-    type: 'array',
-    items,
-    ...props,
-  }),
+  command: <
+    TOptions extends OptionsSchema,
+    TPositionals extends PositionalsSchema,
+  >(
+    config: CommandConfig<TOptions, TPositionals>,
+  ): CommandConfig<TOptions, TPositionals> => config,
 
   /**
    * Define a count option (--verbose --verbose = 2).
@@ -124,37 +122,37 @@ export const opt = {
     ...props,
   }),
 
-  // ─── Positional Builders ───────────────────────────────────────────
-
   /**
-   * Define a string positional argument.
+   * Define an enum option with string choices.
    */
-  stringPos: (props: Omit<StringPositional, 'type'> = {}): StringPositional => ({
-    type: 'string',
+  enum: <T extends string>(
+    choices: readonly T[],
+    props: Omit<EnumOption<T>, 'choices' | 'type'> = {},
+  ): EnumOption<T> => ({
+    choices,
+    type: 'enum',
     ...props,
   }),
 
   /**
-   * Define a number positional argument.
+   * Define a number option.
    */
-  numberPos: (props: Omit<NumberPositional, 'type'> = {}): NumberPositional => ({
+  number: (props: Omit<NumberOption, 'type'> = {}): NumberOption => ({
     type: 'number',
     ...props,
   }),
 
+  // ─── Positional Builders ───────────────────────────────────────────
+
   /**
-   * Define a variadic positional (rest args).
+   * Define a number positional argument.
    */
-  variadic: (
-    items: 'number' | 'string',
-    props: Omit<VariadicPositional, 'items' | 'type'> = {},
-  ): VariadicPositional => ({
-    type: 'variadic',
-    items,
+  numberPos: (
+    props: Omit<NumberPositional, 'type'> = {},
+  ): NumberPositional => ({
+    type: 'number',
     ...props,
   }),
-
-  // ─── Composition ───────────────────────────────────────────────────
 
   /**
    * Compose multiple option schemas into one. Later schemas override earlier
@@ -170,11 +168,9 @@ export const opt = {
    * });
    *
    * // Merge multiple schemas
-   * const allOpts = opt.options(
-   *   loggingOpts,
-   *   ioOpts,
-   *   { format: opt.enum(['json', 'yaml'] as const) },
-   * );
+   * const allOpts = opt.options(loggingOpts, ioOpts, {
+   *   format: opt.enum(['json', 'yaml'] as const),
+   * });
    * ```
    *
    * @throws BargsError if multiple options use the same alias
@@ -201,26 +197,37 @@ export const opt = {
     (...schemas: OptionsSchema[]): OptionsSchema;
   },
 
+  /**
+   * Define a string option.
+   */
+  string: (props: Omit<StringOption, 'type'> = {}): StringOption => ({
+    type: 'string',
+    ...props,
+  }),
+
+  // ─── Composition ───────────────────────────────────────────────────
+
+  /**
+   * Define a string positional argument.
+   */
+  stringPos: (
+    props: Omit<StringPositional, 'type'> = {},
+  ): StringPositional => ({
+    type: 'string',
+    ...props,
+  }),
+
   // ─── Command Builder ───────────────────────────────────────────────
 
   /**
-   * Define a command with proper type inference.
-   *
-   * @example
-   *
-   * ```typescript
-   * const greetCmd = opt.command({
-   *   description: 'Greet someone',
-   *   options: opt.options({
-   *     name: opt.string({ default: 'world' }),
-   *   }),
-   *   handler: ({ values }) => {
-   *     console.log(`Hello, ${values.name}!`);
-   *   },
-   * });
-   * ```
+   * Define a variadic positional (rest args).
    */
-  command: <TOptions extends OptionsSchema, TPositionals extends PositionalsSchema>(
-    config: CommandConfig<TOptions, TPositionals>,
-  ): CommandConfig<TOptions, TPositionals> => config,
+  variadic: (
+    items: 'number' | 'string',
+    props: Omit<VariadicPositional, 'items' | 'type'> = {},
+  ): VariadicPositional => ({
+    items,
+    type: 'variadic',
+    ...props,
+  }),
 };

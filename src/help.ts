@@ -15,18 +15,18 @@ import { bold, cyan, dim, yellow } from './ansi.js';
  */
 const getTypeLabel = (def: OptionDef): string => {
   switch (def.type) {
+    case 'array':
+      return `${def.items}[]`;
     case 'boolean':
       return 'boolean';
-    case 'number':
-      return 'number';
-    case 'string':
-      return 'string';
     case 'count':
       return 'count';
     case 'enum':
       return def.choices.join(' | ');
-    case 'array':
-      return `${def.items}[]`;
+    case 'number':
+      return 'number';
+    case 'string':
+      return 'string';
     default:
       return 'string';
   }
@@ -115,18 +115,20 @@ export const generateHelp = <
   // Options
   if (config.options && Object.keys(config.options).length > 0) {
     // Group options
-    const groups = new Map<string, Array<{ name: string; def: OptionDef }>>();
-    const ungrouped: Array<{ name: string; def: OptionDef }> = [];
+    const groups = new Map<string, Array<{ def: OptionDef; name: string }>>();
+    const ungrouped: Array<{ def: OptionDef; name: string }> = [];
 
     for (const [name, def] of Object.entries(config.options)) {
-      if (def.hidden) continue;
+      if (def.hidden) {
+        continue;
+      }
 
       if (def.group) {
         const group = groups.get(def.group) ?? [];
-        group.push({ name, def });
+        group.push({ def, name });
         groups.set(def.group, group);
       } else {
-        ungrouped.push({ name, def });
+        ungrouped.push({ def, name });
       }
     }
 
@@ -152,7 +154,9 @@ export const generateHelp = <
 
   // Footer
   if (hasCommands(config)) {
-    lines.push(dim(`Run '${config.name} <command> --help' for command-specific help.`));
+    lines.push(
+      dim(`Run '${config.name} <command> --help' for command-specific help.`),
+    );
     lines.push('');
   }
 
@@ -165,7 +169,10 @@ export const generateHelp = <
 export const generateCommandHelp = <
   TOptions extends OptionsSchema = OptionsSchema,
   TPositionals extends PositionalsSchema = PositionalsSchema,
-  TCommands extends Record<string, AnyCommandConfig> = Record<string, AnyCommandConfig>,
+  TCommands extends Record<string, AnyCommandConfig> = Record<
+    string,
+    AnyCommandConfig
+  >,
 >(
   config: BargsConfigWithCommands<TOptions, TPositionals, TCommands>,
   commandName: string,
@@ -192,8 +199,10 @@ export const generateCommandHelp = <
   // Command options
   if (command.options && Object.keys(command.options).length > 0) {
     lines.push(yellow('OPTIONS'));
-    for (const [name, def] of Object.entries(command.options as OptionsSchema)) {
-      if (def.hidden) continue;
+    for (const [name, def] of Object.entries(command.options)) {
+      if (def.hidden) {
+        continue;
+      }
       lines.push(formatOptionHelp(name, def));
     }
     lines.push('');
@@ -203,7 +212,9 @@ export const generateCommandHelp = <
   if (config.options && Object.keys(config.options).length > 0) {
     lines.push(yellow('GLOBAL OPTIONS'));
     for (const [name, def] of Object.entries(config.options)) {
-      if (def.hidden) continue;
+      if (def.hidden) {
+        continue;
+      }
       lines.push(formatOptionHelp(name, def));
     }
     lines.push('');

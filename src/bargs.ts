@@ -37,7 +37,9 @@ export async function bargs<
   TPositionals extends PositionalsSchema,
 >(
   config: BargsConfig<TOptions, TPositionals, undefined>,
-): Promise<BargsResult<InferOptions<TOptions>, InferPositionals<TPositionals>, undefined>>;
+): Promise<
+  BargsResult<InferOptions<TOptions>, InferPositionals<TPositionals>, undefined>
+>;
 
 /**
  * Main bargs entry point for command-based CLIs.
@@ -96,20 +98,14 @@ export async function bargs(
       return await parseCommands({ ...config, args });
     } else {
       const result = await parseSimple({
+        args,
         options: config.options,
         positionals: config.positionals,
-        args,
       });
 
       // Call handler if provided
       if (config.handler) {
-        await config.handler(
-          result as BargsResult<
-            InferOptions<OptionsSchema>,
-            InferPositionals<PositionalsSchema>,
-            undefined
-          >,
-        );
+        await config.handler(result);
       }
 
       return result;

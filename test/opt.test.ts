@@ -33,8 +33,12 @@ describe('opt.options', () => {
   });
 
   it('allows same alias on same option name (override)', () => {
-    const a = opt.options({ verbose: opt.boolean({ aliases: ['v'], default: false }) });
-    const b = opt.options({ verbose: opt.boolean({ aliases: ['v'], default: true }) });
+    const a = opt.options({
+      verbose: opt.boolean({ aliases: ['v'], default: false }),
+    });
+    const b = opt.options({
+      verbose: opt.boolean({ aliases: ['v'], default: true }),
+    });
 
     // Should not throw - same option name can keep its alias
     const merged = opt.options(a, b);
@@ -44,7 +48,10 @@ describe('opt.options', () => {
 
 describe('opt builders', () => {
   it('creates string options', () => {
-    const option = opt.string({ default: 'test', description: 'A string option' });
+    const option = opt.string({
+      default: 'test',
+      description: 'A string option',
+    });
     assert.equal(option.type, 'string');
     assert.equal(option.default, 'test');
     assert.equal(option.description, 'A string option');
@@ -57,14 +64,16 @@ describe('opt builders', () => {
   });
 
   it('creates boolean options', () => {
-    const option = opt.boolean({ default: false, aliases: ['v'] });
+    const option = opt.boolean({ aliases: ['v'], default: false });
     assert.equal(option.type, 'boolean');
     assert.equal(option.default, false);
     assert.deepEqual(option.aliases, ['v']);
   });
 
   it('creates enum options', () => {
-    const option = opt.enum(['low', 'medium', 'high'] as const, { default: 'medium' });
+    const option = opt.enum(['low', 'medium', 'high'] as const, {
+      default: 'medium',
+    });
     assert.equal(option.type, 'enum');
     assert.deepEqual(option.choices, ['low', 'medium', 'high']);
     assert.equal(option.default, 'medium');
@@ -84,7 +93,7 @@ describe('opt builders', () => {
   });
 
   it('creates string positionals', () => {
-    const pos = opt.stringPos({ required: true, description: 'Input file' });
+    const pos = opt.stringPos({ description: 'Input file', required: true });
     assert.equal(pos.type, 'string');
     assert.equal(pos.required, true);
     assert.equal(pos.description, 'Input file');
@@ -106,8 +115,8 @@ describe('opt builders', () => {
   it('creates commands', () => {
     const cmd = opt.command({
       description: 'Test command',
-      options: { verbose: opt.boolean() },
       handler: () => {},
+      options: { verbose: opt.boolean() },
     });
     assert.equal(cmd.description, 'Test command');
     assert.ok('verbose' in cmd.options!);

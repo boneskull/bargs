@@ -1,5 +1,3 @@
-import { bold, dim, red } from './ansi.js';
-
 /**
  * Custom error class for bargs errors.
  */
@@ -26,27 +24,3 @@ export class HelpError extends BargsError {
     this.command = command;
   }
 }
-
-/**
- * Format a validation error for CLI display.
- */
-export const formatValidationError = (message: string): string => {
-  const lines: string[] = [];
-
-  lines.push('');
-  lines.push(red(bold('Invalid arguments')));
-  lines.push('');
-  lines.push(`  ${message}`);
-  lines.push('');
-
-  return lines.join('\n');
-};
-
-/**
- * Print error and exit.
- */
-export const exitWithError = (message: string, cliName: string): never => {
-  console.error(message);
-  console.error(dim(`Run '${cliName} --help' for usage.`));
-  process.exit(1);
-};

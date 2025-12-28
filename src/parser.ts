@@ -7,9 +7,7 @@ import type {
   BargsResult,
   InferOptions,
   InferPositionals,
-  OptionDef,
   OptionsSchema,
-  PositionalDef,
   PositionalsSchema,
 } from './types.js';
 
@@ -20,14 +18,21 @@ import { HelpError } from './errors.js';
  */
 const buildParseArgsConfig = (
   schema: OptionsSchema,
-): Record<string, { multiple?: boolean; short?: string; type: 'boolean' | 'string' }> => {
+): Record<
+  string,
+  { multiple?: boolean; short?: string; type: 'boolean' | 'string' }
+> => {
   const config: Record<
     string,
     { multiple?: boolean; short?: string; type: 'boolean' | 'string' }
   > = {};
 
   for (const [name, def] of Object.entries(schema)) {
-    const opt: { multiple?: boolean; short?: string; type: 'boolean' | 'string' } = {
+    const opt: {
+      multiple?: boolean;
+      short?: string;
+      type: 'boolean' | 'string';
+    } = {
       type: def.type === 'boolean' ? 'boolean' : 'string',
     };
 
@@ -68,12 +73,11 @@ const coerceValues = (
     // Type coercion
     if (value !== undefined) {
       switch (def.type) {
-        case 'number':
-          result[name] = typeof value === 'string' ? Number(value) : value;
-          break;
         case 'array':
           if (def.items === 'number' && Array.isArray(value)) {
-            result[name] = value.map((v) => (typeof v === 'string' ? Number(v) : v));
+            result[name] = (value as (number | string)[]).map(
+              (v: number | string) => (typeof v === 'string' ? Number(v) : v),
+            );
           } else {
             result[name] = value;
           }
@@ -82,13 +86,18 @@ const coerceValues = (
           // Count options count occurrences
           result[name] = typeof value === 'number' ? value : value ? 1 : 0;
           break;
-        case 'enum':
-          if (value !== undefined && !def.choices.includes(value as string)) {
+        case 'enum': {
+          const enumValue = value as string;
+          if (value !== undefined && !def.choices.includes(enumValue)) {
             throw new Error(
-              `Invalid value for --${name}: "${value}". Must be one of: ${def.choices.join(', ')}`,
+              `Invalid value for --${name}: "${enumValue}". Must be one of: ${def.choices.join(', ')}`,
             );
           }
           result[name] = value;
+          break;
+        }
+        case 'number':
+          result[name] = typeof value === 'string' ? Number(value) : value;
           break;
         default:
           result[name] = value;
@@ -116,7 +125,7 @@ const coercePositionals = (
 
     if (def.type === 'variadic') {
       // Rest of positionals - def is narrowed to VariadicPositional here
-      const variadicDef = def as { items: 'string' | 'number' };
+      const variadicDef = def as { items: 'number' | 'string' };
       const rest = positionals.slice(i);
       if (variadicDef.items === 'number') {
         result.push(rest.map(Number));
@@ -151,9 +160,9 @@ interface ParseSimpleOptions<
   TOptions extends OptionsSchema = OptionsSchema,
   TPositionals extends PositionalsSchema = PositionalsSchema,
 > {
+  args?: string[];
   options?: TOptions;
   positionals?: TPositionals;
-  args?: string[];
 }
 
 /**
@@ -168,9 +177,9 @@ export const parseSimple = async <
   BargsResult<InferOptions<TOptions>, InferPositionals<TPositionals>, undefined>
 > => {
   const {
+    args = process.argv.slice(2),
     options: optionsSchema = {} as TOptions,
     positionals: positionalsSchema = [] as unknown as TPositionals,
-    args = process.argv.slice(2),
   } = config;
 
   // Build parseArgs config
@@ -178,10 +187,10 @@ export const parseSimple = async <
 
   // Parse with Node.js util.parseArgs
   const { positionals, values } = parseArgs({
+    allowPositionals: positionalsSchema.length > 0,
     args,
     options: parseArgsOptions,
     strict: true,
-    allowPositionals: positionalsSchema.length > 0,
   });
 
   // Coerce and apply defaults
@@ -200,15 +209,20 @@ export const parseSimple = async <
  */
 export const parseCommands = async <
   TOptions extends OptionsSchema = OptionsSchema,
-  TCommands extends Record<string, AnyCommandConfig> = Record<string, AnyCommandConfig>,
+  TCommands extends Record<string, AnyCommandConfig> = Record<
+    string,
+    AnyCommandConfig
+  >,
 >(
   config: BargsConfigWithCommands<TOptions, PositionalsSchema, TCommands>,
-): Promise<BargsResult<InferOptions<TOptions>, unknown[], string | undefined>> => {
+): Promise<
+  BargsResult<InferOptions<TOptions>, unknown[], string | undefined>
+> => {
   const {
-    options: globalOptions = {} as TOptions,
+    args = process.argv.slice(2),
     commands,
     defaultHandler,
-    args = process.argv.slice(2),
+    options: globalOptions = {} as TOptions,
   } = config;
 
   const commandsRecord = commands as Record<string, AnyCommandConfig>;
@@ -233,20 +247,26 @@ export const parseCommands = async <
       // Parse global options and call default handler
       const parseArgsOptions = buildParseArgsConfig(globalOptions);
       const { values } = parseArgs({
+        allowPositionals: false,
         args: remainingArgs,
         options: parseArgsOptions,
         strict: true,
-        allowPositionals: false,
       });
       const coercedValues = coerceValues(values, globalOptions);
 
-      const result: BargsResult<InferOptions<TOptions>, unknown[], string | undefined> = {
+      const result: BargsResult<
+        InferOptions<TOptions>,
+        unknown[],
+        string | undefined
+      > = {
         command: undefined,
         positionals: [],
         values: coercedValues as InferOptions<TOptions>,
       };
 
-      await defaultHandler(result as BargsResult<InferOptions<TOptions>, [], undefined>);
+      await defaultHandler(
+        result as BargsResult<InferOptions<TOptions>, [], undefined>,
+      );
       return result;
     } else {
       throw new HelpError('No command specified.');
@@ -260,19 +280,19 @@ export const parseCommands = async <
   }
 
   // Merge global and command options
-  const commandOptions = (command.options ?? {}) as OptionsSchema;
+  const commandOptions = command.options ?? {};
   const mergedOptionsSchema = { ...globalOptions, ...commandOptions };
-  const commandPositionals = (command.positionals ?? []) as PositionalsSchema;
+  const commandPositionals = command.positionals ?? [];
 
   // Build parseArgs config
   const parseArgsOptions = buildParseArgsConfig(mergedOptionsSchema);
 
   // Parse
   const { positionals, values } = parseArgs({
+    allowPositionals: commandPositionals.length > 0,
     args: remainingArgs,
     options: parseArgsOptions,
     strict: true,
-    allowPositionals: commandPositionals.length > 0,
   });
 
   // Coerce
@@ -290,7 +310,3 @@ export const parseCommands = async <
 
   return result;
 };
-
-// Export types and helpers that will be needed by other modules
-export { buildParseArgsConfig, coercePositionals, coerceValues };
-export type { ParseSimpleOptions };

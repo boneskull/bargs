@@ -1,129 +1,125 @@
 // src/types-new.ts
 
 /**
- * Base properties shared by all option definitions.
+ * Any command config (type-erased for collections). Uses a permissive handler
+ * type to avoid variance issues.
  */
-interface OptionBase {
-  /** Option description displayed in help text */
-  description?: string;
-  /** Aliases for this option (e.g., ['v'] for --verbose) */
-  aliases?: string[];
-  /** Group name for help text organization */
-  group?: string;
-  /** Whether this option is required */
-  required?: boolean;
-  /** Whether this option is hidden from help */
-  hidden?: boolean;
-}
+export interface AnyCommandConfig {
+  description: string;
 
-/**
- * String option definition.
- */
-export interface StringOption extends OptionBase {
-  type: 'string';
-  default?: string;
-}
-
-/**
- * Number option definition.
- */
-export interface NumberOption extends OptionBase {
-  type: 'number';
-  default?: number;
-}
-
-/**
- * Boolean option definition.
- */
-export interface BooleanOption extends OptionBase {
-  type: 'boolean';
-  default?: boolean;
-}
-
-/**
- * Enum option definition with string choices.
- */
-export interface EnumOption<T extends string = string> extends OptionBase {
-  type: 'enum';
-  choices: readonly T[];
-  default?: T;
+  handler: (result: any) => Promise<void> | void;
+  options?: OptionsSchema;
+  positionals?: PositionalsSchema;
 }
 
 /**
  * Array option definition (--flag value --flag value2).
  */
 export interface ArrayOption extends OptionBase {
-  type: 'array';
+  default?: number[] | string[];
   /** Element type of the array */
-  items: 'string' | 'number';
-  default?: string[] | number[];
+  items: 'number' | 'string';
+  type: 'array';
+}
+
+/**
+ * Main bargs configuration.
+ */
+export interface BargsConfig<
+  TOptions extends OptionsSchema = OptionsSchema,
+  TPositionals extends PositionalsSchema = PositionalsSchema,
+  TCommands extends Record<string, AnyCommandConfig> | undefined = undefined,
+> {
+  args?: string[];
+  commands?: TCommands;
+  description?: string;
+  handler?: Handler<
+    BargsResult<
+      InferOptions<TOptions>,
+      InferPositionals<TPositionals>,
+      undefined
+    >
+  >;
+  name: string;
+  options?: TOptions;
+  positionals?: TPositionals;
+  version?: string;
+}
+
+/**
+ * Bargs config with commands (requires commands, allows defaultHandler).
+ */
+export type BargsConfigWithCommands<
+  TOptions extends OptionsSchema = OptionsSchema,
+  TPositionals extends PositionalsSchema = PositionalsSchema,
+  TCommands extends Record<string, AnyCommandConfig> = Record<
+    string,
+    AnyCommandConfig
+  >,
+> = Omit<BargsConfig<TOptions, TPositionals, TCommands>, 'handler'> & {
+  commands: TCommands;
+  defaultHandler?:
+    | Handler<BargsResult<InferOptions<TOptions>, [], undefined>>
+    | keyof TCommands;
+};
+
+/**
+ * Result from parsing CLI arguments.
+ */
+export interface BargsResult<
+  TValues = Record<string, unknown>,
+  TPositionals extends readonly unknown[] = [],
+  TCommand extends string | undefined = string | undefined,
+> {
+  command: TCommand;
+  positionals: TPositionals;
+  values: TValues;
+}
+
+/**
+ * Boolean option definition.
+ */
+export interface BooleanOption extends OptionBase {
+  default?: boolean;
+  type: 'boolean';
+}
+
+/**
+ * Command configuration.
+ */
+export interface CommandConfig<
+  TOptions extends OptionsSchema = OptionsSchema,
+  TPositionals extends PositionalsSchema = PositionalsSchema,
+> {
+  description: string;
+  handler: Handler<
+    BargsResult<InferOptions<TOptions>, InferPositionals<TPositionals>, string>
+  >;
+  options?: TOptions;
+  positionals?: TPositionals;
 }
 
 /**
  * Count option definition (--verbose --verbose = 2).
  */
 export interface CountOption extends OptionBase {
+  default?: number;
   type: 'count';
-  default?: number;
 }
 
 /**
- * Union of all option definitions.
+ * Enum option definition with string choices.
  */
-export type OptionDef =
-  | ArrayOption
-  | BooleanOption
-  | CountOption
-  | EnumOption<string>
-  | NumberOption
-  | StringOption;
-
-/**
- * Options schema: a record of option names to their definitions.
- */
-export type OptionsSchema = Record<string, OptionDef>;
-
-/**
- * Base properties for positional definitions.
- */
-interface PositionalBase {
-  description?: string;
-  required?: boolean;
+export interface EnumOption<T extends string = string> extends OptionBase {
+  choices: readonly T[];
+  default?: T;
+  type: 'enum';
 }
 
 /**
- * String positional.
+ * Handler function signature.
  */
-export interface StringPositional extends PositionalBase {
-  type: 'string';
-  default?: string;
-}
-
-/**
- * Number positional.
- */
-export interface NumberPositional extends PositionalBase {
-  type: 'number';
-  default?: number;
-}
-
-/**
- * Variadic positional (rest args).
- */
-export interface VariadicPositional extends PositionalBase {
-  type: 'variadic';
-  items: 'string' | 'number';
-}
-
-/**
- * Union of positional definitions.
- */
-export type PositionalDef = NumberPositional | StringPositional | VariadicPositional;
-
-/**
- * Positionals can be a tuple (ordered) or a single variadic.
- */
-export type PositionalsSchema = PositionalDef[];
+export type Handler<TResult> = (result: TResult) => Promise<void> | void;
 
 /**
  * Infer the TypeScript type from an option definition.
@@ -170,23 +166,24 @@ export type InferOptions<T extends OptionsSchema> = {
 /**
  * Infer a single positional's type.
  */
-export type InferPositional<T extends PositionalDef> = T extends NumberPositional
-  ? T['required'] extends true
-    ? number
-    : T['default'] extends number
-      ? number
-      : number | undefined
-  : T extends StringPositional
+export type InferPositional<T extends PositionalDef> =
+  T extends NumberPositional
     ? T['required'] extends true
-      ? string
-      : T['default'] extends string
+      ? number
+      : T['default'] extends number
+        ? number
+        : number | undefined
+    : T extends StringPositional
+      ? T['required'] extends true
         ? string
-        : string | undefined
-    : T extends VariadicPositional
-      ? T['items'] extends 'number'
-        ? number[]
-        : string[]
-      : never;
+        : T['default'] extends string
+          ? string
+          : string | undefined
+      : T extends VariadicPositional
+        ? T['items'] extends 'number'
+          ? number[]
+          : string[]
+        : never;
 
 /**
  * Infer positionals tuple type from schema.
@@ -196,80 +193,94 @@ export type InferPositionals<T extends PositionalsSchema> = {
 };
 
 /**
- * Handler function signature.
+ * Number option definition.
  */
-export type Handler<TResult> = (result: TResult) => Promise<void> | void;
-
-/**
- * Result from parsing CLI arguments.
- */
-export interface BargsResult<
-  TValues = Record<string, unknown>,
-  TPositionals extends readonly unknown[] = [],
-  TCommand extends string | undefined = string | undefined,
-> {
-  command: TCommand;
-  positionals: TPositionals;
-  values: TValues;
+export interface NumberOption extends OptionBase {
+  default?: number;
+  type: 'number';
 }
 
 /**
- * Command configuration.
+ * Number positional.
  */
-export interface CommandConfig<
-  TOptions extends OptionsSchema = OptionsSchema,
-  TPositionals extends PositionalsSchema = PositionalsSchema,
-> {
-  description: string;
-  options?: TOptions;
-  positionals?: TPositionals;
-  handler: Handler<
-    BargsResult<InferOptions<TOptions>, InferPositionals<TPositionals>, string>
-  >;
+export interface NumberPositional extends PositionalBase {
+  default?: number;
+  type: 'number';
 }
 
 /**
- * Any command config (type-erased for collections).
- * Uses a permissive handler type to avoid variance issues.
+ * Union of all option definitions.
  */
-export interface AnyCommandConfig {
-  description: string;
-  options?: OptionsSchema;
-  positionals?: PositionalsSchema;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  handler: (result: any) => Promise<void> | void;
+export type OptionDef =
+  | ArrayOption
+  | BooleanOption
+  | CountOption
+  | EnumOption<string>
+  | NumberOption
+  | StringOption;
+
+/**
+ * Options schema: a record of option names to their definitions.
+ */
+export type OptionsSchema = Record<string, OptionDef>;
+
+/**
+ * Union of positional definitions.
+ */
+export type PositionalDef =
+  | NumberPositional
+  | StringPositional
+  | VariadicPositional;
+
+/**
+ * Positionals can be a tuple (ordered) or a single variadic.
+ */
+export type PositionalsSchema = PositionalDef[];
+
+/**
+ * String option definition.
+ */
+export interface StringOption extends OptionBase {
+  default?: string;
+  type: 'string';
 }
 
 /**
- * Main bargs configuration.
+ * String positional.
  */
-export interface BargsConfig<
-  TOptions extends OptionsSchema = OptionsSchema,
-  TPositionals extends PositionalsSchema = PositionalsSchema,
-  TCommands extends Record<string, AnyCommandConfig> | undefined = undefined,
-> {
-  name: string;
-  version?: string;
+export interface StringPositional extends PositionalBase {
+  default?: string;
+  type: 'string';
+}
+
+/**
+ * Variadic positional (rest args).
+ */
+export interface VariadicPositional extends PositionalBase {
+  items: 'number' | 'string';
+  type: 'variadic';
+}
+
+/**
+ * Base properties shared by all option definitions.
+ */
+interface OptionBase {
+  /** Aliases for this option (e.g., ['v'] for --verbose) */
+  aliases?: string[];
+  /** Option description displayed in help text */
   description?: string;
-  options?: TOptions;
-  positionals?: TPositionals;
-  commands?: TCommands;
-  handler?: Handler<
-    BargsResult<InferOptions<TOptions>, InferPositionals<TPositionals>, undefined>
-  >;
-  args?: string[];
+  /** Group name for help text organization */
+  group?: string;
+  /** Whether this option is hidden from help */
+  hidden?: boolean;
+  /** Whether this option is required */
+  required?: boolean;
 }
 
 /**
- * Bargs config with commands (requires commands, allows defaultHandler).
+ * Base properties for positional definitions.
  */
-export type BargsConfigWithCommands<
-  TOptions extends OptionsSchema = OptionsSchema,
-  TPositionals extends PositionalsSchema = PositionalsSchema,
-  TCommands extends Record<string, AnyCommandConfig> = Record<string, AnyCommandConfig>,
-> = Omit<BargsConfig<TOptions, TPositionals, TCommands>, 'handler'> & {
-  commands: TCommands;
-  defaultHandler?:
-    | Handler<BargsResult<InferOptions<TOptions>, [], undefined>>
-    | keyof TCommands;
-};
+interface PositionalBase {
+  description?: string;
+  required?: boolean;
+}

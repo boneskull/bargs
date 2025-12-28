@@ -1,5 +1,17 @@
 // src/index.ts - Main entry point for bargs
 
+// Re-export the main bargs function
+export { bargs } from './bargs.js';
+
+// Re-export errors
+export { BargsError, HelpError } from './errors.js';
+
+// Re-export help generators
+export { generateCommandHelp, generateHelp } from './help.js';
+
+// Re-export the opt builder
+export { opt } from './opt.js';
+
 // Re-export all types
 export type {
   AnyCommandConfig,
@@ -26,15 +38,3 @@ export type {
   StringPositional,
   VariadicPositional,
 } from './types.js';
-
-// Re-export errors
-export { BargsError, HelpError } from './errors.js';
-
-// Re-export the opt builder
-export { opt } from './opt.js';
-
-// Re-export help generators
-export { generateCommandHelp, generateHelp } from './help.js';
-
-// Re-export the main bargs function
-export { bargs } from './bargs.js';

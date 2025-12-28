@@ -2,16 +2,16 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
+import { stripAnsi } from '../src/ansi.js';
 import { generateCommandHelp, generateHelp } from '../src/help.js';
 import { opt } from '../src/opt.js';
-import { stripAnsi } from '../src/ansi.js';
 
 describe('generateHelp', () => {
   it('generates help with name and description', () => {
     const help = stripAnsi(
       generateHelp({
-        name: 'my-cli',
         description: 'A test CLI',
+        name: 'my-cli',
       }),
     );
 
@@ -35,7 +35,10 @@ describe('generateHelp', () => {
       generateHelp({
         name: 'my-cli',
         options: {
-          verbose: opt.boolean({ description: 'Enable verbose output', aliases: ['v'] }),
+          verbose: opt.boolean({
+            aliases: ['v'],
+            description: 'Enable verbose output',
+          }),
         },
       }),
     );
@@ -79,8 +82,8 @@ describe('generateHelp', () => {
       generateHelp({
         name: 'my-cli',
         options: {
-          visible: opt.boolean({ description: 'Visible option' }),
           secret: opt.boolean({ description: 'Secret option', hidden: true }),
+          visible: opt.boolean({ description: 'Visible option' }),
         },
       }),
     );
@@ -92,17 +95,17 @@ describe('generateHelp', () => {
   it('shows commands when present', () => {
     const help = stripAnsi(
       generateHelp({
-        name: 'my-cli',
         commands: {
-          run: opt.command({
-            description: 'Run the thing',
-            handler: () => {},
-          }),
           build: opt.command({
             description: 'Build the thing',
             handler: () => {},
           }),
+          run: opt.command({
+            description: 'Run the thing',
+            handler: () => {},
+          }),
         },
+        name: 'my-cli',
       }),
     );
 
@@ -118,9 +121,9 @@ describe('generateHelp', () => {
       generateHelp({
         name: 'my-cli',
         options: {
-          verbose: opt.boolean({ description: 'Verbose', group: 'Logging' }),
-          quiet: opt.boolean({ description: 'Quiet', group: 'Logging' }),
           port: opt.number({ description: 'Port', group: 'Network' }),
+          quiet: opt.boolean({ description: 'Quiet', group: 'Logging' }),
+          verbose: opt.boolean({ description: 'Verbose', group: 'Logging' }),
         },
       }),
     );
@@ -135,18 +138,18 @@ describe('generateCommandHelp', () => {
     const help = stripAnsi(
       generateCommandHelp(
         {
-          name: 'my-cli',
-          options: {
-            verbose: opt.boolean({ description: 'Global verbose' }),
-          },
           commands: {
             greet: opt.command({
               description: 'Greet someone',
+              handler: () => {},
               options: {
                 name: opt.string({ description: 'Name to greet' }),
               },
-              handler: () => {},
             }),
+          },
+          name: 'my-cli',
+          options: {
+            verbose: opt.boolean({ description: 'Global verbose' }),
           },
         },
         'greet',
@@ -163,13 +166,13 @@ describe('generateCommandHelp', () => {
   it('returns error for unknown command', () => {
     const help = generateCommandHelp(
       {
-        name: 'my-cli',
         commands: {
           greet: opt.command({
             description: 'Greet someone',
             handler: () => {},
           }),
         },
+        name: 'my-cli',
       },
       'unknown',
     );

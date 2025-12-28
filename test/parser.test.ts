@@ -8,10 +8,10 @@ import { parseSimple } from '../src/parser.js';
 describe('parseSimple', () => {
   it('parses string options', async () => {
     const result = await parseSimple({
+      args: ['--name', 'foo'],
       options: {
         name: opt.string({ default: 'world' }),
       },
-      args: ['--name', 'foo'],
     });
 
     assert.deepEqual(result.values, { name: 'foo' });
@@ -19,10 +19,10 @@ describe('parseSimple', () => {
 
   it('parses boolean options', async () => {
     const result = await parseSimple({
+      args: ['--verbose'],
       options: {
         verbose: opt.boolean({ default: false }),
       },
-      args: ['--verbose'],
     });
 
     assert.deepEqual(result.values, { verbose: true });
@@ -30,10 +30,10 @@ describe('parseSimple', () => {
 
   it('parses number options', async () => {
     const result = await parseSimple({
+      args: ['--count', '5'],
       options: {
         count: opt.number({ default: 0 }),
       },
-      args: ['--count', '5'],
     });
 
     assert.deepEqual(result.values, { count: 5 });
@@ -41,11 +41,11 @@ describe('parseSimple', () => {
 
   it('applies defaults', async () => {
     const result = await parseSimple({
+      args: [],
       options: {
         name: opt.string({ default: 'default-name' }),
         verbose: opt.boolean({ default: false }),
       },
-      args: [],
     });
 
     assert.deepEqual(result.values, { name: 'default-name', verbose: false });
@@ -53,10 +53,10 @@ describe('parseSimple', () => {
 
   it('parses short aliases', async () => {
     const result = await parseSimple({
+      args: ['-v'],
       options: {
         verbose: opt.boolean({ aliases: ['v'] }),
       },
-      args: ['-v'],
     });
 
     assert.deepEqual(result.values, { verbose: true });
@@ -64,10 +64,10 @@ describe('parseSimple', () => {
 
   it('returns undefined for options without defaults', async () => {
     const result = await parseSimple({
+      args: [],
       options: {
         name: opt.string(),
       },
-      args: [],
     });
 
     assert.equal(result.values.name, undefined);
@@ -75,10 +75,12 @@ describe('parseSimple', () => {
 
   it('parses enum options', async () => {
     const result = await parseSimple({
-      options: {
-        level: opt.enum(['low', 'medium', 'high'] as const, { default: 'medium' }),
-      },
       args: ['--level', 'high'],
+      options: {
+        level: opt.enum(['low', 'medium', 'high'] as const, {
+          default: 'medium',
+        }),
+      },
     });
 
     assert.equal(result.values.level, 'high');
@@ -87,10 +89,10 @@ describe('parseSimple', () => {
   it('validates enum choices', async () => {
     await assert.rejects(
       parseSimple({
+        args: ['--level', 'invalid'],
         options: {
           level: opt.enum(['low', 'medium', 'high'] as const),
         },
-        args: ['--level', 'invalid'],
       }),
       /Invalid value.*level.*must be one of/i,
     );
@@ -98,10 +100,10 @@ describe('parseSimple', () => {
 
   it('parses array options', async () => {
     const result = await parseSimple({
+      args: ['--files', 'a.txt', '--files', 'b.txt'],
       options: {
         files: opt.array('string'),
       },
-      args: ['--files', 'a.txt', '--files', 'b.txt'],
     });
 
     assert.deepEqual(result.values.files, ['a.txt', 'b.txt']);
@@ -109,10 +111,10 @@ describe('parseSimple', () => {
 
   it('parses number array options', async () => {
     const result = await parseSimple({
+      args: ['--ports', '80', '--ports', '443'],
       options: {
         ports: opt.array('number'),
       },
-      args: ['--ports', '80', '--ports', '443'],
     });
 
     assert.deepEqual(result.values.ports, [80, 443]);
@@ -122,8 +124,8 @@ describe('parseSimple', () => {
 describe('parseSimple positionals', () => {
   it('parses string positionals', async () => {
     const result = await parseSimple({
-      positionals: [opt.stringPos({ required: true })],
       args: ['hello'],
+      positionals: [opt.stringPos({ required: true })],
     });
 
     assert.deepEqual(result.positionals, ['hello']);
@@ -131,8 +133,8 @@ describe('parseSimple positionals', () => {
 
   it('parses number positionals', async () => {
     const result = await parseSimple({
-      positionals: [opt.numberPos({ required: true })],
       args: ['42'],
+      positionals: [opt.numberPos({ required: true })],
     });
 
     assert.deepEqual(result.positionals, [42]);
@@ -140,8 +142,8 @@ describe('parseSimple positionals', () => {
 
   it('parses variadic positionals', async () => {
     const result = await parseSimple({
-      positionals: [opt.stringPos({ required: true }), opt.variadic('string')],
       args: ['first', 'second', 'third'],
+      positionals: [opt.stringPos({ required: true }), opt.variadic('string')],
     });
 
     assert.deepEqual(result.positionals, ['first', ['second', 'third']]);
@@ -149,8 +151,8 @@ describe('parseSimple positionals', () => {
 
   it('applies positional defaults', async () => {
     const result = await parseSimple({
-      positionals: [opt.stringPos({ default: 'default-value' })],
       args: [],
+      positionals: [opt.stringPos({ default: 'default-value' })],
     });
 
     assert.deepEqual(result.positionals, ['default-value']);
@@ -159,8 +161,8 @@ describe('parseSimple positionals', () => {
   it('throws on missing required positional', async () => {
     await assert.rejects(
       parseSimple({
-        positionals: [opt.stringPos({ required: true })],
         args: [],
+        positionals: [opt.stringPos({ required: true })],
       }),
       /Missing required positional/,
     );
@@ -168,8 +170,8 @@ describe('parseSimple positionals', () => {
 
   it('parses number variadic positionals', async () => {
     const result = await parseSimple({
-      positionals: [opt.variadic('number')],
       args: ['1', '2', '3'],
+      positionals: [opt.variadic('number')],
     });
 
     assert.deepEqual(result.positionals, [[1, 2, 3]]);

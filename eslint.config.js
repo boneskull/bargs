@@ -132,6 +132,7 @@ export default defineConfig(
       '**/*.snapshot',
       '**/.tmp/**/*',
       '.worktrees/**/*',
+      'examples/**/*',
     ],
   },
 );

@@ -8,11 +8,11 @@ import { opt } from '../src/opt.js';
 describe('bargs', () => {
   it('parses simple CLI and returns result', async () => {
     const result = await bargs({
+      args: ['--name', 'Alice'],
       name: 'test-cli',
       options: {
         name: opt.string({ default: 'world' }),
       },
-      args: ['--name', 'Alice'],
     });
 
     assert.deepEqual(result.values, { name: 'Alice' });
@@ -22,49 +22,53 @@ describe('bargs', () => {
     let handlerResult: unknown = null;
 
     await bargs({
+      args: ['--name', 'Bob'],
+      handler: (result) => {
+        handlerResult = result;
+      },
       name: 'test-cli',
       options: {
         name: opt.string({ default: 'world' }),
       },
-      handler: (result) => {
-        handlerResult = result;
-      },
-      args: ['--name', 'Bob'],
     });
 
-    assert.deepEqual((handlerResult as { values: unknown }).values, { name: 'Bob' });
+    assert.deepEqual((handlerResult as { values: unknown }).values, {
+      name: 'Bob',
+    });
   });
 
   it('parses command-based CLI', async () => {
     let handlerResult: unknown = null;
 
     await bargs({
-      name: 'test-cli',
+      args: ['greet', '--name', 'Charlie'],
       commands: {
         greet: opt.command({
           description: 'Greet someone',
-          options: {
-            name: opt.string({ default: 'world' }),
-          },
           handler: (result) => {
             handlerResult = result;
           },
+          options: {
+            name: opt.string({ default: 'world' }),
+          },
         }),
       },
-      args: ['greet', '--name', 'Charlie'],
+      name: 'test-cli',
     });
 
     assert.equal((handlerResult as { command: string }).command, 'greet');
-    assert.deepEqual((handlerResult as { values: unknown }).values, { name: 'Charlie' });
+    assert.deepEqual((handlerResult as { values: unknown }).values, {
+      name: 'Charlie',
+    });
   });
 
   it('returns result with command undefined for simple CLI', async () => {
     const result = await bargs({
+      args: [],
       name: 'test-cli',
       options: {
         verbose: opt.boolean(),
       },
-      args: [],
     });
 
     assert.equal(result.command, undefined);
@@ -72,22 +76,22 @@ describe('bargs', () => {
 
   it('applies defaults when no args provided', async () => {
     const result = await bargs({
+      args: [],
       name: 'test-cli',
       options: {
-        name: opt.string({ default: 'default-name' }),
         count: opt.number({ default: 42 }),
+        name: opt.string({ default: 'default-name' }),
       },
-      args: [],
     });
 
-    assert.deepEqual(result.values, { name: 'default-name', count: 42 });
+    assert.deepEqual(result.values, { count: 42, name: 'default-name' });
   });
 
   it('parses positionals for simple CLI', async () => {
     const result = await bargs({
+      args: ['hello'],
       name: 'test-cli',
       positionals: [opt.stringPos({ required: true })],
-      args: ['hello'],
     });
 
     assert.deepEqual(result.positionals, ['hello']);

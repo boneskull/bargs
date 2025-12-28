@@ -8,37 +8,37 @@ import { parseCommands } from '../src/parser.js';
 describe('parseCommands', () => {
   it('parses a command with options', async () => {
     const result = await parseCommands({
+      args: ['greet', '--name', 'Alice', '--verbose'],
+      commands: {
+        greet: opt.command({
+          description: 'Greet someone',
+          handler: () => {},
+          options: {
+            name: opt.string({ default: 'world' }),
+          },
+        }),
+      },
       name: 'test-cli',
       options: {
         verbose: opt.boolean({ default: false }),
       },
-      commands: {
-        greet: opt.command({
-          description: 'Greet someone',
-          options: {
-            name: opt.string({ default: 'world' }),
-          },
-          handler: () => {},
-        }),
-      },
-      args: ['greet', '--name', 'Alice', '--verbose'],
     });
 
     assert.equal(result.command, 'greet');
-    assert.deepEqual(result.values, { verbose: true, name: 'Alice' });
+    assert.deepEqual(result.values, { name: 'Alice', verbose: true });
   });
 
   it('parses command positionals', async () => {
     const result = await parseCommands({
-      name: 'test-cli',
+      args: ['echo', 'hello'],
       commands: {
         echo: opt.command({
           description: 'Echo text',
-          positionals: [opt.stringPos({ required: true })],
           handler: () => {},
+          positionals: [opt.stringPos({ required: true })],
         }),
       },
-      args: ['echo', 'hello'],
+      name: 'test-cli',
     });
 
     assert.equal(result.command, 'echo');
@@ -49,7 +49,7 @@ describe('parseCommands', () => {
     let handlerCalled = false;
 
     await parseCommands({
-      name: 'test-cli',
+      args: ['run'],
       commands: {
         run: opt.command({
           description: 'Run something',
@@ -58,7 +58,7 @@ describe('parseCommands', () => {
           },
         }),
       },
-      args: ['run'],
+      name: 'test-cli',
     });
 
     assert.equal(handlerCalled, true);
@@ -68,7 +68,7 @@ describe('parseCommands', () => {
     let defaultCalled = false;
 
     await parseCommands({
-      name: 'test-cli',
+      args: [],
       commands: {
         run: opt.command({
           description: 'Run something',
@@ -78,7 +78,7 @@ describe('parseCommands', () => {
       defaultHandler: () => {
         defaultCalled = true;
       },
-      args: [],
+      name: 'test-cli',
     });
 
     assert.equal(defaultCalled, true);
@@ -87,14 +87,14 @@ describe('parseCommands', () => {
   it('throws on unknown command', async () => {
     await assert.rejects(
       parseCommands({
-        name: 'test-cli',
+        args: ['unknown'],
         commands: {
           run: opt.command({
             description: 'Run something',
             handler: () => {},
           }),
         },
-        args: ['unknown'],
+        name: 'test-cli',
       }),
       /Unknown command: unknown/,
     );
@@ -102,21 +102,21 @@ describe('parseCommands', () => {
 
   it('merges global and command options', async () => {
     const result = await parseCommands({
-      name: 'test-cli',
-      options: {
-        verbose: opt.boolean({ default: false }),
-        debug: opt.boolean({ default: false }),
-      },
+      args: ['test', '--verbose', '--filter', 'foo'],
       commands: {
         test: opt.command({
           description: 'Run tests',
+          handler: () => {},
           options: {
             filter: opt.string(),
           },
-          handler: () => {},
         }),
       },
-      args: ['test', '--verbose', '--filter', 'foo'],
+      name: 'test-cli',
+      options: {
+        debug: opt.boolean({ default: false }),
+        verbose: opt.boolean({ default: false }),
+      },
     });
 
     assert.equal(result.command, 'test');
@@ -130,21 +130,21 @@ describe('parseCommands', () => {
     let runCalled = false;
 
     await parseCommands({
-      name: 'test-cli',
+      args: [],
       commands: {
+        build: opt.command({
+          description: 'Build something',
+          handler: () => {},
+        }),
         run: opt.command({
           description: 'Run something',
           handler: () => {
             runCalled = true;
           },
         }),
-        build: opt.command({
-          description: 'Build something',
-          handler: () => {},
-        }),
       },
       defaultHandler: 'run',
-      args: [],
+      name: 'test-cli',
     });
 
     assert.equal(runCalled, true);
