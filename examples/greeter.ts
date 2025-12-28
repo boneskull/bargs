@@ -8,31 +8,39 @@
  * - String options with defaults (--greeting)
  * - Positional arguments (name)
  * - Aliases (-s, -v, -g)
- * - Zod transforms
  *
- * Usage: npx tsx examples/greeter.ts World npx tsx examples/greeter.ts World
- * --shout npx tsx examples/greeter.ts World -g "Hey there" npx tsx
- * examples/greeter.ts --help
+ * Usage:
+ *   npx tsx examples/greeter.ts World
+ *   npx tsx examples/greeter.ts World --shout
+ *   npx tsx examples/greeter.ts World -g "Hey there"
+ *   npx tsx examples/greeter.ts --help
  */
-import { z } from 'zod';
-
-import { bargs } from '../src/index.js';
+import { bargs, opt } from '../src/index.js';
 
 const result = await bargs({
-  aliases: {
-    greeting: ['g'],
-    shout: ['s'],
-    verbose: ['v'],
-  },
-  description: 'A friendly greeter CLI',
   name: 'greeter',
-  options: z.object({
-    greeting: z.string().default('Hello').describe('The greeting to use'),
-    shout: z.boolean().default(false).describe('SHOUT THE GREETING'),
-    verbose: z.boolean().default(false).describe('Show extra output'),
-  }),
-  positionals: z.tuple([z.string().describe('Name to greet')]),
   version: '1.0.0',
+  description: 'A friendly greeter CLI',
+  options: {
+    greeting: opt.string({
+      description: 'The greeting to use',
+      default: 'Hello',
+      aliases: ['g'],
+    }),
+    shout: opt.boolean({
+      description: 'SHOUT THE GREETING',
+      default: false,
+      aliases: ['s'],
+    }),
+    verbose: opt.boolean({
+      description: 'Show extra output',
+      default: false,
+      aliases: ['v'],
+    }),
+  },
+  positionals: [
+    opt.stringPos({ description: 'Name to greet', required: true }),
+  ],
 });
 
 // Destructure the result
