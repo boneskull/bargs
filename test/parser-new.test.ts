@@ -72,4 +72,49 @@ describe('parseSimple', () => {
 
     assert.equal(result.values.name, undefined);
   });
+
+  it('parses enum options', async () => {
+    const result = await parseSimple({
+      options: {
+        level: opt.enum(['low', 'medium', 'high'] as const, { default: 'medium' }),
+      },
+      args: ['--level', 'high'],
+    });
+
+    assert.equal(result.values.level, 'high');
+  });
+
+  it('validates enum choices', async () => {
+    await assert.rejects(
+      parseSimple({
+        options: {
+          level: opt.enum(['low', 'medium', 'high'] as const),
+        },
+        args: ['--level', 'invalid'],
+      }),
+      /Invalid value.*level.*must be one of/i,
+    );
+  });
+
+  it('parses array options', async () => {
+    const result = await parseSimple({
+      options: {
+        files: opt.array('string'),
+      },
+      args: ['--files', 'a.txt', '--files', 'b.txt'],
+    });
+
+    assert.deepEqual(result.values.files, ['a.txt', 'b.txt']);
+  });
+
+  it('parses number array options', async () => {
+    const result = await parseSimple({
+      options: {
+        ports: opt.array('number'),
+      },
+      args: ['--ports', '80', '--ports', '443'],
+    });
+
+    assert.deepEqual(result.values.ports, [80, 443]);
+  });
 });
