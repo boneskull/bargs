@@ -118,3 +118,60 @@ describe('parseSimple', () => {
     assert.deepEqual(result.values.ports, [80, 443]);
   });
 });
+
+describe('parseSimple positionals', () => {
+  it('parses string positionals', async () => {
+    const result = await parseSimple({
+      positionals: [opt.stringPos({ required: true })],
+      args: ['hello'],
+    });
+
+    assert.deepEqual(result.positionals, ['hello']);
+  });
+
+  it('parses number positionals', async () => {
+    const result = await parseSimple({
+      positionals: [opt.numberPos({ required: true })],
+      args: ['42'],
+    });
+
+    assert.deepEqual(result.positionals, [42]);
+  });
+
+  it('parses variadic positionals', async () => {
+    const result = await parseSimple({
+      positionals: [opt.stringPos({ required: true }), opt.variadic('string')],
+      args: ['first', 'second', 'third'],
+    });
+
+    assert.deepEqual(result.positionals, ['first', ['second', 'third']]);
+  });
+
+  it('applies positional defaults', async () => {
+    const result = await parseSimple({
+      positionals: [opt.stringPos({ default: 'default-value' })],
+      args: [],
+    });
+
+    assert.deepEqual(result.positionals, ['default-value']);
+  });
+
+  it('throws on missing required positional', async () => {
+    await assert.rejects(
+      parseSimple({
+        positionals: [opt.stringPos({ required: true })],
+        args: [],
+      }),
+      /Missing required positional/,
+    );
+  });
+
+  it('parses number variadic positionals', async () => {
+    const result = await parseSimple({
+      positionals: [opt.variadic('number')],
+      args: ['1', '2', '3'],
+    });
+
+    assert.deepEqual(result.positionals, [[1, 2, 3]]);
+  });
+});
