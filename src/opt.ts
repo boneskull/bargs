@@ -8,6 +8,7 @@ import type {
   NumberOption,
   NumberPositional,
   OptionsSchema,
+  PositionalDef,
   PositionalsSchema,
   StringOption,
   StringPositional,
@@ -48,6 +49,12 @@ const optionsImpl = (...schemas: OptionsSchema[]): OptionsSchema => {
   validateAliasConflicts(merged);
   return merged;
 };
+
+/**
+ * Create a positionals schema from positional definitions.
+ */
+const positionalsImpl = <T extends PositionalsSchema>(...positionals: T): T =>
+  positionals;
 
 /**
  * Namespaced option builders.
@@ -195,6 +202,44 @@ export const opt = {
       d: D,
     ): A & B & C & D;
     (...schemas: OptionsSchema[]): OptionsSchema;
+  },
+
+  /**
+   * Create a positionals schema with proper tuple type inference.
+   *
+   * @example
+   *
+   * ```typescript
+   * const positionals = opt.positionals(
+   *   opt.stringPos({ description: 'Input file', required: true }),
+   *   opt.stringPos({ description: 'Output file' }),
+   * );
+   * ```
+   */
+  positionals: positionalsImpl as {
+    <A extends PositionalDef>(a: A): [A];
+    <A extends PositionalDef, B extends PositionalDef>(a: A, b: B): [A, B];
+    <
+      A extends PositionalDef,
+      B extends PositionalDef,
+      C extends PositionalDef,
+    >(
+      a: A,
+      b: B,
+      c: C,
+    ): [A, B, C];
+    <
+      A extends PositionalDef,
+      B extends PositionalDef,
+      C extends PositionalDef,
+      D extends PositionalDef,
+    >(
+      a: A,
+      b: B,
+      c: C,
+      d: D,
+    ): [A, B, C, D];
+    (...positionals: PositionalDef[]): PositionalsSchema;
   },
 
   /**

@@ -15,30 +15,34 @@
  */
 import { bargs, opt } from '../src/index.js';
 
+const options = opt.options({
+  greeting: opt.string({
+    description: 'The greeting to use',
+    default: 'Hello',
+    aliases: ['g'],
+  }),
+  shout: opt.boolean({
+    description: 'SHOUT THE GREETING',
+    default: false,
+    aliases: ['s'],
+  }),
+  verbose: opt.boolean({
+    description: 'Show extra output',
+    default: false,
+    aliases: ['v'],
+  }),
+});
+
+const positionalsDef = opt.positionals(
+  opt.stringPos({ description: 'Name to greet', required: true }),
+);
+
 const result = await bargs({
   name: 'greeter',
   version: '1.0.0',
   description: 'A friendly greeter CLI',
-  options: {
-    greeting: opt.string({
-      description: 'The greeting to use',
-      default: 'Hello',
-      aliases: ['g'],
-    }),
-    shout: opt.boolean({
-      description: 'SHOUT THE GREETING',
-      default: false,
-      aliases: ['s'],
-    }),
-    verbose: opt.boolean({
-      description: 'Show extra output',
-      default: false,
-      aliases: ['v'],
-    }),
-  },
-  positionals: [
-    opt.stringPos({ description: 'Name to greet', required: true }),
-  ],
+  options,
+  positionals: positionalsDef,
 });
 
 // Destructure the result
