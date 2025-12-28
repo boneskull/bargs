@@ -1,4 +1,4 @@
-// test/help-new.test.ts
+// test/help.test.ts
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 

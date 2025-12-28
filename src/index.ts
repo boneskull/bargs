@@ -36,5 +36,5 @@ export { opt } from './opt.js';
 // Re-export help generators
 export { generateCommandHelp, generateHelp } from './help.js';
 
-// Re-export the main bargs function from bargs-new (will be moved to index later)
-export { bargs } from './bargs-new.js';
+// Re-export the main bargs function
+export { bargs } from './bargs.js';

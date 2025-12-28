@@ -1,8 +1,8 @@
-// test/bargs-new.test.ts
+// test/bargs.test.ts
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { bargs } from '../src/bargs-new.js';
+import { bargs } from '../src/bargs.js';
 import { opt } from '../src/opt.js';
 
 describe('bargs', () => {

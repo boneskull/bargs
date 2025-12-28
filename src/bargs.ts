@@ -1,4 +1,4 @@
-// src/bargs-new.ts
+// src/bargs.ts
 import type {
   AnyCommandConfig,
   BargsConfig,

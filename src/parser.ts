@@ -1,4 +1,4 @@
-// src/parser-new.ts
+// src/parser.ts
 import { parseArgs } from 'node:util';
 
 import type {
