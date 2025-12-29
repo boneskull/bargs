@@ -1,4 +1,6 @@
-// src/types-new.ts
+// src/types.ts
+
+import type { ThemeInput } from './theme.js';
 
 /**
  * Any command config (type-erased for collections). Uses a permissive handler
@@ -74,6 +76,14 @@ export type BargsConfigWithCommands<
     | Handler<BargsResult<InferOptions<TOptions>, [], undefined>>
     | keyof TCommands;
 };
+
+/**
+ * Runtime options for bargs (separate from parsing config).
+ */
+export interface BargsOptions {
+  /** Color theme for help output */
+  theme?: ThemeInput;
+}
 
 /**
  * Result from parsing CLI arguments.
