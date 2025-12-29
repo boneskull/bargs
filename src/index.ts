@@ -30,7 +30,13 @@ export { opt };
 export { isThenable } from './parser.js';
 
 // Re-export theme utilities
-export { createStyler, defaultTheme, getTheme, themes } from './theme.js';
+export {
+  createStyler,
+  defaultTheme,
+  getTheme,
+  stripAnsi,
+  themes,
+} from './theme.js';
 
 // Re-export theme types
 export type {

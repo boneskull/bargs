@@ -2,10 +2,9 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { stripAnsi } from '../src/ansi.js';
 import { generateCommandHelp, generateHelp } from '../src/help.js';
 import { opt } from '../src/opt.js';
-import { themes } from '../src/theme.js';
+import { stripAnsi, themes } from '../src/theme.js';
 
 describe('generateHelp', () => {
   it('generates help with name and description', () => {

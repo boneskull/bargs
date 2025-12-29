@@ -1,5 +1,12 @@
 // src/theme.ts
 
+import { stripVTControlCharacters } from 'node:util';
+
+/**
+ * Strip all ANSI escape codes from a string.
+ */
+export const stripAnsi = stripVTControlCharacters;
+
 /**
  * A bargs color theme.
  */
