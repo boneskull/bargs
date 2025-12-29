@@ -29,12 +29,25 @@ export { opt };
 // Re-export isThenable for advanced use cases
 export { isThenable } from './parser.js';
 
+// Re-export theme utilities
+export { createStyler, defaultTheme, getTheme, themes } from './theme.js';
+
+// Re-export theme types
+export type {
+  StyleFn,
+  Styler,
+  Theme,
+  ThemeColors,
+  ThemeInput,
+} from './theme.js';
+
 // Re-export all types
 export type {
   AnyCommandConfig,
   ArrayOption,
   BargsConfig,
   BargsConfigWithCommands,
+  BargsOptions,
   BargsResult,
   BooleanOption,
   CommandConfig,
