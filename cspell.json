@@ -40,19 +40,15 @@
     "wscript",
     "bahmutov",
     "huskyrc",
-    "commitlintrc"
-  ],
-  "words": [
-    "andouille",
+    "commitlintrc",
     "bargs",
-    "bupkis",
-    "mhello",
     "minfo",
     "msuccess",
     "mwarning",
     "mycli",
-    "positionals",
-    "subcommand",
-    "subcommands"
-  ]
+    "barg",
+    "argumentis",
+    "mhello"
+  ],
+  "words": ["bupkis", "positionals", "subcommand", "subcommands"]
 }
