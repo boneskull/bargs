@@ -308,3 +308,59 @@ describe('generateHelp with themes', () => {
     assert.ok(help.includes('\x1b[34m')); // blue section header
   });
 });
+
+describe('generateHelp with positionals', () => {
+  it('shows positionals in usage line', () => {
+    const config = {
+      name: 'test-app',
+      options: {},
+      positionals: [
+        { description: 'Input file', required: true, type: 'string' as const },
+      ],
+    };
+    const help = stripAnsi(generateHelp(config));
+    // Should show positional in usage line
+    assert.ok(help.includes('<arg0>'));
+  });
+
+  it('shows POSITIONALS section when positionals defined', () => {
+    const config = {
+      name: 'test-app',
+      options: {},
+      positionals: [
+        { description: 'Input file', required: true, type: 'string' as const },
+        { description: 'Output file', type: 'string' as const },
+      ],
+    };
+    const help = stripAnsi(generateHelp(config));
+    assert.ok(help.includes('POSITIONALS'));
+    assert.ok(help.includes('Input file'));
+    assert.ok(help.includes('Output file'));
+  });
+
+  it('applies positional color from theme', () => {
+    const customTheme = {
+      colors: {
+        command: '',
+        defaultValue: '',
+        description: '',
+        example: '',
+        flag: '',
+        positional: '\x1b[33m', // yellow
+        scriptName: '',
+        sectionHeader: '',
+        type: '',
+        usage: '',
+      },
+    };
+    const config = {
+      name: 'test-app',
+      options: {},
+      positionals: [
+        { description: 'Input file', required: true, type: 'string' as const },
+      ],
+    };
+    const help = generateHelp(config, customTheme);
+    assert.ok(help.includes('\x1b[33m')); // positional color applied
+  });
+});

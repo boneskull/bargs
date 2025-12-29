@@ -137,16 +137,25 @@ export const generateHelp = <
   }
   lines.push('');
 
+  // Build positional names for usage line
+  const posNames: string[] = [];
+  if (config.positionals && config.positionals.length > 0) {
+    for (let i = 0; i < config.positionals.length; i++) {
+      const pos = config.positionals[i]!;
+      const name = `arg${i}`;
+      const formatted = pos.required ? `<${name}>` : `[${name}]`;
+      posNames.push(styler.positional(formatted));
+    }
+  }
+
   // Usage
   lines.push(styler.sectionHeader('USAGE'));
   if (hasCommands(config)) {
-    lines.push(styler.usage(`  $ ${config.name} <command> [options]`));
+    const posStr = posNames.length > 0 ? ` ${posNames.join(' ')}` : '';
+    lines.push(styler.usage(`  $ ${config.name} <command> [options]${posStr}`));
   } else {
-    const positionalsPart = buildPositionalsUsage(config.positionals);
-    const usageParts = [`$ ${config.name}`, '[options]', positionalsPart]
-      .filter(Boolean)
-      .join(' ');
-    lines.push(styler.usage(`  ${usageParts}`));
+    const posStr = posNames.length > 0 ? ` ${posNames.join(' ')}` : '';
+    lines.push(styler.usage(`  $ ${config.name} [options]${posStr}`));
   }
   lines.push('');
 
@@ -200,6 +209,22 @@ export const generateHelp = <
       }
       lines.push('');
     }
+  }
+
+  // Positionals
+  if (config.positionals && config.positionals.length > 0) {
+    lines.push(styler.sectionHeader('POSITIONALS'));
+    for (let i = 0; i < config.positionals.length; i++) {
+      const pos = config.positionals[i]!;
+      const name = `arg${i}`;
+      const formatted = pos.required ? `<${name}>` : `[${name}]`;
+      const padding = Math.max(0, 20 - formatted.length);
+      const desc = pos.description ?? '';
+      lines.push(
+        `  ${styler.positional(formatted)}${' '.repeat(padding)}${styler.description(desc)}`,
+      );
+    }
+    lines.push('');
   }
 
   // Footer
