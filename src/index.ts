@@ -1,7 +1,21 @@
 // src/index.ts - Main entry point for bargs
 
-// Re-export the main bargs function
-export { bargs } from './bargs.js';
+import { bargsAsync as bargsAsyncBase, bargs as bargsBase } from './bargs.js';
+import { opt } from './opt.js';
+
+/**
+ * Main bargs entry point (sync). Also provides access to all opt builders via
+ * bargs.string(), bargs.boolean(), etc.
+ */
+export const bargs = Object.assign(bargsBase, opt);
+
+/**
+ * Async bargs entry point. Also provides access to all opt builders via
+ * bargsAsync.string(), etc.
+ */
+export const bargsAsync = Object.assign(bargsAsyncBase, opt);
+
+export default bargs;
 
 // Re-export errors
 export { BargsError, HelpError } from './errors.js';
@@ -10,7 +24,10 @@ export { BargsError, HelpError } from './errors.js';
 export { generateCommandHelp, generateHelp } from './help.js';
 
 // Re-export the opt builder
-export { opt } from './opt.js';
+export { opt };
+
+// Re-export isThenable for advanced use cases
+export { isThenable } from './parser.js';
 
 // Re-export all types
 export type {
@@ -21,9 +38,11 @@ export type {
   BargsResult,
   BooleanOption,
   CommandConfig,
+  CommandConfigInput,
   CountOption,
   EnumOption,
   Handler,
+  HandlerFn,
   InferOption,
   InferOptions,
   InferPositional,

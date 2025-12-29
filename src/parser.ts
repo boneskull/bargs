@@ -2,16 +2,58 @@
 import { parseArgs } from 'node:util';
 
 import type {
-  AnyCommandConfig,
   BargsConfigWithCommands,
   BargsResult,
+  CommandConfigInput,
+  HandlerFn,
   InferOptions,
   InferPositionals,
   OptionsSchema,
   PositionalsSchema,
 } from './types.js';
 
-import { HelpError } from './errors.js';
+import { BargsError, HelpError } from './errors.js';
+
+/**
+ * Check if a value is a thenable (Promise-like). Uses duck-typing for
+ * cross-realm compatibility.
+ */
+export const isThenable = (value: unknown): value is PromiseLike<unknown> =>
+  value !== null &&
+  typeof value === 'object' &&
+  typeof (value as { then?: unknown }).then === 'function';
+
+/**
+ * Run a handler or array of handlers synchronously. Throws if any handler
+ * returns a thenable.
+ */
+export const runSyncHandlers = <T>(
+  handler: HandlerFn<T> | HandlerFn<T>[],
+  result: T,
+): void => {
+  const handlers: HandlerFn<T>[] = Array.isArray(handler) ? handler : [handler];
+  for (const h of handlers) {
+    const maybePromise = h(result);
+    if (isThenable(maybePromise)) {
+      throw new BargsError(
+        'Handler returned a thenable. Use bargsAsync() for async handlers.',
+      );
+    }
+  }
+};
+
+/**
+ * Run a handler or array of handlers sequentially (async).
+ */
+export const runHandlers = async <T>(
+  handler: HandlerFn<T> | HandlerFn<T>[],
+  result: T,
+): Promise<void> => {
+  const handlers: HandlerFn<T>[] = Array.isArray(handler) ? handler : [handler];
+  for (const h of handlers) {
+    await h(result);
+  }
+};
 
 /**
  * Build parseArgs options config from our options schema.
@@ -111,12 +153,43 @@ const coerceValues = (
 };
 
 /**
+ * Validate positionals schema:
+ * 1. Variadic positional (if present) must be last
+ * 2. Required positionals cannot follow optional ones
+ */
+const validatePositionalsSchema = (schema: PositionalsSchema): void => {
+  const variadicIndex = schema.findIndex((def) => def.type === 'variadic');
+  if (variadicIndex !== -1 && variadicIndex !== schema.length - 1) {
+    throw new BargsError(
+      'Variadic positional must be the last positional argument.',
+    );
+  }
+
+  // Check that required positionals don't follow optional ones
+  let seenOptional = false;
+  for (let i = 0; i < schema.length; i++) {
+    const def = schema[i]!;
+    const isOptional =
+      !def.required && !('default' in def && def.default !== undefined);
+
+    if (isOptional) {
+      seenOptional = true;
+    } else if (seenOptional && def.type !== 'variadic') {
+      throw new BargsError(
+        `Required positional at index ${i} cannot follow an optional positional.`,
+      );
+    }
+  }
+};
+
+/**
  * Coerce positional values.
  */
 const coercePositionals = (
   positionals: string[],
   schema: PositionalsSchema,
 ): unknown[] => {
+  validatePositionalsSchema(schema);
   const result: unknown[] = [];
 
   for (let i = 0; i < schema.length; i++) {
@@ -138,6 +211,14 @@ const coercePositionals = (
     if (value !== undefined) {
       if (def.type === 'number') {
         result.push(Number(value));
+      } else if (def.type === 'enum') {
+        // Validate enum choice
+        if (!def.choices.includes(value)) {
+          throw new Error(
+            `Invalid value for positional ${i}: "${value}". Must be one of: ${def.choices.join(', ')}`,
+          );
+        }
+        result.push(value);
       } else {
         result.push(value);
       }
@@ -166,15 +247,18 @@ interface ParseSimpleOptions<
 }
 
 /**
- * Parse arguments for a simple CLI (no commands).
+ * Parse arguments for a simple CLI (no commands). This is synchronous - it only
+ * parses, does not run handlers.
  */
-export const parseSimple = async <
+export const parseSimple = <
   TOptions extends OptionsSchema = OptionsSchema,
   TPositionals extends PositionalsSchema = PositionalsSchema,
 >(
   config: ParseSimpleOptions<TOptions, TPositionals>,
-): Promise<
-  BargsResult<InferOptions<TOptions>, InferPositionals<TPositionals>, undefined>
+): BargsResult<
+  InferOptions<TOptions>,
+  InferPositionals<TPositionals>,
+  undefined
 > => {
   const {
     args = process.argv.slice(2),
@@ -205,19 +289,26 @@ export const parseSimple = async <
 };
 
 /**
- * Parse arguments for a command-based CLI.
+ * Result from parseCommandsCore including the handler to run.
  */
-export const parseCommands = async <
+interface ParseCommandsCoreResult<TOptions extends OptionsSchema> {
+  handler: HandlerFn<unknown> | HandlerFn<unknown>[] | undefined;
+  result: BargsResult<InferOptions<TOptions>, unknown[], string | undefined>;
+}
+
+/**
+ * Core command parsing logic (sync, no handler execution). Returns the parsed
+ * result and the handler to run.
+ */
+const parseCommandsCore = <
   TOptions extends OptionsSchema = OptionsSchema,
-  TCommands extends Record<string, AnyCommandConfig> = Record<
+  TCommands extends Record<string, CommandConfigInput> = Record<
     string,
-    AnyCommandConfig
+    CommandConfigInput
   >,
 >(
-  config: BargsConfigWithCommands<TOptions, PositionalsSchema, TCommands>,
-): Promise<
-  BargsResult<InferOptions<TOptions>, unknown[], string | undefined>
-> => {
+  config: BargsConfigWithCommands<TOptions, TCommands>,
+): ParseCommandsCoreResult<TOptions> => {
   const {
     args = process.argv.slice(2),
     commands,
@@ -225,7 +316,7 @@ export const parseCommands = async <
     options: globalOptions = {} as TOptions,
   } = config;
 
-  const commandsRecord = commands as Record<string, AnyCommandConfig>;
+  const commandsRecord = commands as Record<string, CommandConfigInput>;
 
   // Find command name (first non-flag argument)
   const commandIndex = args.findIndex((arg) => !arg.startsWith('-'));
@@ -237,14 +328,14 @@ export const parseCommands = async <
   // No command specified
   if (!commandName) {
     if (typeof defaultHandler === 'string') {
-      // Use named default command
-      return parseCommands({
+      // Use named default command (recursive)
+      return parseCommandsCore({
         ...config,
         args: [defaultHandler, ...args],
         defaultHandler: undefined,
       });
     } else if (typeof defaultHandler === 'function') {
-      // Parse global options and call default handler
+      // Parse global options only
       const parseArgsOptions = buildParseArgsConfig(globalOptions);
       const { values } = parseArgs({
         allowPositionals: false,
@@ -264,10 +355,7 @@ export const parseCommands = async <
         values: coercedValues as InferOptions<TOptions>,
       };
 
-      await defaultHandler(
-        result as BargsResult<InferOptions<TOptions>, [], undefined>,
-      );
-      return result;
+      return { handler: defaultHandler as HandlerFn<unknown>, result };
     } else {
       throw new HelpError('No command specified.');
     }
@@ -305,8 +393,57 @@ export const parseCommands = async <
     values: coercedValues,
   } as BargsResult<InferOptions<TOptions>, unknown[], string>;
 
-  // Call handler
-  await command.handler(result as Parameters<typeof command.handler>[0]);
+  return { handler: command.handler, result };
+};
+
+/**
+ * Parse arguments for a command-based CLI (sync). Throws if any handler returns
+ * a thenable.
+ */
+export const parseCommandsSync = <
+  TOptions extends OptionsSchema = OptionsSchema,
+  TCommands extends Record<string, CommandConfigInput> = Record<
+    string,
+    CommandConfigInput
+  >,
+>(
+  config: BargsConfigWithCommands<TOptions, TCommands>,
+): BargsResult<InferOptions<TOptions>, unknown[], string | undefined> => {
+  const { handler, result } = parseCommandsCore(config);
+
+  if (handler) {
+    runSyncHandlers(handler, result);
+  }
 
   return result;
 };
+
+/**
+ * Parse arguments for a command-based CLI (async).
+ */
+export const parseCommandsAsync = async <
+  TOptions extends OptionsSchema = OptionsSchema,
+  TCommands extends Record<string, CommandConfigInput> = Record<
+    string,
+    CommandConfigInput
+  >,
+>(
+  config: BargsConfigWithCommands<TOptions, TCommands>,
+): Promise<
+  BargsResult<InferOptions<TOptions>, unknown[], string | undefined>
+> => {
+  const { handler, result } = parseCommandsCore(config);
+
+  if (handler) {
+    await runHandlers(handler, result);
+  }
+
+  return result;
+};
+
+/**
+ * Parse arguments for a command-based CLI.
+ *
+ * @deprecated Use parseCommandsSync or parseCommandsAsync instead.
+ */
+export const parseCommands = parseCommandsAsync;

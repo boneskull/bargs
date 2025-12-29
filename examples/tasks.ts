@@ -8,14 +8,14 @@
  * - Global options (--verbose, --file)
  * - Command-specific options (--priority for add)
  * - Command positionals (task text)
- * - Opt.command() for type inference
+ * - Bargs.command() for type inference
  * - DefaultHandler for no-command case
  *
  * Usage: npx tsx examples/tasks.ts add "Buy groceries" --priority high npx tsx
  * examples/tasks.ts list npx tsx examples/tasks.ts done 1 npx tsx
  * examples/tasks.ts --help npx tsx examples/tasks.ts add --help
  */
-import { bargs, opt } from '../src/index.js';
+import bargs from '../src/index.js';
 
 // In-memory task storage (in a real app, this would be a file or database)
 interface Task {
@@ -39,12 +39,12 @@ await bargs({
 
   // Global options available to all commands
   options: {
-    file: opt.string({
+    file: bargs.string({
       description: 'Task storage file',
       default: 'tasks.json',
       aliases: ['f'],
     }),
-    verbose: opt.boolean({
+    verbose: bargs.boolean({
       description: 'Show detailed output',
       default: false,
       aliases: ['v'],
@@ -52,23 +52,23 @@ await bargs({
   },
 
   commands: {
-    add: opt.command({
+    add: bargs.command({
       description: 'Add a new task',
       options: {
-        priority: opt.enum(['low', 'medium', 'high'] as const, {
+        priority: bargs.enum(['low', 'medium', 'high'], {
           description: 'Task priority',
           default: 'medium',
           aliases: ['p'],
         }),
       },
       positionals: [
-        opt.stringPos({ description: 'Task description', required: true }),
+        bargs.stringPos({ description: 'Task description', required: true }),
       ],
       handler: async ({ positionals, values }) => {
         const [text] = positionals;
-        const priority = (values as { priority: 'low' | 'medium' | 'high' })
-          .priority;
-        const verbose = (values as { verbose: boolean }).verbose;
+        // priority is typed from command options
+        // verbose is accessible via Record<string, unknown>
+        const { priority, verbose } = values;
 
         const task: Task = {
           done: false,
@@ -86,18 +86,18 @@ await bargs({
       },
     }),
 
-    list: opt.command({
+    list: bargs.command({
       description: 'List all tasks',
       options: {
-        all: opt.boolean({
+        all: bargs.boolean({
           description: 'Show completed tasks too',
           default: false,
           aliases: ['a'],
         }),
       },
       handler: async ({ values }) => {
-        const all = (values as { all: boolean }).all;
-        const verbose = (values as { verbose: boolean }).verbose;
+        // all is typed from command options, verbose from global
+        const { all, verbose } = values;
 
         const filtered = all ? tasks : tasks.filter((t) => !t.done);
 
@@ -123,13 +123,16 @@ await bargs({
       },
     }),
 
-    done: opt.command({
+    done: bargs.command({
       description: 'Mark a task as complete',
-      positionals: [opt.stringPos({ description: 'Task ID', required: true })],
+      positionals: [
+        bargs.stringPos({ description: 'Task ID', required: true }),
+      ],
       handler: async ({ positionals, values }) => {
         const [idStr] = positionals;
         const id = parseInt(idStr as string, 10);
-        const verbose = (values as { verbose: boolean }).verbose;
+        // verbose is accessible from global options
+        const { verbose } = values;
 
         const task = tasks.find((t) => t.id === id);
         if (!task) {
@@ -151,7 +154,8 @@ await bargs({
   // Default handler when no command is given - show task count
   defaultHandler: async ({ values }) => {
     const pending = tasks.filter((t) => !t.done).length;
-    if ((values as { verbose: boolean }).verbose) {
+    // Global options are fully typed in defaultHandler
+    if (values.verbose) {
       console.log(`Tasks: ${tasks.length} total, ${pending} pending`);
     } else {
       console.log(`${pending} pending task(s)`);

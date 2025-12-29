@@ -42,7 +42,48 @@ describe('opt.options', () => {
 
     // Should not throw - same option name can keep its alias
     const merged = opt.options(a, b);
-    assert.equal(merged.verbose.default, true);
+    // Note: When merging options with same key but different literal defaults,
+    // TypeScript intersects { default: false } & { default: true } = never.
+    // Runtime is correct - later schema wins. Cast to check runtime value.
+    assert.equal((merged.verbose as { default?: boolean }).default, true);
+  });
+});
+
+describe('opt.positionals', () => {
+  it('creates a positionals schema with single positional', () => {
+    const positionals = opt.positionals(
+      opt.stringPos({ description: 'Input file', required: true }),
+    );
+
+    assert.equal(positionals.length, 1);
+    assert.equal(positionals[0].type, 'string');
+    assert.equal(positionals[0].required, true);
+  });
+
+  it('creates a positionals schema with multiple positionals', () => {
+    const positionals = opt.positionals(
+      opt.stringPos({ description: 'Source', required: true }),
+      opt.stringPos({ description: 'Destination' }),
+      opt.numberPos({ default: 0 }),
+    );
+
+    assert.equal(positionals.length, 3);
+    assert.equal(positionals[0].type, 'string');
+    assert.equal(positionals[1].type, 'string');
+    assert.equal(positionals[2].type, 'number');
+    assert.equal(positionals[2].default, 0);
+  });
+
+  it('preserves positional order', () => {
+    const positionals = opt.positionals(
+      opt.stringPos({ description: 'first' }),
+      opt.numberPos({ description: 'second' }),
+      opt.variadic('string', { description: 'rest' }),
+    );
+
+    assert.equal(positionals[0].description, 'first');
+    assert.equal(positionals[1].description, 'second');
+    assert.equal(positionals[2].description, 'rest');
   });
 });
 

@@ -1,8 +1,8 @@
 // src/help.ts
 import type {
-  AnyCommandConfig,
   BargsConfig,
   BargsConfigWithCommands,
+  CommandConfigInput,
   OptionDef,
   OptionsSchema,
   PositionalsSchema,
@@ -67,9 +67,11 @@ const formatOptionHelp = (name: string, def: OptionDef): string => {
 /**
  * Check if config has commands.
  */
-const hasCommands = <T extends { commands?: Record<string, AnyCommandConfig> }>(
+const hasCommands = <
+  T extends { commands?: Record<string, CommandConfigInput> },
+>(
   config: T,
-): config is T & { commands: Record<string, AnyCommandConfig> } =>
+): config is T & { commands: Record<string, CommandConfigInput> } =>
   config.commands !== undefined && Object.keys(config.commands).length > 0;
 
 /**
@@ -78,7 +80,7 @@ const hasCommands = <T extends { commands?: Record<string, AnyCommandConfig> }>(
 export const generateHelp = <
   TOptions extends OptionsSchema = OptionsSchema,
   TPositionals extends PositionalsSchema = PositionalsSchema,
-  TCommands extends Record<string, AnyCommandConfig> | undefined = undefined,
+  TCommands extends Record<string, CommandConfigInput> | undefined = undefined,
 >(
   config: BargsConfig<TOptions, TPositionals, TCommands>,
 ): string => {
@@ -168,16 +170,15 @@ export const generateHelp = <
  */
 export const generateCommandHelp = <
   TOptions extends OptionsSchema = OptionsSchema,
-  TPositionals extends PositionalsSchema = PositionalsSchema,
-  TCommands extends Record<string, AnyCommandConfig> = Record<
+  TCommands extends Record<string, CommandConfigInput> = Record<
     string,
-    AnyCommandConfig
+    CommandConfigInput
   >,
 >(
-  config: BargsConfigWithCommands<TOptions, TPositionals, TCommands>,
+  config: BargsConfigWithCommands<TOptions, TCommands>,
   commandName: string,
 ): string => {
-  const commandsRecord = config.commands as Record<string, AnyCommandConfig>;
+  const commandsRecord = config.commands as Record<string, CommandConfigInput>;
   const command = commandsRecord[commandName];
   if (!command) {
     return `Unknown command: ${commandName}`;

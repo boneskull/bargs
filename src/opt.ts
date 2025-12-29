@@ -5,6 +5,7 @@ import type {
   CommandConfig,
   CountOption,
   EnumOption,
+  EnumPositional,
   NumberOption,
   NumberPositional,
   OptionsSchema,
@@ -90,12 +91,18 @@ export const opt = {
   }),
 
   /**
-   * Define a boolean option.
+   * Define a boolean option. Props type is preserved to enable default
+   * inference.
    */
-  boolean: (props: Omit<BooleanOption, 'type'> = {}): BooleanOption => ({
-    type: 'boolean',
-    ...props,
-  }),
+  boolean: <
+    P extends Omit<BooleanOption, 'type'> = Omit<BooleanOption, 'type'>,
+  >(
+    props: P = {} as P,
+  ): BooleanOption & P =>
+    ({
+      type: 'boolean',
+      ...props,
+    }) as BooleanOption & P,
 
   /**
    * Define a command with proper type inference.
@@ -115,8 +122,8 @@ export const opt = {
    * ```
    */
   command: <
-    TOptions extends OptionsSchema,
-    TPositionals extends PositionalsSchema,
+    TOptions extends OptionsSchema = OptionsSchema,
+    TPositionals extends PositionalsSchema = PositionalsSchema,
   >(
     config: CommandConfig<TOptions, TPositionals>,
   ): CommandConfig<TOptions, TPositionals> => config,
@@ -130,24 +137,57 @@ export const opt = {
   }),
 
   /**
-   * Define an enum option with string choices.
+   * Define an enum option with string choices. The choices array is inferred as
+   * a tuple of literal types automatically. Props type is preserved to enable
+   * default inference.
    */
-  enum: <T extends string>(
-    choices: readonly T[],
-    props: Omit<EnumOption<T>, 'choices' | 'type'> = {},
-  ): EnumOption<T> => ({
-    choices,
-    type: 'enum',
-    ...props,
-  }),
+  enum: <
+    const T extends readonly string[],
+    P extends Omit<EnumOption<T[number]>, 'choices' | 'type'> = Omit<
+      EnumOption<T[number]>,
+      'choices' | 'type'
+    >,
+  >(
+    choices: T,
+    props: P = {} as P,
+  ): EnumOption<T[number]> & P =>
+    ({
+      choices,
+      type: 'enum',
+      ...props,
+    }) as EnumOption<T[number]> & P,
 
   /**
-   * Define a number option.
+   * Define an enum positional argument with string choices. The choices array
+   * is inferred as a tuple of literal types automatically.
    */
-  number: (props: Omit<NumberOption, 'type'> = {}): NumberOption => ({
-    type: 'number',
-    ...props,
-  }),
+  enumPos: <
+    const T extends readonly string[],
+    P extends Omit<EnumPositional<T[number]>, 'choices' | 'type'> = Omit<
+      EnumPositional<T[number]>,
+      'choices' | 'type'
+    >,
+  >(
+    choices: T,
+    props: P = {} as P,
+  ): EnumPositional<T[number]> & P =>
+    ({
+      choices,
+      type: 'enum',
+      ...props,
+    }) as EnumPositional<T[number]> & P,
+
+  /**
+   * Define a number option. Props type is preserved to enable default
+   * inference.
+   */
+  number: <P extends Omit<NumberOption, 'type'> = Omit<NumberOption, 'type'>>(
+    props: P = {} as P,
+  ): NumberOption & P =>
+    ({
+      type: 'number',
+      ...props,
+    }) as NumberOption & P,
 
   // ─── Positional Builders ───────────────────────────────────────────
 
@@ -219,11 +259,7 @@ export const opt = {
   positionals: positionalsImpl as {
     <A extends PositionalDef>(a: A): [A];
     <A extends PositionalDef, B extends PositionalDef>(a: A, b: B): [A, B];
-    <
-      A extends PositionalDef,
-      B extends PositionalDef,
-      C extends PositionalDef,
-    >(
+    <A extends PositionalDef, B extends PositionalDef, C extends PositionalDef>(
       a: A,
       b: B,
       c: C,
@@ -243,12 +279,16 @@ export const opt = {
   },
 
   /**
-   * Define a string option.
+   * Define a string option. Props type is preserved to enable default
+   * inference.
    */
-  string: (props: Omit<StringOption, 'type'> = {}): StringOption => ({
-    type: 'string',
-    ...props,
-  }),
+  string: <P extends Omit<StringOption, 'type'> = Omit<StringOption, 'type'>>(
+    props: P = {} as P,
+  ): P & StringOption =>
+    ({
+      type: 'string',
+      ...props,
+    }) as P & StringOption,
 
   // ─── Composition ───────────────────────────────────────────────────
 

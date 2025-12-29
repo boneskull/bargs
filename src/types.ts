@@ -7,7 +7,9 @@
 export interface AnyCommandConfig {
   description: string;
 
-  handler: (result: any) => Promise<void> | void;
+  handler:
+    | ((result: any) => Promise<void> | void)[]
+    | ((result: any) => Promise<void> | void);
   options?: OptionsSchema;
   positionals?: PositionalsSchema;
 }
@@ -48,15 +50,25 @@ export interface BargsConfig<
 
 /**
  * Bargs config with commands (requires commands, allows defaultHandler).
+ *
+ * Commands can be defined in two ways:
+ *
+ * 1. Using opt.command() - handler receives local options only (legacy)
+ * 2. Inline definition - handler can receive both global and local options
+ *
+ * Note: Top-level `positionals` is not allowed for command-based CLIs. Each
+ * command defines its own positionals.
  */
 export type BargsConfigWithCommands<
   TOptions extends OptionsSchema = OptionsSchema,
-  TPositionals extends PositionalsSchema = PositionalsSchema,
-  TCommands extends Record<string, AnyCommandConfig> = Record<
+  TCommands extends Record<string, CommandConfigInput> = Record<
     string,
-    AnyCommandConfig
+    CommandConfigInput
   >,
-> = Omit<BargsConfig<TOptions, TPositionals, TCommands>, 'handler'> & {
+> = Omit<
+  BargsConfig<TOptions, PositionalsSchema, TCommands>,
+  'handler' | 'positionals'
+> & {
   commands: TCommands;
   defaultHandler?:
     | Handler<BargsResult<InferOptions<TOptions>, [], undefined>>
@@ -86,6 +98,10 @@ export interface BooleanOption extends OptionBase {
 
 /**
  * Command configuration.
+ *
+ * The handler receives typed local options plus access to global options (as
+ * Record<string, unknown>). Global options are available at runtime but require
+ * type narrowing to access safely.
  */
 export interface CommandConfig<
   TOptions extends OptionsSchema = OptionsSchema,
@@ -93,10 +109,26 @@ export interface CommandConfig<
 > {
   description: string;
   handler: Handler<
-    BargsResult<InferOptions<TOptions>, InferPositionals<TPositionals>, string>
+    BargsResult<
+      InferOptions<TOptions> & Record<string, unknown>,
+      InferPositionals<TPositionals>,
+      string
+    >
   >;
   options?: TOptions;
   positionals?: TPositionals;
+}
+
+/**
+ * Command config input type for inline command definitions. The handler type is
+ * intentionally loose here - it accepts any result type, allowing commands
+ * defined with opt.command() or inline to work.
+ */
+export interface CommandConfigInput {
+  description: string;
+  handler: Handler<any>;
+  options?: OptionsSchema;
+  positionals?: PositionalsSchema;
 }
 
 /**
@@ -117,9 +149,26 @@ export interface EnumOption<T extends string = string> extends OptionBase {
 }
 
 /**
- * Handler function signature.
+ * Enum positional definition with string choices.
  */
-export type Handler<TResult> = (result: TResult) => Promise<void> | void;
+export interface EnumPositional<
+  T extends string = string,
+> extends PositionalBase {
+  choices: readonly T[];
+  default?: T;
+  type: 'enum';
+}
+
+/**
+ * Handler - either a single function or an array of functions. When an array is
+ * provided, handlers run sequentially in order.
+ */
+export type Handler<TResult> = HandlerFn<TResult> | HandlerFn<TResult>[];
+
+/**
+ * Single handler function signature.
+ */
+export type HandlerFn<TResult> = (result: TResult) => Promise<void> | void;
 
 /**
  * Infer the TypeScript type from an option definition.
@@ -179,11 +228,17 @@ export type InferPositional<T extends PositionalDef> =
         : T['default'] extends string
           ? string
           : string | undefined
-      : T extends VariadicPositional
-        ? T['items'] extends 'number'
-          ? number[]
-          : string[]
-        : never;
+      : T extends EnumPositional<infer E>
+        ? T['required'] extends true
+          ? E
+          : T['default'] extends E
+            ? E
+            : E | undefined
+        : T extends VariadicPositional
+          ? T['items'] extends 'number'
+            ? number[]
+            : string[]
+          : never;
 
 /**
  * Infer positionals tuple type from schema.
@@ -228,6 +283,7 @@ export type OptionsSchema = Record<string, OptionDef>;
  * Union of positional definitions.
  */
 export type PositionalDef =
+  | EnumPositional<string>
   | NumberPositional
   | StringPositional
   | VariadicPositional;
