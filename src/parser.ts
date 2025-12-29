@@ -154,6 +154,7 @@ const coerceValues = (
 
 /**
  * Validate positionals schema:
+ *
  * 1. Variadic positional (if present) must be last
  * 2. Required positionals cannot follow optional ones
  */

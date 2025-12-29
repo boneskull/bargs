@@ -323,9 +323,9 @@ describe('bargsAsync', () => {
   });
 });
 
-describe('bargs with options (second parameter)', () => {
+describe('bargsAsync with options (second parameter)', () => {
   it('accepts theme by name in options', async () => {
-    const result = await bargs(
+    const result = await bargsAsync(
       {
         args: ['--foo', 'bar'],
         name: 'test',
@@ -351,7 +351,7 @@ describe('bargs with options (second parameter)', () => {
         usage: '',
       },
     };
-    const result = await bargs(
+    const result = await bargsAsync(
       {
         args: ['--foo', 'bar'],
         name: 'test',
@@ -363,7 +363,7 @@ describe('bargs with options (second parameter)', () => {
   });
 
   it('works without options parameter', async () => {
-    const result = await bargs({
+    const result = await bargsAsync({
       args: ['--foo', 'bar'],
       name: 'test',
       options: { foo: { type: 'string' } },
