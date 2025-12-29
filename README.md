@@ -1,63 +1,207 @@
-# boneskull-template
-
-> JUST THE WAY I LIKE IT
-
-This is my template for new Node.js projects. It is the best one.
+<p align="center">
+  <a href="/"><img src="./assets/logo.png" width="512px" align="center" alt="bargs: a barg parser"/></a>
+  <h1 align="center"><span class="bargs">⁓ bargs ⁓<span></h1>
+  <p align="center">
+    <em>“Ex argumentis, veritas”</em>
+    <br/>
+    <small>by <a href="https://github.com/boneskull" title="@boneskull on GitHub">@boneskull</a></small>
+  </p>
+</p>
 
 ## Install
 
 ```shell
-npm install PACKAGENAME
+npm install bargs
 ```
 
-## Usage
+## Why bargs?
 
-Use as a GitHub template.
+Most argument parsers make you choose: either a simple API with weak types, or a complex and overengineered DSL. **bargs** uses _function helpers_ that instead provide a well-typed and composable API.
 
-## Tooling
+### Type-Safe by Construction
 
-This template includes:
+Each helper returns a fully-typed option definition:
 
-- **ESLint v9+** with flat config and TypeScript support
-- **Prettier** with automatic formatting
-- **TypeScript** with strict checking
-- **node:test** - Built-in Node.js test runner
-- **bupkis** - Modern assertion library
-- **Husky** - Git hooks for quality checks
-- **lint-staged** - Run linters on staged files
-- **commitlint** - Conventional commit enforcement
-- **cspell** - Spell checking
-- **markdownlint** - Markdown linting
-- **knip** - Find unused dependencies
-- **Renovate** - Automated dependency updates
-- **zshy** - Dual-module TS builds
+```typescript
+const verbose = bargs.boolean({ aliases: ['v'] });
+// Type: BooleanOption & { aliases: ['v'] }
 
-## Development
-
-```bash
-# Install dependencies
-npm install
-
-# Build
-npm run build
-
-# Run tests
-npm test
-
-# Run linters
-npm run lint
-
-# Auto-fix issues
-npm run fix
-
-# Watch mode for tests
-npm run test:watch
+const level = bargs.enum(['low', 'medium', 'high'], { default: 'medium' });
+// Type: EnumOption<'low' | 'medium' | 'high'> & { default: 'medium' }
 ```
 
-## Notes
+When you pass these to `bargs()`, the result is always well-typed; options with defaults are non-nullable.
 
-Bacon ribeye ham hock kielbasa landjaeger drumstick pork chop andouille.
+> _Note_: Options cannot be _required_ because that is silly and options are supposed to be optional. Use a positional instead.
+
+### Composable
+
+Since helpers are just functions returning objects, composition is trivial:
+
+```typescript
+// Shared options across commands
+const verboseOpt = { verbose: bargs.boolean({ aliases: ['v'] }) };
+const outputOpt = {
+  output: bargs.string({ aliases: ['o'], default: 'stdout' }),
+};
+
+// Merge with spread
+const result = bargs({
+  name: 'tool',
+  options: {
+    ...verboseOpt,
+    ...outputOpt,
+    format: bargs.enum(['json', 'text']),
+  },
+});
+```
+
+Or use `bargs.options()`, if you please:
+
+```typescript
+// Throws if aliases collide
+const sharedOpts = bargs.options(verboseOpt, outputOpt);
+```
+
+### Zero (0) Dependencies
+
+Only Node.js v22+.
+
+## Quick Start
+
+```typescript
+import { bargs } from 'bargs';
+
+const result = bargs({
+  name: 'greet',
+  options: {
+    name: bargs.string({ default: 'world' }),
+    loud: bargs.boolean({ aliases: ['l'] }),
+  },
+});
+
+const greeting = `Hello, ${result.values.name}!`;
+console.log(result.values.loud ? greeting.toUpperCase() : greeting);
+```
+
+```shell
+$ greet --name Alice --loud
+HELLO, ALICE!
+```
+
+## Sync vs Async
+
+**`bargs()`** runs synchronously. If a handler returns a `Promise`, it will break and you will be sorry.
+
+```typescript
+// Sync - no await needed
+const result = bargs({
+  name: 'my-cli',
+  options: { verbose: bargs.boolean() },
+  handler: ({ values }) => {
+    console.log('Verbose:', values.verbose);
+  },
+});
+```
+
+Instead, use **`bargsAsync()`**:
+
+```typescript
+import { bargsAsync } from 'bargs';
+
+// Async - handlers can return Promises
+const result = await bargsAsync({
+  name: 'my-cli',
+  options: { url: bargs.string({ required: true }) },
+  handler: async ({ values }) => {
+    const response = await fetch(values.url);
+    console.log(await response.text());
+  },
+});
+```
+
+## Commands
+
+Define subcommands with `bargs.command()`:
+
+```typescript
+bargs({
+  name: 'db',
+  commands: {
+    migrate: bargs.command({
+      description: 'Run database migrations',
+      options: { dry: bargs.boolean({ aliases: ['n'] }) },
+      handler: ({ values }) => {
+        console.log(values.dry ? 'Dry run...' : 'Migrating...');
+      },
+    }),
+    seed: bargs.command({
+      description: 'Seed the database',
+      positionals: [bargs.stringPos({ required: true })],
+      handler: ({ positionals }) => {
+        const [file] = positionals;
+        console.log(`Seeding from ${file}...`);
+      },
+    }),
+  },
+});
+```
+
+```shell
+$ db migrate --dry
+Dry run...
+
+$ db seed data.sql
+Seeding from data.sql...
+```
+
+## Option Helpers
+
+```typescript
+bargs.string({ default: 'value' }); // --name value
+bargs.number({ default: 42 }); // --count 42
+bargs.boolean({ aliases: ['v'] }); // --verbose, -v
+bargs.enum(['a', 'b', 'c']); // --level a
+bargs.array('string'); // --file x --file y
+bargs.count(); // -vvv → 3
+```
+
+## Positional Helpers
+
+```typescript
+bargs.stringPos({ required: true }); // <file>
+bargs.numberPos({ default: 8080 }); // [port]
+bargs.enumPos(['dev', 'prod']); // [env]
+bargs.variadic('string'); // [files...]
+```
+
+Positionals are defined as an array and accessed by index:
+
+```typescript
+const result = bargs({
+  name: 'cp',
+  positionals: [
+    bargs.stringPos({ required: true }), // source
+    bargs.stringPos({ required: true }), // destination
+  ],
+});
+
+const [source, dest] = result.positionals;
+console.log(`Copying ${source} to ${dest}`);
+```
+
+Use `variadic` for rest arguments (must be last):
+
+```typescript
+const result = bargs({
+  name: 'cat',
+  positionals: [bargs.variadic('string')],
+});
+
+const [files] = result.positionals; // string[]
+files.forEach((file) => console.log(readFileSync(file, 'utf8')));
+```
 
 ## License
 
-Copyright © 2019 Christopher Hiller. Licensed BlueOak-1.0.0
+Copyright © 2025 [Christopher "boneskull" Hiller](https://github.com/boneskull). Licensed under the [Blue Oak Model License 1.0.0](./LICENSE).
