@@ -5,6 +5,7 @@ import { describe, it } from 'node:test';
 import { stripAnsi } from '../src/ansi.js';
 import { generateCommandHelp, generateHelp } from '../src/help.js';
 import { opt } from '../src/opt.js';
+import { themes } from '../src/theme.js';
 
 describe('generateHelp', () => {
   it('generates help with name and description', () => {
@@ -255,5 +256,56 @@ describe('generateCommandHelp', () => {
 
     assert.ok(help.includes('<source>'));
     assert.ok(help.includes('<dest>'));
+  });
+});
+
+describe('generateHelp with themes', () => {
+  it('uses default theme when no theme provided', () => {
+    const config = {
+      description: 'A test application',
+      name: 'test-app',
+      options: {
+        verbose: { description: 'Verbose output', type: 'boolean' as const },
+      },
+    };
+    const help = generateHelp(config);
+    // Should have yellow section headers (default theme)
+    assert.ok(help.includes('\x1b[33m')); // yellow for USAGE
+  });
+
+  it('uses mono theme for no colors', () => {
+    const config = {
+      name: 'test-app',
+      options: {
+        verbose: { description: 'Verbose output', type: 'boolean' as const },
+      },
+    };
+    const help = generateHelp(config, themes.mono);
+    // Should have no ANSI codes
+    assert.ok(!help.includes('\x1b['));
+  });
+
+  it('applies custom theme colors', () => {
+    const customTheme = {
+      colors: {
+        command: '',
+        defaultValue: '',
+        description: '',
+        example: '',
+        flag: '',
+        positional: '',
+        scriptName: '\x1b[35m', // magenta
+        sectionHeader: '\x1b[34m', // blue
+        type: '',
+        usage: '',
+      },
+    };
+    const config = {
+      name: 'test-app',
+      options: {},
+    };
+    const help = generateHelp(config, customTheme);
+    assert.ok(help.includes('\x1b[35m')); // magenta script name
+    assert.ok(help.includes('\x1b[34m')); // blue section header
   });
 });
