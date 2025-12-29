@@ -145,3 +145,56 @@ export const getTheme = (input: ThemeInput): Theme => {
   }
   return input;
 };
+
+/**
+ * Style function that wraps text with ANSI codes.
+ */
+export type StyleFn = (text: string) => string;
+
+/**
+ * Styler object with methods for each semantic element.
+ */
+export interface Styler {
+  command: StyleFn;
+  defaultValue: StyleFn;
+  description: StyleFn;
+  example: StyleFn;
+  flag: StyleFn;
+  positional: StyleFn;
+  scriptName: StyleFn;
+  sectionHeader: StyleFn;
+  type: StyleFn;
+  usage: StyleFn;
+}
+
+/**
+ * ANSI reset code.
+ */
+const RESET = '\x1b[0m';
+
+/**
+ * Create a style function from a color code. Returns passthrough if color is
+ * empty.
+ */
+const makeStyleFn = (color: string): StyleFn => {
+  if (!color) {
+    return (text: string) => text;
+  }
+  return (text: string) => `${color}${text}${RESET}`;
+};
+
+/**
+ * Create a Styler from a Theme.
+ */
+export const createStyler = (theme: Theme): Styler => ({
+  command: makeStyleFn(theme.colors.command),
+  defaultValue: makeStyleFn(theme.colors.defaultValue),
+  description: makeStyleFn(theme.colors.description),
+  example: makeStyleFn(theme.colors.example),
+  flag: makeStyleFn(theme.colors.flag),
+  positional: makeStyleFn(theme.colors.positional),
+  scriptName: makeStyleFn(theme.colors.scriptName),
+  sectionHeader: makeStyleFn(theme.colors.sectionHeader),
+  type: makeStyleFn(theme.colors.type),
+  usage: makeStyleFn(theme.colors.usage),
+});

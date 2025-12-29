@@ -4,7 +4,7 @@ import { describe, it } from 'node:test';
 
 import type { Theme } from '../src/theme.js';
 
-import { defaultTheme, getTheme, themes } from '../src/theme.js';
+import { createStyler, defaultTheme, getTheme, themes } from '../src/theme.js';
 
 describe('Theme', () => {
   it('should export themes object with default and mono themes', () => {
@@ -44,5 +44,34 @@ describe('Theme', () => {
     for (const value of Object.values(mono.colors)) {
       assert.strictEqual(value, '');
     }
+  });
+});
+
+describe('createStyler', () => {
+  it('creates styler from default theme', () => {
+    const styler = createStyler(themes.default);
+    assert.strictEqual(typeof styler.scriptName, 'function');
+    assert.strictEqual(typeof styler.flag, 'function');
+  });
+
+  it('applies color codes with default theme', () => {
+    const styler = createStyler(themes.default);
+    const result = styler.sectionHeader('OPTIONS');
+    assert.ok(result.includes('\x1b[33m')); // yellow
+    assert.ok(result.includes('OPTIONS'));
+    assert.ok(result.includes('\x1b[0m')); // reset
+  });
+
+  it('passes through text with mono theme', () => {
+    const styler = createStyler(themes.mono);
+    const result = styler.sectionHeader('OPTIONS');
+    assert.strictEqual(result, 'OPTIONS');
+  });
+
+  it('applies bold styling for scriptName', () => {
+    const styler = createStyler(themes.default);
+    const result = styler.scriptName('myapp');
+    assert.ok(result.includes('\x1b[1m')); // bold
+    assert.ok(result.includes('myapp'));
   });
 });
