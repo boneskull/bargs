@@ -2,6 +2,7 @@
 import type {
   BargsConfig,
   BargsConfigWithCommands,
+  BargsOptions,
   BargsResult,
   CommandConfigInput,
   InferOptions,
@@ -19,6 +20,7 @@ import {
   runHandlers,
   runSyncHandlers,
 } from './parser.js';
+import { defaultTheme, getTheme, type Theme } from './theme.js';
 
 /**
  * Check if config has commands.
@@ -72,6 +74,7 @@ const handleBuiltinFlags = (
     Record<string, CommandConfigInput> | undefined
   >,
   args: string[],
+  theme: Theme = defaultTheme,
 ): boolean => {
   // Handle --help (unless user defined their own help option)
   const userDefinedHelp = hasUserDefinedHelp(config.options);
@@ -83,14 +86,15 @@ const handleBuiltinFlags = (
 
       if (commandIndex >= 0 && commandIndex < helpIndex) {
         const commandName = args[commandIndex]!;
-        console.log(generateCommandHelp(config, commandName));
+        console.log(generateCommandHelp(config, commandName, theme));
       } else {
-        console.log(generateHelp(config));
+        console.log(generateHelp(config, theme));
       }
     } else {
       console.log(
         generateHelp(
           config as BargsConfig<OptionsSchema, PositionalsSchema, undefined>,
+          theme,
         ),
       );
     }
@@ -117,15 +121,17 @@ const handleHelpError = (
     PositionalsSchema,
     Record<string, CommandConfigInput> | undefined
   >,
+  theme: Theme = defaultTheme,
 ): never => {
   if (error instanceof HelpError) {
     console.error(error.message);
     if (hasCommands(config)) {
-      console.log(generateHelp(config));
+      console.log(generateHelp(config, theme));
     } else {
       console.log(
         generateHelp(
           config as BargsConfig<OptionsSchema, PositionalsSchema, undefined>,
+          theme,
         ),
       );
     }
@@ -210,6 +216,7 @@ export async function bargsAsync<
   TPositionals extends PositionalsSchema,
 >(
   config: BargsConfig<TOptions, TPositionals, undefined>,
+  options?: BargsOptions,
 ): Promise<
   BargsResult<InferOptions<TOptions>, InferPositionals<TPositionals>, undefined>
 >;
@@ -222,6 +229,7 @@ export async function bargsAsync<
   TCommands extends Record<string, CommandConfigInput>,
 >(
   config: BargsConfigWithCommands<TOptions, TCommands>,
+  options?: BargsOptions,
 ): Promise<BargsResult<InferOptions<TOptions>, unknown[], string | undefined>>;
 
 /**
@@ -234,11 +242,15 @@ export async function bargsAsync(
     PositionalsSchema,
     Record<string, CommandConfigInput> | undefined
   >,
+  options?: BargsOptions,
 ): Promise<BargsResult<unknown, unknown[], string | undefined>> {
   const args = config.args ?? process.argv.slice(2);
+  const theme: Theme = options?.theme
+    ? getTheme(options.theme)
+    : getTheme('default');
 
   try {
-    handleBuiltinFlags(config, args);
+    handleBuiltinFlags(config, args, theme);
 
     // Parse
     if (hasCommands(config)) {
@@ -258,6 +270,6 @@ export async function bargsAsync(
       return result;
     }
   } catch (error) {
-    return handleHelpError(error, config);
+    return handleHelpError(error, config, theme);
   }
 }

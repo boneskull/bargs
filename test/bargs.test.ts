@@ -2,6 +2,8 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
+import type { Theme } from '../src/theme.js';
+
 import { bargs, bargsAsync } from '../src/bargs.js';
 import { BargsError } from '../src/errors.js';
 import { opt } from '../src/opt.js';
@@ -318,5 +320,54 @@ describe('bargsAsync', () => {
     });
 
     assert.deepEqual(calls, ['handler-1', 'handler-2']);
+  });
+});
+
+describe('bargs with options (second parameter)', () => {
+  it('accepts theme by name in options', async () => {
+    const result = await bargs(
+      {
+        args: ['--foo', 'bar'],
+        name: 'test',
+        options: { foo: { type: 'string' } },
+      },
+      { theme: 'mono' },
+    );
+    assert.strictEqual(result.values.foo, 'bar');
+  });
+
+  it('accepts custom theme object in options', async () => {
+    const customTheme: Theme = {
+      colors: {
+        command: '',
+        defaultValue: '',
+        description: '',
+        example: '',
+        flag: '',
+        positional: '',
+        scriptName: '\x1b[35m',
+        sectionHeader: '',
+        type: '',
+        usage: '',
+      },
+    };
+    const result = await bargs(
+      {
+        args: ['--foo', 'bar'],
+        name: 'test',
+        options: { foo: { type: 'string' } },
+      },
+      { theme: customTheme },
+    );
+    assert.strictEqual(result.values.foo, 'bar');
+  });
+
+  it('works without options parameter', async () => {
+    const result = await bargs({
+      args: ['--foo', 'bar'],
+      name: 'test',
+      options: { foo: { type: 'string' } },
+    });
+    assert.strictEqual(result.values.foo, 'bar');
   });
 });
