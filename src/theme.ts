@@ -105,18 +105,18 @@ export const themes = {
     },
   },
 
-  /** Ocean theme - blues and greens */
+  /** Ocean theme - blues and greens (bright) */
   ocean: {
     colors: {
-      command: ansi.bold + ansi.cyan,
+      command: ansi.bold + ansi.brightCyan,
       defaultValue: ansi.dim,
       description: '',
       example: ansi.dim,
       flag: ansi.brightCyan,
-      positional: ansi.green,
-      scriptName: ansi.bold + ansi.blue,
-      sectionHeader: ansi.blue,
-      type: ansi.brightBlue,
+      positional: ansi.brightGreen,
+      scriptName: ansi.bold + ansi.brightBlue,
+      sectionHeader: ansi.brightBlue,
+      type: ansi.cyan,
       usage: '',
     },
   },
