@@ -1,4 +1,15 @@
-// src/bargs.ts
+/**
+ * Core bargs parsing functions for both sync and async CLI execution.
+ *
+ * Provides `bargs()` (synchronous) and `bargsAsync()` (asynchronous) entry
+ * points that handle configuration validation, built-in `--help` and
+ * `--version` flags, argument parsing, and handler invocation. Supports both
+ * simple CLIs with options/positionals and command-based CLIs with
+ * subcommands.
+ *
+ * @packageDocumentation
+ */
+
 import type {
   BargsConfig,
   BargsConfigWithCommands,

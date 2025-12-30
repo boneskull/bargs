@@ -1,4 +1,17 @@
-// src/parser.ts
+/**
+ * Low-level argument parsing logic wrapping Node.js `util.parseArgs()`.
+ *
+ * Handles the transformation of CLI arguments into typed values by:
+ *
+ * - Building `parseArgs` configuration from bargs option schemas
+ * - Coercing parsed string values to their declared types (number, enum, etc.)
+ * - Processing positional arguments including variadic rest args
+ * - Running handler functions (sync or async) after successful parsing
+ * - Supporting both simple CLIs and command-based CLIs with subcommand dispatch
+ *
+ * @packageDocumentation
+ */
+
 import { parseArgs } from 'node:util';
 
 import type {

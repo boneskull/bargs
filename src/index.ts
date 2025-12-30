@@ -1,4 +1,29 @@
-// src/index.ts - Main entry point for bargs
+/**
+ * Main entry point for the bargs CLI argument parser.
+ *
+ * This module exports the primary `bargs` and `bargsAsync` functions with
+ * attached option builder methods (e.g., `bargs.string()`, `bargs.boolean()`),
+ * allowing both function-call and builder-namespace usage patterns. It also
+ * re-exports all public types, error classes, help generators, theme utilities,
+ * and OSC hyperlink functions.
+ *
+ * @example
+ *
+ * ```typescript
+ * import { bargs } from 'bargs';
+ *
+ * // Use as function
+ * const result = bargs({
+ *   name: 'myapp',
+ *   options: { verbose: bargs.boolean({ aliases: ['v'] }) },
+ * });
+ *
+ * // Access builder namespace
+ * const opts = bargs.options({ name: bargs.string() });
+ * ```
+ *
+ * @packageDocumentation
+ */
 
 import { bargsAsync as bargsAsyncBase, bargs as bargsBase } from './bargs.js';
 import { opt } from './opt.js';

@@ -1,4 +1,16 @@
 /**
+ * Custom error classes for bargs.
+ *
+ * Defines the error hierarchy used throughout bargs:
+ *
+ * - {@link BargsError} - Base class for all bargs errors
+ * - {@link HelpError} - Triggers help text display when user needs guidance
+ * - {@link ValidationError} - Thrown when configuration validation fails
+ *
+ * @packageDocumentation
+ */
+
+/**
  * Custom error class for bargs errors.
  */
 export class BargsError extends Error {

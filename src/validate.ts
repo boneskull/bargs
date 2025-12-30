@@ -1,4 +1,19 @@
-// src/validate.ts
+/**
+ * Configuration validation for bargs.
+ *
+ * Validates bargs configuration objects at runtime before parsing, ensuring:
+ *
+ * - Required properties are present and correctly typed
+ * - Option definitions have valid type discriminators and defaults
+ * - Aliases are single characters with no conflicts
+ * - Positional schemas have variadic args last and required args before optional
+ * - Command handlers are properly defined
+ * - Command-based CLIs don't have top-level positionals or handlers
+ *
+ * Throws {@link ValidationError} with detailed path information when invalid.
+ *
+ * @packageDocumentation
+ */
 
 import type {
   BargsConfig,

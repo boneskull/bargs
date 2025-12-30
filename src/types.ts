@@ -1,4 +1,18 @@
-// src/types.ts
+/**
+ * TypeScript type definitions for the bargs CLI argument parser.
+ *
+ * Defines all public interfaces and types including:
+ *
+ * - Option definitions (`StringOption`, `BooleanOption`, `EnumOption`, etc.)
+ * - Positional definitions (`StringPositional`, `VariadicPositional`, etc.)
+ * - Schema types (`OptionsSchema`, `PositionalsSchema`)
+ * - Configuration types (`BargsConfig`, `BargsConfigWithCommands`)
+ * - Command types (`CommandConfig`, `CommandConfigInput`)
+ * - Type inference utilities (`InferOptions`, `InferPositionals`)
+ * - Result types (`BargsResult`)
+ *
+ * @packageDocumentation
+ */
 
 import type { ThemeInput } from './theme.js';
 

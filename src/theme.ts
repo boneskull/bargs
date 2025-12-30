@@ -1,4 +1,13 @@
-// src/theme.ts
+/**
+ * Theming system for colorized help output.
+ *
+ * Provides ANSI color codes, built-in themes (default, mono, ocean, warm), and
+ * utilities for creating custom themes. Each theme defines colors for semantic
+ * elements like flags, commands, descriptions, and section headers. Themes can
+ * be customized by overriding individual color properties.
+ *
+ * @packageDocumentation
+ */
 
 import { stripVTControlCharacters } from 'node:util';
 

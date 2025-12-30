@@ -1,9 +1,19 @@
+/**
+ * Package version and metadata detection utilities.
+ *
+ * Provides functions to locate and read `package.json` files by walking up the
+ * directory tree, extracting version strings, and gathering package metadata
+ * (homepage, repository URLs) for automatic epilog generation in help output.
+ *
+ * @packageDocumentation
+ */
+
 import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
 /**
- * Package info extracted from package.json for epilog generation.
+ * Package info extracted from `package.json` for epilog generation.
  */
 export interface PackageInfo {
   homepage?: string;
@@ -11,7 +21,7 @@ export interface PackageInfo {
 }
 
 /**
- * Raw package.json structure (partial). Represents the file as-is before
+ * Raw `package.json` structure (partial). Represents the file as-is before
  * normalization.
  */
 interface RawPackageJson {

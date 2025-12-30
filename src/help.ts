@@ -1,4 +1,14 @@
-// src/help.ts
+/**
+ * Help text generation for CLI applications.
+ *
+ * Generates formatted, colorized help output for both simple CLIs and
+ * command-based CLIs. Supports customizable themes, automatic URL linkification
+ * in terminals that support hyperlinks, option grouping, and automatic epilog
+ * generation from `package.json` metadata.
+ *
+ * @packageDocumentation
+ */
+
 import type {
   BargsConfig,
   BargsConfigWithCommands,

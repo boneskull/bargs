@@ -1,11 +1,16 @@
 /**
- * @file OSC (Operating System Command) escape sequences for terminal features.
+ * OSC (Operating System Command) escape sequences for terminal features.
  *
- * The hyperlink detection logic in this file is adapted from supports-hyperlinks
- * by Sindre Sorhus, used under the MIT License.
+ * Provides utilities for creating clickable hyperlinks in terminal output using
+ * OSC 8 sequences, detecting terminal hyperlink support across various terminal
+ * emulators, and auto-linkifying URLs in text.
+ *
+ * The hyperlink detection logic is adapted from supports-hyperlinks by Sindre
+ * Sorhus, used under the MIT License.
  *
  * @see {@link https://github.com/chalk/supports-hyperlinks}
  * @license MIT (supports-hyperlinks portions)
+ * @packageDocumentation
  */
 
 import process from 'node:process';

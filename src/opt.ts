@@ -1,4 +1,16 @@
-// src/opt.ts
+/**
+ * Builder functions for defining CLI options, positionals, and commands.
+ *
+ * Provides ergonomic helpers with full TypeScript type inference for
+ * constructing option schemas (`opt.string()`, `opt.boolean()`, `opt.enum()`,
+ * etc.), positional schemas (`opt.stringPos()`, `opt.numberPos()`,
+ * `opt.variadic()`), and command definitions (`opt.command()`). Includes
+ * composition utilities for merging schemas (`opt.options()`,
+ * `opt.positionals()`).
+ *
+ * @packageDocumentation
+ */
+
 import type {
   ArrayOption,
   BooleanOption,
