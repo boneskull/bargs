@@ -40,8 +40,6 @@ export const bargs = Object.assign(bargsBase, opt);
  */
 export const bargsAsync = Object.assign(bargsAsyncBase, opt);
 
-export default bargs;
-
 // Re-export errors
 export { BargsError, HelpError, ValidationError } from './errors.js';
 

@@ -15,7 +15,7 @@
  * examples/tasks.ts list npx tsx examples/tasks.ts done 1 npx tsx
  * examples/tasks.ts --help npx tsx examples/tasks.ts add --help
  */
-import bargs from '../src/index.js';
+import { bargs } from '../src/index.js';
 
 // In-memory task storage (in a real app, this would be a file or database)
 interface Task {
