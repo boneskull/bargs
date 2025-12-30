@@ -130,7 +130,7 @@ export const generateHelp = <
   const version = config.version ? ` v${config.version}` : '';
   lines.push('');
   lines.push(
-    `  ${styler.scriptName(config.name)}${styler.defaultValue(version)}`,
+    `${styler.scriptName(config.name)}${styler.defaultValue(version)}`,
   );
   if (config.description) {
     lines.push(`  ${styler.description(config.description)}`);

@@ -85,15 +85,15 @@ const ansi = {
 const defaultColors: ThemeColors = {
   command: ansi.bold,
   defaultText: ansi.dim,
-  defaultValue: '',
-  description: '',
-  example: ansi.dim,
-  flag: ansi.cyan,
-  positional: ansi.yellow,
+  defaultValue: ansi.white,
+  description: ansi.white,
+  example: ansi.white + ansi.dim,
+  flag: ansi.brightCyan,
+  positional: ansi.magenta,
   scriptName: ansi.bold,
-  sectionHeader: ansi.yellow,
-  type: ansi.cyan,
-  usage: '',
+  sectionHeader: ansi.brightMagenta,
+  type: ansi.magenta,
+  usage: ansi.cyan,
 };
 
 /**
@@ -126,16 +126,16 @@ export const themes = {
   ocean: {
     colors: {
       command: ansi.bold + ansi.brightCyan,
-      defaultText: ansi.dim,
-      defaultValue: ansi.brightCyan,
-      description: '',
-      example: ansi.dim,
+      defaultText: ansi.blue,
+      defaultValue: ansi.green,
+      description: ansi.white,
+      example: ansi.dim + ansi.white,
       flag: ansi.brightCyan,
       positional: ansi.brightGreen,
       scriptName: ansi.bold + ansi.brightBlue,
       sectionHeader: ansi.brightBlue,
       type: ansi.cyan,
-      usage: '',
+      usage: ansi.white,
     },
   },
 
@@ -143,16 +143,16 @@ export const themes = {
   warm: {
     colors: {
       command: ansi.bold + ansi.yellow,
-      defaultText: ansi.dim,
+      defaultText: ansi.dim + ansi.yellow,
       defaultValue: ansi.brightYellow,
-      description: '',
-      example: ansi.dim,
+      description: ansi.white,
+      example: ansi.white + ansi.dim,
       flag: ansi.brightYellow,
       positional: ansi.brightRed,
       scriptName: ansi.bold + ansi.red,
       sectionHeader: ansi.red,
       type: ansi.yellow,
-      usage: '',
+      usage: ansi.white,
     },
   },
 } as const satisfies Record<string, ResolvedTheme>;
