@@ -26,11 +26,15 @@ export { generateCommandHelp, generateHelp } from './help.js';
 // Re-export the opt builder
 export { opt };
 
+// Re-export OSC utilities for terminal hyperlinks
+export { link, linkifyUrls, supportsHyperlinks } from './osc.js';
+
 // Re-export isThenable for advanced use cases
 export { isThenable } from './parser.js';
 
 // Re-export theme utilities
 export {
+  ansi,
   createStyler,
   defaultTheme,
   getTheme,
@@ -79,3 +83,7 @@ export type {
 
 // Re-export validation utilities
 export { validateConfig } from './validate.js';
+
+// Re-export version utilities
+export { readPackageInfoSync } from './version.js';
+export type { PackageInfo } from './version.js';

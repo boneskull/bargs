@@ -79,4 +79,35 @@ describe('createStyler', () => {
     assert.ok(result.includes('\x1b[1m')); // bold
     assert.ok(result.includes('myapp'));
   });
+
+  it('has epilog and url style functions', () => {
+    const styler = createStyler(themes.default);
+    assert.strictEqual(typeof styler.epilog, 'function');
+    assert.strictEqual(typeof styler.url, 'function');
+  });
+
+  it('applies epilog styling with default theme', () => {
+    const styler = createStyler(themes.default);
+    const result = styler.epilog('Homepage: https://example.com');
+    // Default epilog color is dim
+    assert.ok(result.includes('\x1b[2m')); // dim
+    assert.ok(result.includes('Homepage: https://example.com'));
+  });
+
+  it('applies url styling with default theme', () => {
+    const styler = createStyler(themes.default);
+    const result = styler.url('https://example.com');
+    // Default url color is cyan
+    assert.ok(result.includes('\x1b[36m')); // cyan
+    assert.ok(result.includes('https://example.com'));
+  });
+});
+
+describe('Theme colors', () => {
+  it('all themes have epilog and url colors', () => {
+    for (const [name, theme] of Object.entries(themes)) {
+      assert.ok('epilog' in theme.colors, `Theme ${name} missing epilog color`);
+      assert.ok('url' in theme.colors, `Theme ${name} missing url color`);
+    }
+  });
 });

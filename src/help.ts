@@ -9,12 +9,84 @@ import type {
   PositionalsSchema,
 } from './types.js';
 
+import { link, supportsHyperlinks } from './osc.js';
 import {
   createStyler,
   defaultTheme,
   type Styler,
   type Theme,
 } from './theme.js';
+import { readPackageInfoSync } from './version.js';
+
+/**
+ * URL regex pattern for matching URLs in text.
+ */
+const URL_PATTERN = /https?:\/\/[^\s<>"\])}]+/g;
+
+/**
+ * Linkify URLs in text if terminal supports hyperlinks. Applies URL styling.
+ */
+const linkifyText = (
+  text: string,
+  styler: Styler,
+  stream: NodeJS.WriteStream = process.stdout,
+): string => {
+  const canLink = supportsHyperlinks(stream);
+
+  return text.replace(URL_PATTERN, (url) => {
+    const styledUrl = styler.url(url);
+    return canLink ? link(styledUrl, url) : styledUrl;
+  });
+};
+
+/**
+ * Generate default epilog from package.json (homepage and repository).
+ */
+const generateDefaultEpilog = (styler: Styler): string[] => {
+  const pkgInfo = readPackageInfoSync();
+  const lines: string[] = [];
+
+  if (pkgInfo.homepage) {
+    const styledUrl = styler.url(pkgInfo.homepage);
+    const linkedUrl = supportsHyperlinks()
+      ? link(styledUrl, pkgInfo.homepage)
+      : styledUrl;
+    lines.push(styler.epilog(`Homepage: ${linkedUrl}`));
+  }
+
+  if (pkgInfo.repository) {
+    const styledUrl = styler.url(pkgInfo.repository);
+    const linkedUrl = supportsHyperlinks()
+      ? link(styledUrl, pkgInfo.repository)
+      : styledUrl;
+    lines.push(styler.epilog(`Repository: ${linkedUrl}`));
+  }
+
+  return lines;
+};
+
+/**
+ * Format epilog based on config. Returns empty array if epilog is disabled,
+ * custom epilog lines if provided, or default epilog from package.json.
+ */
+const formatEpilog = (
+  config: { epilog?: false | string },
+  styler: Styler,
+): string[] => {
+  // Explicitly disabled
+  if (config.epilog === false || config.epilog === '') {
+    return [];
+  }
+
+  // Custom epilog provided
+  if (typeof config.epilog === 'string') {
+    const linkified = linkifyText(config.epilog, styler);
+    return [styler.epilog(linkified)];
+  }
+
+  // Default: generate from package.json
+  return generateDefaultEpilog(styler);
+};
 
 /**
  * Format a single positional for help usage line. Required positionals use
@@ -133,7 +205,8 @@ export const generateHelp = <
     `${styler.scriptName(config.name)}${styler.defaultValue(version)}`,
   );
   if (config.description) {
-    lines.push(`  ${styler.description(config.description)}`);
+    const linkifiedDesc = linkifyText(config.description, styler);
+    lines.push(`  ${styler.description(linkifiedDesc)}`);
   }
   lines.push('');
 
@@ -236,6 +309,13 @@ export const generateHelp = <
     lines.push('');
   }
 
+  // Epilog
+  const epilogLines = formatEpilog(config, styler);
+  if (epilogLines.length > 0) {
+    lines.push(...epilogLines);
+    lines.push('');
+  }
+
   return lines.join('\n');
 };
 
@@ -267,7 +347,8 @@ export const generateCommandHelp = <
   lines.push(
     `  ${styler.scriptName(config.name)} ${styler.command(commandName)}`,
   );
-  lines.push(`  ${styler.description(command.description)}`);
+  const linkifiedDesc = linkifyText(command.description, styler);
+  lines.push(`  ${styler.description(linkifiedDesc)}`);
   lines.push('');
 
   // Usage
@@ -304,6 +385,13 @@ export const generateCommandHelp = <
       }
       lines.push(formatOptionHelp(name, def, styler));
     }
+    lines.push('');
+  }
+
+  // Epilog
+  const epilogLines = formatEpilog(config, styler);
+  if (epilogLines.length > 0) {
+    lines.push(...epilogLines);
     lines.push('');
   }
 

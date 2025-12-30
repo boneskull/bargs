@@ -6,6 +6,9 @@ import { generateCommandHelp, generateHelp } from '../src/help.js';
 import { opt } from '../src/opt.js';
 import { stripAnsi, themes } from '../src/theme.js';
 
+// Note: Default epilog reads from package.json, which exists in this project.
+// Tests that verify default epilog behavior will see actual package.json values.
+
 describe('generateHelp', () => {
   it('generates help with name and description', () => {
     const help = stripAnsi(
@@ -312,6 +315,7 @@ describe('generateHelp with themes', () => {
 describe('generateHelp with positionals', () => {
   it('shows positionals in usage line', () => {
     const config = {
+      epilog: false as const,
       name: 'test-app',
       options: {},
       positionals: [
@@ -325,6 +329,7 @@ describe('generateHelp with positionals', () => {
 
   it('shows POSITIONALS section when positionals defined', () => {
     const config = {
+      epilog: false as const,
       name: 'test-app',
       options: {},
       positionals: [
@@ -354,6 +359,7 @@ describe('generateHelp with positionals', () => {
       },
     };
     const config = {
+      epilog: false as const,
       name: 'test-app',
       options: {},
       positionals: [
@@ -362,5 +368,134 @@ describe('generateHelp with positionals', () => {
     };
     const help = generateHelp(config, customTheme);
     assert.ok(help.includes('\x1b[33m')); // positional color applied
+  });
+});
+
+describe('generateHelp epilog', () => {
+  it('shows custom epilog when provided', () => {
+    const config = {
+      epilog: 'Thanks for using my CLI!',
+      name: 'test-app',
+    };
+    const help = stripAnsi(generateHelp(config, themes.mono));
+    assert.ok(help.includes('Thanks for using my CLI!'));
+  });
+
+  it('disables epilog when set to false', () => {
+    const config = {
+      epilog: false as const,
+      name: 'test-app',
+    };
+    const help = stripAnsi(generateHelp(config, themes.mono));
+    // Should not contain Homepage or Repository (default epilog)
+    assert.ok(!help.includes('Homepage:'));
+    assert.ok(!help.includes('Repository:'));
+  });
+
+  it('disables epilog when set to empty string', () => {
+    const config = {
+      epilog: '',
+      name: 'test-app',
+    };
+    const help = stripAnsi(generateHelp(config, themes.mono));
+    // Should not contain Homepage or Repository (default epilog)
+    assert.ok(!help.includes('Homepage:'));
+    assert.ok(!help.includes('Repository:'));
+  });
+
+  it('shows default epilog from package.json when epilog not specified', () => {
+    const config = {
+      name: 'test-app',
+    };
+    const help = stripAnsi(generateHelp(config, themes.mono));
+    // This test runs in the bargs repo, which has repository in package.json
+    // So we expect to see either Homepage or Repository
+    const hasEpilog =
+      help.includes('Homepage:') || help.includes('Repository:');
+    assert.ok(hasEpilog, 'Expected default epilog from package.json');
+  });
+
+  it('linkifies URLs in custom epilog when hyperlinks supported', () => {
+    const originalEnv = process.env.FORCE_HYPERLINK;
+    try {
+      process.env.FORCE_HYPERLINK = '1';
+      const config = {
+        epilog: 'Visit https://example.com for docs',
+        name: 'test-app',
+      };
+      const help = generateHelp(config, themes.mono);
+      // Should contain OSC 8 hyperlink sequences
+      assert.ok(help.includes('\x1b]8;;https://example.com'));
+    } finally {
+      if (originalEnv === undefined) {
+        delete process.env.FORCE_HYPERLINK;
+      } else {
+        process.env.FORCE_HYPERLINK = originalEnv;
+      }
+    }
+  });
+
+  it('linkifies URLs in description when hyperlinks supported', () => {
+    const originalEnv = process.env.FORCE_HYPERLINK;
+    try {
+      process.env.FORCE_HYPERLINK = '1';
+      const config = {
+        description: 'See https://docs.example.com for help',
+        epilog: false as const,
+        name: 'test-app',
+      };
+      const help = generateHelp(config, themes.mono);
+      // Should contain OSC 8 hyperlink sequences
+      assert.ok(help.includes('\x1b]8;;https://docs.example.com'));
+    } finally {
+      if (originalEnv === undefined) {
+        delete process.env.FORCE_HYPERLINK;
+      } else {
+        process.env.FORCE_HYPERLINK = originalEnv;
+      }
+    }
+  });
+});
+
+describe('generateCommandHelp epilog', () => {
+  it('shows custom epilog in command help', () => {
+    const help = stripAnsi(
+      generateCommandHelp(
+        {
+          commands: {
+            greet: opt.command({
+              description: 'Greet someone',
+              handler: () => {},
+            }),
+          },
+          epilog: 'Run with --verbose for more info',
+          name: 'my-cli',
+        },
+        'greet',
+        themes.mono,
+      ),
+    );
+    assert.ok(help.includes('Run with --verbose for more info'));
+  });
+
+  it('disables epilog in command help when set to false', () => {
+    const help = stripAnsi(
+      generateCommandHelp(
+        {
+          commands: {
+            greet: opt.command({
+              description: 'Greet someone',
+              handler: () => {},
+            }),
+          },
+          epilog: false,
+          name: 'my-cli',
+        },
+        'greet',
+        themes.mono,
+      ),
+    );
+    assert.ok(!help.includes('Homepage:'));
+    assert.ok(!help.includes('Repository:'));
   });
 });

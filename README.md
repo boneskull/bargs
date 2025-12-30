@@ -202,6 +202,63 @@ const [files] = result.positionals; // string[]
 files.forEach((file) => console.log(readFileSync(file, 'utf8')));
 ```
 
+## Epilog
+
+By default, bargs displays your package's homepage and repository URLs (from `package.json`) at the end of help output. URLs become clickable hyperlinks in supported terminals.
+
+```typescript
+// Custom epilog
+bargs({
+  name: 'my-cli',
+  epilog: 'For more info, visit https://example.com',
+});
+
+// Disable epilog entirely
+bargs({
+  name: 'my-cli',
+  epilog: false,
+});
+```
+
+## Theming
+
+Customize help output colors with built-in themes or your own:
+
+```typescript
+// Use a built-in theme: 'default', 'mono', 'ocean', 'warm'
+bargs(
+  {
+    name: 'my-cli',
+    options: { verbose: bargs.boolean() },
+  },
+  { theme: 'ocean' },
+);
+
+// Disable colors entirely
+bargs(config, { theme: 'mono' });
+```
+
+### Custom Themes
+
+Create partial themes—missing colors fall back to the default:
+
+```typescript
+import { ansi, bargs } from 'bargs';
+
+bargs(config, {
+  theme: {
+    colors: {
+      sectionHeader: ansi.magenta,
+      flag: ansi.green,
+    },
+  },
+});
+```
+
+The `ansi` export provides common ANSI escape codes for styled terminal output: text styles (`bold`, `dim`, `italic`, `underline`, etc.), foreground colors, background colors, and their `bright*` variants.
+
+Available theme color slots: `command`, `defaultText`, `defaultValue`, `description`, `epilog`, `example`, `flag`, `positional`, `scriptName`, `sectionHeader`, `type`, `url`, `usage`.
+
 ## License
 
 Copyright © 2025 [Christopher "boneskull" Hiller](https://github.com/boneskull). Licensed under the [Blue Oak Model License 1.0.0](./LICENSE).

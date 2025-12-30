@@ -28,6 +28,8 @@ export interface ThemeColors {
   defaultValue: string;
   /** Description text for options/commands */
   description: string;
+  /** Epilog text (homepage, repository) */
+  epilog: string;
   /** Example code/commands */
   example: string;
   /** Flag names (e.g., "--verbose", "-v") */
@@ -40,6 +42,8 @@ export interface ThemeColors {
   sectionHeader: string;
   /** Type annotations (e.g., "[string]", "[number]") */
   type: string;
+  /** URL text (for linkified URLs) */
+  url: string;
   /** Usage line text */
   usage: string;
 }
@@ -57,9 +61,29 @@ interface ResolvedTheme {
 }
 
 /**
- * ANSI escape codes.
+ * ANSI escape codes for building custom themes.
+ *
+ * Includes text styles (bold, italic, underline, etc.), foreground colors,
+ * bright foreground colors, background colors, and bright background colors.
  */
-const ansi = {
+export const ansi = {
+  bgBlack: '\x1b[40m',
+  bgBlue: '\x1b[44m',
+  bgBrightBlack: '\x1b[100m',
+  bgBrightBlue: '\x1b[104m',
+  bgBrightCyan: '\x1b[106m',
+  bgBrightGreen: '\x1b[102m',
+  bgBrightMagenta: '\x1b[105m',
+  bgBrightRed: '\x1b[101m',
+  bgBrightWhite: '\x1b[107m',
+  bgBrightYellow: '\x1b[103m',
+  bgCyan: '\x1b[46m',
+  bgGreen: '\x1b[42m',
+  bgMagenta: '\x1b[45m',
+  bgRed: '\x1b[41m',
+  bgWhite: '\x1b[47m',
+  bgYellow: '\x1b[43m',
+  black: '\x1b[30m',
   blue: '\x1b[34m',
   bold: '\x1b[1m',
   brightBlack: '\x1b[90m',
@@ -68,13 +92,19 @@ const ansi = {
   brightGreen: '\x1b[92m',
   brightMagenta: '\x1b[95m',
   brightRed: '\x1b[91m',
+  brightWhite: '\x1b[97m',
   brightYellow: '\x1b[93m',
   cyan: '\x1b[36m',
   dim: '\x1b[2m',
   green: '\x1b[32m',
+  hidden: '\x1b[8m',
+  inverse: '\x1b[7m',
+  italic: '\x1b[3m',
   magenta: '\x1b[35m',
   red: '\x1b[31m',
   reset: '\x1b[0m',
+  strikethrough: '\x1b[9m',
+  underline: '\x1b[4m',
   white: '\x1b[37m',
   yellow: '\x1b[33m',
 } as const;
@@ -87,12 +117,14 @@ const defaultColors: ThemeColors = {
   defaultText: ansi.dim,
   defaultValue: ansi.white,
   description: ansi.white,
+  epilog: ansi.dim,
   example: ansi.white + ansi.dim,
   flag: ansi.brightCyan,
   positional: ansi.magenta,
   scriptName: ansi.bold,
   sectionHeader: ansi.brightMagenta,
   type: ansi.magenta,
+  url: ansi.cyan,
   usage: ansi.cyan,
 };
 
@@ -112,12 +144,14 @@ export const themes = {
       defaultText: '',
       defaultValue: '',
       description: '',
+      epilog: '',
       example: '',
       flag: '',
       positional: '',
       scriptName: '',
       sectionHeader: '',
       type: '',
+      url: '',
       usage: '',
     },
   },
@@ -129,12 +163,14 @@ export const themes = {
       defaultText: ansi.blue,
       defaultValue: ansi.green,
       description: ansi.white,
+      epilog: ansi.blue,
       example: ansi.dim + ansi.white,
       flag: ansi.brightCyan,
       positional: ansi.brightGreen,
       scriptName: ansi.bold + ansi.brightBlue,
       sectionHeader: ansi.brightBlue,
       type: ansi.cyan,
+      url: ansi.brightCyan,
       usage: ansi.white,
     },
   },
@@ -146,12 +182,14 @@ export const themes = {
       defaultText: ansi.dim + ansi.yellow,
       defaultValue: ansi.brightYellow,
       description: ansi.white,
+      epilog: ansi.dim + ansi.yellow,
       example: ansi.white + ansi.dim,
       flag: ansi.brightYellow,
       positional: ansi.brightRed,
       scriptName: ansi.bold + ansi.red,
       sectionHeader: ansi.red,
       type: ansi.yellow,
+      url: ansi.brightYellow,
       usage: ansi.white,
     },
   },
@@ -189,12 +227,14 @@ export interface Styler {
   defaultText: StyleFn;
   defaultValue: StyleFn;
   description: StyleFn;
+  epilog: StyleFn;
   example: StyleFn;
   flag: StyleFn;
   positional: StyleFn;
   scriptName: StyleFn;
   sectionHeader: StyleFn;
   type: StyleFn;
+  url: StyleFn;
   usage: StyleFn;
 }
 
@@ -225,12 +265,14 @@ export const createStyler = (theme: Theme): Styler => {
     defaultText: makeStyleFn(resolved.colors.defaultText),
     defaultValue: makeStyleFn(resolved.colors.defaultValue),
     description: makeStyleFn(resolved.colors.description),
+    epilog: makeStyleFn(resolved.colors.epilog),
     example: makeStyleFn(resolved.colors.example),
     flag: makeStyleFn(resolved.colors.flag),
     positional: makeStyleFn(resolved.colors.positional),
     scriptName: makeStyleFn(resolved.colors.scriptName),
     sectionHeader: makeStyleFn(resolved.colors.sectionHeader),
     type: makeStyleFn(resolved.colors.type),
+    url: makeStyleFn(resolved.colors.url),
     usage: makeStyleFn(resolved.colors.usage),
   };
 };

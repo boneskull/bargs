@@ -37,6 +37,12 @@ export interface BargsConfig<
   args?: string[];
   commands?: TCommands;
   description?: string;
+  /**
+   * Epilog text shown after help output. By default, shows homepage and
+   * repository URLs from package.json if available. Set to `false` or empty
+   * string to disable.
+   */
+  epilog?: false | string;
   handler?: Handler<
     BargsResult<
       InferOptions<TOptions>,

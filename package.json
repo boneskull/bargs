@@ -7,6 +7,7 @@
     "type": "git",
     "url": "git+https://github.com/boneskull/bargs.git"
   },
+  "homepage": "https://github.com/boneskull/bargs",
   "author": "Christopher Hiller <boneskull@boneskull.com> (https://boneskull.com/)",
   "license": "BlueOak-1.0.0",
   "private": false,
@@ -33,6 +34,8 @@
     "arguments",
     "parser",
     "typescript",
+    "terminal",
+    "options",
     "parseArgs"
   ],
   "scripts": {
