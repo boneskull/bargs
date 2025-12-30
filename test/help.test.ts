@@ -268,8 +268,8 @@ describe('generateHelp with themes', () => {
       },
     };
     const help = generateHelp(config);
-    // Should have yellow section headers (default theme)
-    assert.ok(help.includes('\x1b[33m')); // yellow for USAGE
+    // Should have brightMagenta section headers (default theme)
+    assert.ok(help.includes('\x1b[95m')); // brightMagenta for USAGE
   });
 
   it('uses mono theme for no colors', () => {

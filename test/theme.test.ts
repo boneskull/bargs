@@ -62,7 +62,7 @@ describe('createStyler', () => {
   it('applies color codes with default theme', () => {
     const styler = createStyler(themes.default);
     const result = styler.sectionHeader('OPTIONS');
-    assert.ok(result.includes('\x1b[33m')); // yellow
+    assert.ok(result.includes('\x1b[95m')); // brightMagenta
     assert.ok(result.includes('OPTIONS'));
     assert.ok(result.includes('\x1b[0m')); // reset
   });

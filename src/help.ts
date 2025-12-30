@@ -142,8 +142,7 @@ export const generateHelp = <
   if (config.positionals && config.positionals.length > 0) {
     for (let i = 0; i < config.positionals.length; i++) {
       const pos = config.positionals[i]!;
-      const name = `arg${i}`;
-      const formatted = pos.required ? `<${name}>` : `[${name}]`;
+      const formatted = formatPositionalUsage(pos, i);
       posNames.push(styler.positional(formatted));
     }
   }
