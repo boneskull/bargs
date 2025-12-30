@@ -30,9 +30,7 @@ const level = bargs.enum(['low', 'medium', 'high'], { default: 'medium' });
 // Type: EnumOption<'low' | 'medium' | 'high'> & { default: 'medium' }
 ```
 
-When you pass these to `bargs()`, the result is always well-typed; options with defaults are non-nullable.
-
-> _Note_: Options cannot be _required_ because that is silly and options are supposed to be optional. Use a positional instead.
+When you pass these to `bargs()`, the result is always well-typed; options with defaults or `required: true` are non-nullable.
 
 ### Composable
 
@@ -56,11 +54,17 @@ const result = bargs({
 });
 ```
 
-Or use `bargs.options()`, if you please:
+Or use `bargs.options()` and `bargs.positionals()`:
 
 ```typescript
 // Throws if aliases collide
 const sharedOpts = bargs.options(verboseOpt, outputOpt);
+
+// Combine positionals with type inference
+const sharedPos = bargs.positionals(
+  bargs.stringPos({ name: 'input', required: true }),
+  bargs.stringPos({ name: 'output' }),
+);
 ```
 
 ### Zero (0) Dependencies
@@ -155,6 +159,66 @@ $ db seed data.sql
 Seeding from data.sql...
 ```
 
+### Default Handler
+
+For command-based CLIs, use `defaultHandler` to handle the case when no command is provided:
+
+```typescript
+bargs({
+  name: 'git',
+  commands: { /* ... */ },
+  // Run 'status' when no command given
+  defaultHandler: 'status',
+});
+
+// Or provide a custom handler
+bargs({
+  name: 'git',
+  commands: { /* ... */ },
+  defaultHandler: ({ values }) => {
+    console.log('Run "git --help" for usage');
+  },
+});
+```
+
+## Configuration
+
+### Config Properties
+
+| Property      | Type                    | Description                                         |
+| ------------- | ----------------------- | --------------------------------------------------- |
+| `name`        | `string`                | CLI name (required)                                 |
+| `description` | `string`                | Description shown in help                           |
+| `version`     | `string`                | Enables `--version` flag                            |
+| `options`     | `OptionsSchema`         | Named options (`--flag`)                            |
+| `positionals` | `PositionalsSchema`     | Positional arguments                                |
+| `commands`    | `Record<string, ...>`   | Subcommands                                         |
+| `handler`     | `Handler`               | Handler function(s) for simple CLIs                 |
+| `epilog`      | `string \| false`       | Footer text in help (see [Epilog](#epilog))         |
+| `args`        | `string[]`              | Custom args (defaults to `process.argv.slice(2)`)   |
+
+```typescript
+bargs({
+  name: 'my-cli',
+  description: 'Does amazing things',
+  version: '1.2.3', // enables --version
+  args: ['--verbose', 'file.txt'], // useful for testing
+  options: { /* ... */ },
+});
+```
+
+### Runtime Options
+
+The second argument to `bargs()` or `bargsAsync()` accepts runtime options:
+
+| Property | Type         | Description                           |
+| -------- | ------------ | ------------------------------------- |
+| `theme`  | `ThemeInput` | Color theme (see [Theming](#theming)) |
+
+```typescript
+bargs(config, { theme: 'ocean' });
+```
+
 ## Option Helpers
 
 ```typescript
@@ -166,6 +230,31 @@ bargs.array('string'); // --file x --file y
 bargs.count(); // -vvv → 3
 ```
 
+### Option Properties
+
+All option helpers accept these properties:
+
+| Property      | Type       | Description                                         |
+| ------------- | ---------- | --------------------------------------------------- |
+| `aliases`     | `string[]` | Short flags (e.g., `['v']` for `-v`)                |
+| `default`     | varies     | Default value (makes the option non-nullable)       |
+| `description` | `string`   | Help text description                               |
+| `group`       | `string`   | Groups options under a custom section header        |
+| `hidden`      | `boolean`  | Hide from `--help` output                           |
+| `required`    | `boolean`  | Mark as required (makes the option non-nullable)    |
+
+```typescript
+bargs.string({
+  aliases: ['o'],
+  default: 'output.txt',
+  description: 'Output file path',
+  group: 'Output Options',
+});
+
+// Hidden options won't appear in help
+bargs.boolean({ hidden: true });
+```
+
 ## Positional Helpers
 
 ```typescript
@@ -173,6 +262,23 @@ bargs.stringPos({ required: true }); // <file>
 bargs.numberPos({ default: 8080 }); // [port]
 bargs.enumPos(['dev', 'prod']); // [env]
 bargs.variadic('string'); // [files...]
+```
+
+### Positional Properties
+
+| Property      | Type      | Description                                            |
+| ------------- | --------- | ------------------------------------------------------ |
+| `default`     | varies    | Default value                                          |
+| `description` | `string`  | Help text description                                  |
+| `name`        | `string`  | Display name in help (defaults to `arg0`, `arg1`, ...) |
+| `required`    | `boolean` | Mark as required (shown as `<name>` vs `[name]`)       |
+
+```typescript
+bargs.stringPos({
+  name: 'file',
+  description: 'Input file to process',
+  required: true,
+});
 ```
 
 Positionals are defined as an array and accessed by index:
@@ -258,6 +364,91 @@ bargs(config, {
 The `ansi` export provides common ANSI escape codes for styled terminal output: text styles (`bold`, `dim`, `italic`, `underline`, etc.), foreground colors, background colors, and their `bright*` variants.
 
 Available theme color slots: `command`, `defaultText`, `defaultValue`, `description`, `epilog`, `example`, `flag`, `positional`, `scriptName`, `sectionHeader`, `type`, `url`, `usage`.
+
+## Advanced Usage
+
+### Error Handling
+
+bargs exports error classes for fine-grained error handling:
+
+```typescript
+import { bargs, BargsError, HelpError, ValidationError } from 'bargs';
+
+try {
+  bargs(config);
+} catch (error) {
+  if (error instanceof ValidationError) {
+    // Config validation failed (e.g., invalid schema)
+    console.error(`Config error at "${error.path}": ${error.message}`);
+  } else if (error instanceof HelpError) {
+    // User needs guidance (e.g., unknown option)
+    console.error(error.message);
+  } else if (error instanceof BargsError) {
+    // General bargs error
+    console.error(error.message);
+  }
+}
+```
+
+### Programmatic Help
+
+Generate help text without calling `bargs()`:
+
+```typescript
+import { generateHelp, generateCommandHelp } from 'bargs';
+
+const helpText = generateHelp(config);
+const commandHelp = generateCommandHelp(config, 'migrate');
+```
+
+### Hyperlink Utilities
+
+Create clickable terminal hyperlinks (OSC 8):
+
+```typescript
+import { link, linkifyUrls, supportsHyperlinks } from 'bargs';
+
+// Check if terminal supports hyperlinks
+if (supportsHyperlinks()) {
+  // Create a hyperlink
+  console.log(link('Click me', 'https://example.com'));
+
+  // Auto-linkify URLs in text
+  console.log(linkifyUrls('Visit https://example.com for more info'));
+}
+```
+
+### Additional Theme Utilities
+
+```typescript
+import {
+  ansi, // ANSI escape codes
+  createStyler, // Create a styler from a theme
+  defaultTheme, // The default theme object
+  getTheme, // Resolve theme name to theme object
+  stripAnsi, // Remove ANSI codes from string
+  themes, // All built-in themes
+} from 'bargs';
+
+// Create a custom styler
+const styler = createStyler({ colors: { flag: ansi.green } });
+console.log(styler.flag('--verbose'));
+
+// Strip ANSI codes for plain text output
+const plain = stripAnsi('\x1b[32m--verbose\x1b[0m'); // '--verbose'
+```
+
+### The `opt` Export
+
+All helpers are also available via the `opt` export:
+
+```typescript
+import { opt } from 'bargs';
+
+opt.string({ default: 'value' });
+opt.boolean({ aliases: ['v'] });
+opt.command({ description: '...', handler: () => {} });
+```
 
 ## License
 
