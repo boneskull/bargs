@@ -21,6 +21,7 @@ import {
   runSyncHandlers,
 } from './parser.js';
 import { defaultTheme, getTheme, type Theme } from './theme.js';
+import { validateConfig } from './validate.js';
 
 /**
  * Check if config has commands.
@@ -182,6 +183,9 @@ export function bargs(
   >,
   options?: BargsOptions,
 ): BargsResult<unknown, unknown[], string | undefined> {
+  // Validate config upfront (throws ValidationError if invalid)
+  validateConfig(config);
+
   const args = config.args ?? process.argv.slice(2);
   const theme: Theme = options?.theme
     ? getTheme(options.theme)
@@ -250,6 +254,9 @@ export async function bargsAsync(
   >,
   options?: BargsOptions,
 ): Promise<BargsResult<unknown, unknown[], string | undefined>> {
+  // Validate config upfront (throws ValidationError if invalid)
+  validateConfig(config);
+
   const args = config.args ?? process.argv.slice(2);
   const theme: Theme = options?.theme
     ? getTheme(options.theme)

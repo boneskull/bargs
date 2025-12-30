@@ -153,44 +153,15 @@ const coerceValues = (
 };
 
 /**
- * Validate positionals schema:
- *
- * 1. Variadic positional (if present) must be last
- * 2. Required positionals cannot follow optional ones
- */
-const validatePositionalsSchema = (schema: PositionalsSchema): void => {
-  const variadicIndex = schema.findIndex((def) => def.type === 'variadic');
-  if (variadicIndex !== -1 && variadicIndex !== schema.length - 1) {
-    throw new BargsError(
-      'Variadic positional must be the last positional argument.',
-    );
-  }
-
-  // Check that required positionals don't follow optional ones
-  let seenOptional = false;
-  for (let i = 0; i < schema.length; i++) {
-    const def = schema[i]!;
-    const isOptional =
-      !def.required && !('default' in def && def.default !== undefined);
-
-    if (isOptional) {
-      seenOptional = true;
-    } else if (seenOptional && def.type !== 'variadic') {
-      throw new BargsError(
-        `Required positional at index ${i} cannot follow an optional positional.`,
-      );
-    }
-  }
-};
-
-/**
  * Coerce positional values.
+ *
+ * Note: Schema validation (variadic last, required order) is done upfront by
+ * validateConfig in bargs.ts.
  */
 const coercePositionals = (
   positionals: string[],
   schema: PositionalsSchema,
 ): unknown[] => {
-  validatePositionalsSchema(schema);
   const result: unknown[] = [];
 
   for (let i = 0; i < schema.length; i++) {
@@ -335,7 +306,10 @@ const parseCommandsCore = <
         args: [defaultHandler, ...args],
         defaultHandler: undefined,
       });
-    } else if (typeof defaultHandler === 'function') {
+    } else if (
+      typeof defaultHandler === 'function' ||
+      Array.isArray(defaultHandler)
+    ) {
       // Parse global options only
       const parseArgsOptions = buildParseArgsConfig(globalOptions);
       const { values } = parseArgs({
@@ -356,7 +330,10 @@ const parseCommandsCore = <
         values: coercedValues as InferOptions<TOptions>,
       };
 
-      return { handler: defaultHandler as HandlerFn<unknown>, result };
+      return {
+        handler: defaultHandler as HandlerFn<unknown> | HandlerFn<unknown>[],
+        result,
+      };
     } else {
       throw new HelpError('No command specified.');
     }

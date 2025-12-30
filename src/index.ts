@@ -18,7 +18,7 @@ export const bargsAsync = Object.assign(bargsAsyncBase, opt);
 export default bargs;
 
 // Re-export errors
-export { BargsError, HelpError } from './errors.js';
+export { BargsError, HelpError, ValidationError } from './errors.js';
 
 // Re-export help generators
 export { generateCommandHelp, generateHelp } from './help.js';
@@ -76,3 +76,6 @@ export type {
   StringPositional,
   VariadicPositional,
 } from './types.js';
+
+// Re-export validation utilities
+export { validateConfig } from './validate.js';

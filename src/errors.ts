@@ -24,3 +24,20 @@ export class HelpError extends BargsError {
     this.command = command;
   }
 }
+
+/**
+ * Error thrown when bargs config validation fails.
+ *
+ * @param message - Description of what's invalid
+ * @param path - Dot-notation path to the invalid property (e.g.,
+ *   "options.verbose.aliases[0]")
+ */
+export class ValidationError extends BargsError {
+  readonly path: string;
+
+  constructor(path: string, message: string) {
+    super(`Invalid config at "${path}": ${message}`);
+    this.name = 'ValidationError';
+    this.path = path;
+  }
+}

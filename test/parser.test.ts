@@ -4,6 +4,7 @@ import { describe, it } from 'node:test';
 
 import { opt } from '../src/opt.js';
 import { parseCommandsAsync, parseSimple } from '../src/parser.js';
+import { validateConfig } from '../src/validate.js';
 
 describe('parseCommands', () => {
   it('parses a command with options', async () => {
@@ -306,12 +307,14 @@ describe('parseSimple positionals', () => {
   });
 
   it('throws if variadic is not the last positional', () => {
+    // Validation is done by validateConfig in bargs(), not parseSimple
+    // See validate.test.ts for comprehensive validation tests
     assert.throws(() => {
-      parseSimple({
-        args: ['a', 'b', 'c'],
+      validateConfig({
+        name: 'test',
         positionals: [opt.variadic('string'), opt.stringPos()],
       });
-    }, /Variadic positional must be the last positional argument/);
+    }, /variadic positional must be the last/i);
   });
 
   it('parses enum positionals', () => {
@@ -355,15 +358,17 @@ describe('parseSimple positionals', () => {
   });
 
   it('throws if required positional follows optional positional', () => {
+    // Validation is done by validateConfig in bargs(), not parseSimple
+    // See validate.test.ts for comprehensive validation tests
     assert.throws(() => {
-      parseSimple({
-        args: ['a', 'b'],
+      validateConfig({
+        name: 'test',
         positionals: [
           opt.stringPos(), // optional (no required, no default)
           opt.stringPos({ required: true }), // required - ERROR
         ],
       });
-    }, /Required positional at index 1 cannot follow an optional positional/);
+    }, /required positional cannot follow an optional/i);
   });
 
   it('allows required positional after positional with default', () => {

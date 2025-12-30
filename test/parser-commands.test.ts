@@ -84,6 +84,31 @@ describe('parseCommands', () => {
     assert.equal(defaultCalled, true);
   });
 
+  it('uses array defaultHandler when no command given', async () => {
+    const calls: number[] = [];
+
+    await parseCommands({
+      args: [],
+      commands: {
+        run: opt.command({
+          description: 'Run something',
+          handler: () => {},
+        }),
+      },
+      defaultHandler: [
+        () => {
+          calls.push(1);
+        },
+        () => {
+          calls.push(2);
+        },
+      ],
+      name: 'test-cli',
+    });
+
+    assert.deepEqual(calls, [1, 2]);
+  });
+
   it('throws on unknown command', async () => {
     await assert.rejects(
       parseCommands({
