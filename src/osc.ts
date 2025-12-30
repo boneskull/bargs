@@ -1,4 +1,12 @@
-// src/osc.ts - OSC (Operating System Command) escape sequences for terminal features
+/**
+ * @file OSC (Operating System Command) escape sequences for terminal features.
+ *
+ * The hyperlink detection logic in this file is adapted from supports-hyperlinks
+ * by Sindre Sorhus, used under the MIT License.
+ *
+ * @see {@link https://github.com/chalk/supports-hyperlinks}
+ * @license MIT (supports-hyperlinks portions)
+ */
 
 import process from 'node:process';
 
