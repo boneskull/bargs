@@ -15,7 +15,7 @@ import { dirname, join } from 'node:path';
 /**
  * Package info extracted from `package.json` for epilog generation.
  */
-export interface PackageInfo {
+interface PackageInfo {
   homepage?: string;
   repository?: string;
 }

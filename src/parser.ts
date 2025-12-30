@@ -31,7 +31,7 @@ import { BargsError, HelpError } from './errors.js';
  * Check if a value is a thenable (Promise-like). Uses duck-typing for
  * cross-realm compatibility.
  */
-export const isThenable = (value: unknown): value is PromiseLike<unknown> =>
+const isThenable = (value: unknown): value is PromiseLike<unknown> =>
   value !== null &&
   typeof value === 'object' &&
   typeof (value as { then?: unknown }).then === 'function';
@@ -431,10 +431,3 @@ export const parseCommandsAsync = async <
 
   return result;
 };
-
-/**
- * Parse arguments for a command-based CLI.
- *
- * @deprecated Use parseCommandsSync or parseCommandsAsync instead.
- */
-export const parseCommands = parseCommandsAsync;
