@@ -323,6 +323,55 @@ describe('bargsAsync', () => {
   });
 });
 
+describe('bargs with options (second parameter)', () => {
+  it('accepts theme by name in options', () => {
+    const result = bargs(
+      {
+        args: ['--foo', 'bar'],
+        name: 'test',
+        options: { foo: { type: 'string' } },
+      },
+      { theme: 'mono' },
+    );
+    assert.strictEqual(result.values.foo, 'bar');
+  });
+
+  it('accepts custom theme object in options', () => {
+    const customTheme: Theme = {
+      colors: {
+        command: '',
+        defaultValue: '',
+        description: '',
+        example: '',
+        flag: '',
+        positional: '',
+        scriptName: '\x1b[35m',
+        sectionHeader: '',
+        type: '',
+        usage: '',
+      },
+    };
+    const result = bargs(
+      {
+        args: ['--foo', 'bar'],
+        name: 'test',
+        options: { foo: { type: 'string' } },
+      },
+      { theme: customTheme },
+    );
+    assert.strictEqual(result.values.foo, 'bar');
+  });
+
+  it('works without options parameter', () => {
+    const result = bargs({
+      args: ['--foo', 'bar'],
+      name: 'test',
+      options: { foo: { type: 'string' } },
+    });
+    assert.strictEqual(result.values.foo, 'bar');
+  });
+});
+
 describe('bargsAsync with options (second parameter)', () => {
   it('accepts theme by name in options', async () => {
     const result = await bargsAsync(

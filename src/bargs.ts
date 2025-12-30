@@ -151,6 +151,7 @@ export function bargs<
   TPositionals extends PositionalsSchema,
 >(
   config: BargsConfig<TOptions, TPositionals, undefined>,
+  options?: BargsOptions,
 ): BargsResult<
   InferOptions<TOptions>,
   InferPositionals<TPositionals>,
@@ -166,6 +167,7 @@ export function bargs<
   TCommands extends Record<string, CommandConfigInput>,
 >(
   config: BargsConfigWithCommands<TOptions, TCommands>,
+  options?: BargsOptions,
 ): BargsResult<InferOptions<TOptions>, unknown[], string | undefined>;
 
 /**
@@ -178,11 +180,15 @@ export function bargs(
     PositionalsSchema,
     Record<string, CommandConfigInput> | undefined
   >,
+  options?: BargsOptions,
 ): BargsResult<unknown, unknown[], string | undefined> {
   const args = config.args ?? process.argv.slice(2);
+  const theme: Theme = options?.theme
+    ? getTheme(options.theme)
+    : getTheme('default');
 
   try {
-    handleBuiltinFlags(config, args);
+    handleBuiltinFlags(config, args, theme);
 
     // Parse
     if (hasCommands(config)) {
@@ -202,7 +208,7 @@ export function bargs(
       return result;
     }
   } catch (error) {
-    return handleHelpError(error, config);
+    return handleHelpError(error, config, theme);
   }
 }
 
