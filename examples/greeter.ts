@@ -35,7 +35,11 @@ const optionsDef = bargs.options({
 });
 
 const positionalsDef = bargs.positionals(
-  bargs.stringPos({ description: 'Name to greet', required: true }),
+  bargs.stringPos({
+    description: 'Name to greet',
+    required: true,
+    name: 'name',
+  }),
 );
 
 const main = async () => {
