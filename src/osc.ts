@@ -8,9 +8,9 @@
  * The hyperlink detection logic is adapted from supports-hyperlinks by Sindre
  * Sorhus, used under the MIT License.
  *
- * @see {@link https://github.com/chalk/supports-hyperlinks}
  * @license MIT (supports-hyperlinks portions)
  * @packageDocumentation
+ * @see {@link https://github.com/chalk/supports-hyperlinks}
  */
 
 import process from 'node:process';

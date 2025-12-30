@@ -166,7 +166,9 @@ For command-based CLIs, use `defaultHandler` to handle the case when no command 
 ```typescript
 bargs({
   name: 'git',
-  commands: { /* ... */ },
+  commands: {
+    /* ... */
+  },
   // Run 'status' when no command given
   defaultHandler: 'status',
 });
@@ -174,7 +176,9 @@ bargs({
 // Or provide a custom handler
 bargs({
   name: 'git',
-  commands: { /* ... */ },
+  commands: {
+    /* ... */
+  },
   defaultHandler: ({ values }) => {
     console.log('Run "git --help" for usage');
   },
@@ -185,17 +189,17 @@ bargs({
 
 ### Config Properties
 
-| Property      | Type                    | Description                                         |
-| ------------- | ----------------------- | --------------------------------------------------- |
-| `name`        | `string`                | CLI name (required)                                 |
-| `description` | `string`                | Description shown in help                           |
-| `version`     | `string`                | Enables `--version` flag                            |
-| `options`     | `OptionsSchema`         | Named options (`--flag`)                            |
-| `positionals` | `PositionalsSchema`     | Positional arguments                                |
-| `commands`    | `Record<string, ...>`   | Subcommands                                         |
-| `handler`     | `Handler`               | Handler function(s) for simple CLIs                 |
-| `epilog`      | `string \| false`       | Footer text in help (see [Epilog](#epilog))         |
-| `args`        | `string[]`              | Custom args (defaults to `process.argv.slice(2)`)   |
+| Property      | Type                  | Description                                       |
+| ------------- | --------------------- | ------------------------------------------------- |
+| `name`        | `string`              | CLI name (required)                               |
+| `description` | `string`              | Description shown in help                         |
+| `version`     | `string`              | Enables `--version` flag                          |
+| `options`     | `OptionsSchema`       | Named options (`--flag`)                          |
+| `positionals` | `PositionalsSchema`   | Positional arguments                              |
+| `commands`    | `Record<string, ...>` | Subcommands                                       |
+| `handler`     | `Handler`             | Handler function(s) for simple CLIs               |
+| `epilog`      | `string \| false`     | Footer text in help (see [Epilog](#epilog))       |
+| `args`        | `string[]`            | Custom args (defaults to `process.argv.slice(2)`) |
 
 ```typescript
 bargs({
@@ -203,7 +207,9 @@ bargs({
   description: 'Does amazing things',
   version: '1.2.3', // enables --version
   args: ['--verbose', 'file.txt'], // useful for testing
-  options: { /* ... */ },
+  options: {
+    /* ... */
+  },
 });
 ```
 
@@ -211,9 +217,9 @@ bargs({
 
 The second argument to `bargs()` or `bargsAsync()` accepts runtime options:
 
-| Property | Type         | Description                           |
-| -------- | ------------ | ------------------------------------- |
-| `theme`  | `ThemeInput` | Color theme (see [Theming](#theming)) |
+| Property | Type         | Description                                    |
+| -------- | ------------ | ---------------------------------------------- |
+| `theme`  | `ThemeInput` | `--help` Color theme (see [Theming](#theming)) |
 
 ```typescript
 bargs(config, { theme: 'ocean' });
@@ -234,14 +240,14 @@ bargs.count(); // -vvv → 3
 
 All option helpers accept these properties:
 
-| Property      | Type       | Description                                         |
-| ------------- | ---------- | --------------------------------------------------- |
-| `aliases`     | `string[]` | Short flags (e.g., `['v']` for `-v`)                |
-| `default`     | varies     | Default value (makes the option non-nullable)       |
-| `description` | `string`   | Help text description                               |
-| `group`       | `string`   | Groups options under a custom section header        |
-| `hidden`      | `boolean`  | Hide from `--help` output                           |
-| `required`    | `boolean`  | Mark as required (makes the option non-nullable)    |
+| Property      | Type       | Description                                      |
+| ------------- | ---------- | ------------------------------------------------ |
+| `aliases`     | `string[]` | Short flags (e.g., `['v']` for `-v`)             |
+| `default`     | varies     | Default value (makes the option non-nullable)    |
+| `description` | `string`   | Help text description                            |
+| `group`       | `string`   | Groups options under a custom section header     |
+| `hidden`      | `boolean`  | Hide from `--help` output                        |
+| `required`    | `boolean`  | Mark as required (makes the option non-nullable) |
 
 ```typescript
 bargs.string({
@@ -310,7 +316,7 @@ files.forEach((file) => console.log(readFileSync(file, 'utf8')));
 
 ## Epilog
 
-By default, bargs displays your package's homepage and repository URLs (from `package.json`) at the end of help output. URLs become clickable hyperlinks in supported terminals.
+By default, **bargs** displays your package's homepage and repository URLs (from `package.json`) at the end of help output. URLs become clickable hyperlinks in supported terminals.
 
 ```typescript
 // Custom epilog
@@ -344,32 +350,56 @@ bargs(
 bargs(config, { theme: 'mono' });
 ```
 
-### Custom Themes
-
-Create partial themes—missing colors fall back to the default:
+The `ansi` export provides common ANSI escape codes for styled terminal output: text styles (`bold`, `dim`, `italic`, `underline`, etc.), foreground colors, background colors, and their `bright*` variants. Use this to create your own themes (instead of hardcoding ANSI escape codes).
 
 ```typescript
-import { ansi, bargs } from 'bargs';
+import { ansi } from 'bargs';
 
-bargs(config, {
+bargs(someConfig, {
   theme: {
-    colors: {
-      sectionHeader: ansi.magenta,
-      flag: ansi.green,
-    },
+    command: ansi.bold,
+    defaultText: ansi.dim,
+    defaultValue: ansi.white,
+    description: ansi.white,
+    epilog: ansi.dim,
+    example: ansi.white + ansi.dim,
+    flag: ansi.brightCyan,
+    positional: ansi.magenta,
+    scriptName: ansi.bold,
+    sectionHeader: ansi.brightMagenta,
+    type: ansi.magenta,
+    url: ansi.cyan,
+    usage: ansi.cyan,
   },
 });
 ```
 
-The `ansi` export provides common ANSI escape codes for styled terminal output: text styles (`bold`, `dim`, `italic`, `underline`, etc.), foreground colors, background colors, and their `bright*` variants.
+Available theme color slots:
 
-Available theme color slots: `command`, `defaultText`, `defaultValue`, `description`, `epilog`, `example`, `flag`, `positional`, `scriptName`, `sectionHeader`, `type`, `url`, `usage`.
+| Slot            | What it styles                                  |
+| --------------- | ----------------------------------------------- |
+| `command`       | Command names (e.g., `init`, `build`)           |
+| `defaultText`   | The `default:` label                            |
+| `defaultValue`  | Default value (e.g., `false`, `"hello"`)        |
+| `description`   | Description text for options and commands       |
+| `epilog`        | Footer text (homepage, repository)              |
+| `example`       | Example code/commands                           |
+| `flag`          | Flag names (e.g., `--verbose`, `-v`)            |
+| `positional`    | Positional argument names (e.g., `<file>`)      |
+| `scriptName`    | CLI name shown in header                        |
+| `sectionHeader` | Section headers (e.g., `USAGE`, `OPTIONS`)      |
+| `type`          | Type annotations (e.g., `[string]`, `[number]`) |
+| `url`           | URLs (for clickable hyperlinks)                 |
+| `usage`         | The usage line text                             |
+
+> [!TIP]
+> You don't need to specify all color slots. Missing colors fall back to the default theme.
 
 ## Advanced Usage
 
 ### Error Handling
 
-bargs exports error classes for fine-grained error handling:
+**bargs** exports some `Error` subclasses:
 
 ```typescript
 import { bargs, BargsError, HelpError, ValidationError } from 'bargs';
@@ -403,7 +433,7 @@ const commandHelp = generateCommandHelp(config, 'migrate');
 
 ### Hyperlink Utilities
 
-Create clickable terminal hyperlinks (OSC 8):
+Create clickable terminal hyperlinks ([OSC 8](https://github.com/Alhadis/OSC8-Adoption)):
 
 ```typescript
 import { link, linkifyUrls, supportsHyperlinks } from 'bargs';
@@ -418,6 +448,9 @@ if (supportsHyperlinks()) {
 }
 ```
 
+> [!TIP]
+> **bargs** already automatically links URLs in `--help` output if the terminal supports hyperlinks.
+
 ### Additional Theme Utilities
 
 ```typescript
@@ -425,7 +458,6 @@ import {
   ansi, // ANSI escape codes
   createStyler, // Create a styler from a theme
   defaultTheme, // The default theme object
-  getTheme, // Resolve theme name to theme object
   stripAnsi, // Remove ANSI codes from string
   themes, // All built-in themes
 } from 'bargs';
@@ -436,18 +468,9 @@ console.log(styler.flag('--verbose'));
 
 // Strip ANSI codes for plain text output
 const plain = stripAnsi('\x1b[32m--verbose\x1b[0m'); // '--verbose'
-```
 
-### The `opt` Export
-
-All helpers are also available via the `opt` export:
-
-```typescript
-import { opt } from 'bargs';
-
-opt.string({ default: 'value' });
-opt.boolean({ aliases: ['v'] });
-opt.command({ description: '...', handler: () => {} });
+// Override some colors in a built-in theme
+const customTheme = { ...themes.ocean, colors: { flag: ansi.green } };
 ```
 
 ## License
