@@ -215,7 +215,7 @@ export const generateHelp = <
     lines.push(styler.sectionHeader('POSITIONALS'));
     for (let i = 0; i < config.positionals.length; i++) {
       const pos = config.positionals[i]!;
-      const name = `arg${i}`;
+      const name = pos.name ?? `arg${i}`;
       const formatted = pos.required ? `<${name}>` : `[${name}]`;
       const padding = Math.max(0, 20 - formatted.length);
       const desc = pos.description ?? '';
