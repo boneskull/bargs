@@ -48,21 +48,14 @@ export { BargsError, HelpError, ValidationError } from './errors.js';
 // Re-export help generators
 export { generateCommandHelp, generateHelp } from './help.js';
 
-// Re-export the opt builder
-export { opt };
-
 // Re-export OSC utilities for terminal hyperlinks
 export { link, linkifyUrls, supportsHyperlinks } from './osc.js';
-
-// Re-export isThenable for advanced use cases
-export { isThenable } from './parser.js';
 
 // Re-export theme utilities
 export {
   ansi,
   createStyler,
   defaultTheme,
-  getTheme,
   stripAnsi,
   themes,
 } from './theme.js';
@@ -105,10 +98,3 @@ export type {
   StringPositional,
   VariadicPositional,
 } from './types.js';
-
-// Re-export validation utilities
-export { validateConfig } from './validate.js';
-
-// Re-export version utilities
-export { readPackageInfoSync } from './version.js';
-export type { PackageInfo } from './version.js';
