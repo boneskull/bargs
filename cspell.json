@@ -50,5 +50,15 @@
     "argumentis",
     "mhello"
   ],
-  "words": ["bupkis", "positionals", "subcommand", "subcommands"]
+  "words": [
+    "bupkis",
+    "ghostty",
+    "linkified",
+    "linkifies",
+    "linkify",
+    "positionals",
+    "ptmux",
+    "subcommand",
+    "subcommands"
+  ]
 }
