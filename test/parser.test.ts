@@ -1,5 +1,5 @@
 // test/parser.test.ts
-import assert from 'node:assert/strict';
+import { expect, expectAsync } from 'bupkis';
 import { describe, it } from 'node:test';
 
 import { opt } from '../src/opt.js';
@@ -22,8 +22,8 @@ describe('parseCommands', () => {
       name: 'test-cli',
     });
 
-    assert.equal(result.command, 'greet');
-    assert.deepEqual(result.values, { name: 'world' });
+    expect(result.command, 'to be', 'greet');
+    expect(result.values, 'to deeply equal', { name: 'world' });
   });
 
   it('parses command positionals', async () => {
@@ -39,7 +39,7 @@ describe('parseCommands', () => {
       name: 'test-cli',
     });
 
-    assert.deepEqual(result.positionals, ['Alice']);
+    expect(result.positionals, 'to deeply equal', ['Alice']);
   });
 
   it('calls command handler', async () => {
@@ -57,7 +57,7 @@ describe('parseCommands', () => {
       name: 'test-cli',
     });
 
-    assert.equal(called, true);
+    expect(called, 'to be', true);
   });
 
   it('uses defaultHandler when no command given', async () => {
@@ -76,11 +76,11 @@ describe('parseCommands', () => {
       name: 'test-cli',
     });
 
-    assert.equal(called, true);
+    expect(called, 'to be', true);
   });
 
   it('throws on unknown command', async () => {
-    await assert.rejects(
+    await expectAsync(
       parseCommandsAsync({
         args: ['unknown'],
         commands: {
@@ -91,6 +91,7 @@ describe('parseCommands', () => {
         },
         name: 'test-cli',
       }),
+      'to reject with error satisfying',
       /Unknown command/,
     );
   });
@@ -113,7 +114,7 @@ describe('parseCommands', () => {
       },
     });
 
-    assert.deepEqual(result.values, { name: 'world', verbose: true });
+    expect(result.values, 'to deeply equal', { name: 'world', verbose: true });
   });
 
   it('uses named default command when no command given', async () => {
@@ -132,7 +133,7 @@ describe('parseCommands', () => {
       name: 'test-cli',
     });
 
-    assert.equal(handlerCalled, true);
+    expect(handlerCalled, 'to be', true);
   });
 });
 
@@ -145,7 +146,7 @@ describe('parseSimple', () => {
       },
     });
 
-    assert.deepEqual(result.values, { name: 'foo' });
+    expect(result.values, 'to deeply equal', { name: 'foo' });
   });
 
   it('parses boolean options', () => {
@@ -156,7 +157,7 @@ describe('parseSimple', () => {
       },
     });
 
-    assert.deepEqual(result.values, { verbose: true });
+    expect(result.values, 'to deeply equal', { verbose: true });
   });
 
   it('parses number options', () => {
@@ -167,7 +168,7 @@ describe('parseSimple', () => {
       },
     });
 
-    assert.deepEqual(result.values, { count: 5 });
+    expect(result.values, 'to deeply equal', { count: 5 });
   });
 
   it('applies defaults', () => {
@@ -179,7 +180,7 @@ describe('parseSimple', () => {
       },
     });
 
-    assert.deepEqual(result.values, { name: 'default-name', verbose: false });
+    expect(result.values, 'to deeply equal', { name: 'default-name', verbose: false });
   });
 
   it('parses short aliases', () => {
@@ -190,7 +191,7 @@ describe('parseSimple', () => {
       },
     });
 
-    assert.deepEqual(result.values, { verbose: true });
+    expect(result.values, 'to deeply equal', { verbose: true });
   });
 
   it('returns undefined for options without defaults', () => {
@@ -201,7 +202,7 @@ describe('parseSimple', () => {
       },
     });
 
-    assert.equal(result.values.name, undefined);
+    expect(result.values.name, 'to be', undefined);
   });
 
   it('parses enum options', () => {
@@ -214,18 +215,22 @@ describe('parseSimple', () => {
       },
     });
 
-    assert.equal(result.values.level, 'high');
+    expect(result.values.level, 'to be', 'high');
   });
 
   it('validates enum choices', () => {
-    assert.throws(() => {
-      parseSimple({
-        args: ['--level', 'invalid'],
-        options: {
-          level: opt.enum(['low', 'medium', 'high'] as const),
-        },
-      });
-    }, /Invalid value.*level.*must be one of/i);
+    expect(
+      () => {
+        parseSimple({
+          args: ['--level', 'invalid'],
+          options: {
+            level: opt.enum(['low', 'medium', 'high'] as const),
+          },
+        });
+      },
+      'to throw',
+      /Invalid value.*level.*must be one of/i,
+    );
   });
 
   it('parses array options', () => {
@@ -236,7 +241,7 @@ describe('parseSimple', () => {
       },
     });
 
-    assert.deepEqual(result.values.files, ['a.txt', 'b.txt']);
+    expect(result.values.files, 'to deeply equal', ['a.txt', 'b.txt']);
   });
 
   it('parses number array options', () => {
@@ -247,7 +252,7 @@ describe('parseSimple', () => {
       },
     });
 
-    assert.deepEqual(result.values.ports, [80, 443]);
+    expect(result.values.ports, 'to deeply equal', [80, 443]);
   });
 });
 
@@ -258,7 +263,7 @@ describe('parseSimple positionals', () => {
       positionals: [opt.stringPos({ required: true })],
     });
 
-    assert.deepEqual(result.positionals, ['hello']);
+    expect(result.positionals, 'to deeply equal', ['hello']);
   });
 
   it('parses number positionals', () => {
@@ -267,7 +272,7 @@ describe('parseSimple positionals', () => {
       positionals: [opt.numberPos({ required: true })],
     });
 
-    assert.deepEqual(result.positionals, [42]);
+    expect(result.positionals, 'to deeply equal', [42]);
   });
 
   it('parses variadic positionals', () => {
@@ -276,7 +281,7 @@ describe('parseSimple positionals', () => {
       positionals: [opt.stringPos({ required: true }), opt.variadic('string')],
     });
 
-    assert.deepEqual(result.positionals, ['first', ['second', 'third']]);
+    expect(result.positionals, 'to deeply equal', ['first', ['second', 'third']]);
   });
 
   it('applies positional defaults', () => {
@@ -285,16 +290,20 @@ describe('parseSimple positionals', () => {
       positionals: [opt.stringPos({ default: 'default-value' })],
     });
 
-    assert.deepEqual(result.positionals, ['default-value']);
+    expect(result.positionals, 'to deeply equal', ['default-value']);
   });
 
   it('throws on missing required positional', () => {
-    assert.throws(() => {
-      parseSimple({
-        args: [],
-        positionals: [opt.stringPos({ required: true })],
-      });
-    }, /Missing required positional/);
+    expect(
+      () => {
+        parseSimple({
+          args: [],
+          positionals: [opt.stringPos({ required: true })],
+        });
+      },
+      'to throw',
+      /Missing required positional/,
+    );
   });
 
   it('parses number variadic positionals', () => {
@@ -303,18 +312,22 @@ describe('parseSimple positionals', () => {
       positionals: [opt.variadic('number')],
     });
 
-    assert.deepEqual(result.positionals, [[1, 2, 3]]);
+    expect(result.positionals, 'to deeply equal', [[1, 2, 3]]);
   });
 
   it('throws if variadic is not the last positional', () => {
     // Validation is done by validateConfig in bargs(), not parseSimple
     // See validate.test.ts for comprehensive validation tests
-    assert.throws(() => {
-      validateConfig({
-        name: 'test',
-        positionals: [opt.variadic('string'), opt.stringPos()],
-      });
-    }, /variadic positional must be the last/i);
+    expect(
+      () => {
+        validateConfig({
+          name: 'test',
+          positionals: [opt.variadic('string'), opt.stringPos()],
+        });
+      },
+      'to throw',
+      /variadic positional must be the last/i,
+    );
   });
 
   it('parses enum positionals', () => {
@@ -323,7 +336,7 @@ describe('parseSimple positionals', () => {
       positionals: [opt.enumPos(['low', 'medium', 'high'] as const)],
     });
 
-    assert.deepEqual(result.positionals, ['high']);
+    expect(result.positionals, 'to deeply equal', ['high']);
   });
 
   it('applies enum positional defaults', () => {
@@ -334,41 +347,53 @@ describe('parseSimple positionals', () => {
       ],
     });
 
-    assert.deepEqual(result.positionals, ['medium']);
+    expect(result.positionals, 'to deeply equal', ['medium']);
   });
 
   it('validates enum positional choices', () => {
-    assert.throws(() => {
-      parseSimple({
-        args: ['invalid'],
-        positionals: [opt.enumPos(['low', 'medium', 'high'] as const)],
-      });
-    }, /Invalid value.*positional.*must be one of/i);
+    expect(
+      () => {
+        parseSimple({
+          args: ['invalid'],
+          positionals: [opt.enumPos(['low', 'medium', 'high'] as const)],
+        });
+      },
+      'to throw',
+      /Invalid value.*positional.*must be one of/i,
+    );
   });
 
   it('throws on missing required enum positional', () => {
-    assert.throws(() => {
-      parseSimple({
-        args: [],
-        positionals: [
-          opt.enumPos(['low', 'medium', 'high'] as const, { required: true }),
-        ],
-      });
-    }, /Missing required positional/);
+    expect(
+      () => {
+        parseSimple({
+          args: [],
+          positionals: [
+            opt.enumPos(['low', 'medium', 'high'] as const, { required: true }),
+          ],
+        });
+      },
+      'to throw',
+      /Missing required positional/,
+    );
   });
 
   it('throws if required positional follows optional positional', () => {
     // Validation is done by validateConfig in bargs(), not parseSimple
     // See validate.test.ts for comprehensive validation tests
-    assert.throws(() => {
-      validateConfig({
-        name: 'test',
-        positionals: [
-          opt.stringPos(), // optional (no required, no default)
-          opt.stringPos({ required: true }), // required - ERROR
-        ],
-      });
-    }, /required positional cannot follow an optional/i);
+    expect(
+      () => {
+        validateConfig({
+          name: 'test',
+          positionals: [
+            opt.stringPos(), // optional (no required, no default)
+            opt.stringPos({ required: true }), // required - ERROR
+          ],
+        });
+      },
+      'to throw',
+      /required positional cannot follow an optional/i,
+    );
   });
 
   it('allows required positional after positional with default', () => {
@@ -381,7 +406,7 @@ describe('parseSimple positionals', () => {
       ],
     });
 
-    assert.deepEqual(result.positionals, ['override', 'required-value']);
+    expect(result.positionals, 'to deeply equal', ['override', 'required-value']);
   });
 
   it('allows multiple optional positionals in sequence', () => {
@@ -390,6 +415,6 @@ describe('parseSimple positionals', () => {
       positionals: [opt.stringPos(), opt.stringPos(), opt.stringPos()],
     });
 
-    assert.deepEqual(result.positionals, ['first', undefined, undefined]);
+    expect(result.positionals, 'to deeply equal', ['first', undefined, undefined]);
   });
 });

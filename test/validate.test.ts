@@ -1,7 +1,7 @@
 // test/validate.test.ts
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 // ^ Intentional: tests must pass invalid types to test validation
-import assert from 'node:assert/strict';
+import { expect } from 'bupkis';
 import { describe, it } from 'node:test';
 
 import { type ValidationError } from '../src/errors.js';
@@ -11,99 +11,114 @@ import { validateConfig } from '../src/validate.js';
 describe('validateConfig', () => {
   describe('base config validation', () => {
     it('requires config to be an object', () => {
-      assert.throws(
+      expect(
         () => validateConfig(null as any),
-        (err: ValidationError) => {
-          assert.equal(err.name, 'ValidationError');
-          assert.equal(err.path, 'config');
-          assert.match(err.message, /must be an object/);
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          name: 'ValidationError',
+          path: 'config',
+          message: /must be an object/,
         },
       );
 
-      assert.throws(
+      expect(
         () => validateConfig('not-an-object' as any),
-        (err: ValidationError) => {
-          assert.match(err.message, /must be an object/);
-          return true;
-        },
+        'to throw error satisfying',
+        { message: /must be an object/ },
       );
     });
 
     it('requires name to be a non-empty string', () => {
-      assert.throws(
+      expect(
         () => validateConfig({ name: 123 } as any),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.name');
-          assert.match(err.message, /must be a string/);
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          path: 'config.name',
+          message: /must be a string/,
         },
       );
 
-      assert.throws(
+      expect(
         () => validateConfig({ name: '' }),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.name');
-          assert.match(err.message, /must not be empty/);
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          path: 'config.name',
+          message: /must not be empty/,
         },
       );
     });
 
     it('accepts valid name', () => {
-      assert.doesNotThrow(() => validateConfig({ name: 'my-cli' }));
+      expect(() => validateConfig({ name: 'my-cli' }), 'not to throw');
     });
 
     it('validates optional description', () => {
-      assert.doesNotThrow(() =>
-        validateConfig({ description: 'A CLI tool', name: 'my-cli' }),
+      expect(
+        () => validateConfig({ description: 'A CLI tool', name: 'my-cli' }),
+        'not to throw',
       );
 
-      assert.throws(
+      expect(
         () => validateConfig({ description: 123, name: 'my-cli' } as any),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.description');
-          assert.match(err.message, /must be a string/);
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          path: 'config.description',
+          message: /must be a string/,
         },
       );
     });
 
     it('validates optional version', () => {
-      assert.doesNotThrow(() =>
-        validateConfig({ name: 'my-cli', version: '1.0.0' }),
+      expect(
+        () => validateConfig({ name: 'my-cli', version: '1.0.0' }),
+        'not to throw',
       );
 
-      assert.throws(
+      expect(
         () => validateConfig({ name: 'my-cli', version: 1 } as any),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.version');
-          assert.match(err.message, /must be a string/);
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          path: 'config.version',
+          message: /must be a string/,
         },
       );
     });
 
     it('validates optional args', () => {
-      assert.doesNotThrow(() =>
-        validateConfig({ args: ['--flag'], name: 'my-cli' }),
+      expect(
+        () => validateConfig({ args: ['--flag'], name: 'my-cli' }),
+        'not to throw',
       );
 
-      assert.throws(
+      expect(
         () => validateConfig({ args: 'not-an-array', name: 'my-cli' } as any),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.args');
-          assert.match(err.message, /must be an array of strings/);
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          path: 'config.args',
+          message: /must be an array of strings/,
         },
       );
 
-      assert.throws(
+      expect(
         () => validateConfig({ args: [1, 2, 3], name: 'my-cli' } as any),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.args');
-          assert.match(err.message, /must be an array of strings/);
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          path: 'config.args',
+          message: /must be an array of strings/,
         },
       );
     });
@@ -111,7 +126,7 @@ describe('validateConfig', () => {
 
   describe('options schema validation', () => {
     it('validates option type discriminator', () => {
-      assert.throws(
+      expect(
         () =>
           validateConfig({
             name: 'my-cli',
@@ -119,14 +134,16 @@ describe('validateConfig', () => {
               flag: { type: 'invalid' } as any,
             },
           }),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.options.flag.type');
-          assert.match(err.message, /must be one of/);
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          path: 'config.options.flag.type',
+          message: /must be one of/,
         },
       );
 
-      assert.throws(
+      expect(
         () =>
           validateConfig({
             name: 'my-cli',
@@ -134,25 +151,29 @@ describe('validateConfig', () => {
               flag: {} as any,
             },
           }),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.options.flag.type');
-          assert.match(err.message, /must be a string/);
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          path: 'config.options.flag.type',
+          message: /must be a string/,
         },
       );
     });
 
     it('validates string option', () => {
-      assert.doesNotThrow(() =>
-        validateConfig({
-          name: 'my-cli',
-          options: {
-            name: opt.string({ default: 'world' }),
-          },
-        }),
+      expect(
+        () =>
+          validateConfig({
+            name: 'my-cli',
+            options: {
+              name: opt.string({ default: 'world' }),
+            },
+          }),
+        'not to throw',
       );
 
-      assert.throws(
+      expect(
         () =>
           validateConfig({
             name: 'my-cli',
@@ -160,25 +181,29 @@ describe('validateConfig', () => {
               name: { default: 123, type: 'string' } as any,
             },
           }),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.options.name.default');
-          assert.match(err.message, /must be a string/);
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          path: 'config.options.name.default',
+          message: /must be a string/,
         },
       );
     });
 
     it('validates boolean option', () => {
-      assert.doesNotThrow(() =>
-        validateConfig({
-          name: 'my-cli',
-          options: {
-            verbose: opt.boolean({ default: false }),
-          },
-        }),
+      expect(
+        () =>
+          validateConfig({
+            name: 'my-cli',
+            options: {
+              verbose: opt.boolean({ default: false }),
+            },
+          }),
+        'not to throw',
       );
 
-      assert.throws(
+      expect(
         () =>
           validateConfig({
             name: 'my-cli',
@@ -186,25 +211,29 @@ describe('validateConfig', () => {
               verbose: { default: 'yes', type: 'boolean' } as any,
             },
           }),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.options.verbose.default');
-          assert.match(err.message, /must be a boolean/);
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          path: 'config.options.verbose.default',
+          message: /must be a boolean/,
         },
       );
     });
 
     it('validates number option', () => {
-      assert.doesNotThrow(() =>
-        validateConfig({
-          name: 'my-cli',
-          options: {
-            count: opt.number({ default: 42 }),
-          },
-        }),
+      expect(
+        () =>
+          validateConfig({
+            name: 'my-cli',
+            options: {
+              count: opt.number({ default: 42 }),
+            },
+          }),
+        'not to throw',
       );
 
-      assert.throws(
+      expect(
         () =>
           validateConfig({
             name: 'my-cli',
@@ -212,25 +241,29 @@ describe('validateConfig', () => {
               count: { default: '42', type: 'number' } as any,
             },
           }),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.options.count.default');
-          assert.match(err.message, /must be a number/);
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          path: 'config.options.count.default',
+          message: /must be a number/,
         },
       );
     });
 
     it('validates count option', () => {
-      assert.doesNotThrow(() =>
-        validateConfig({
-          name: 'my-cli',
-          options: {
-            verbose: opt.count({ default: 0 }),
-          },
-        }),
+      expect(
+        () =>
+          validateConfig({
+            name: 'my-cli',
+            options: {
+              verbose: opt.count({ default: 0 }),
+            },
+          }),
+        'not to throw',
       );
 
-      assert.throws(
+      expect(
         () =>
           validateConfig({
             name: 'my-cli',
@@ -238,25 +271,29 @@ describe('validateConfig', () => {
               verbose: { default: 'many', type: 'count' } as any,
             },
           }),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.options.verbose.default');
-          assert.match(err.message, /must be a number/);
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          path: 'config.options.verbose.default',
+          message: /must be a number/,
         },
       );
     });
 
     it('validates enum option choices', () => {
-      assert.doesNotThrow(() =>
-        validateConfig({
-          name: 'my-cli',
-          options: {
-            level: opt.enum(['low', 'medium', 'high'] as const),
-          },
-        }),
+      expect(
+        () =>
+          validateConfig({
+            name: 'my-cli',
+            options: {
+              level: opt.enum(['low', 'medium', 'high'] as const),
+            },
+          }),
+        'not to throw',
       );
 
-      assert.throws(
+      expect(
         () =>
           validateConfig({
             name: 'my-cli',
@@ -264,14 +301,16 @@ describe('validateConfig', () => {
               level: { type: 'enum' } as any,
             },
           }),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.options.level.choices');
-          assert.match(err.message, /must be a non-empty array/);
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          path: 'config.options.level.choices',
+          message: /must be a non-empty array/,
         },
       );
 
-      assert.throws(
+      expect(
         () =>
           validateConfig({
             name: 'my-cli',
@@ -279,27 +318,31 @@ describe('validateConfig', () => {
               level: { choices: [], type: 'enum' } as any,
             },
           }),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.options.level.choices');
-          assert.match(err.message, /must not be empty/);
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          path: 'config.options.level.choices',
+          message: /must not be empty/,
         },
       );
     });
 
     it('validates enum option default is in choices', () => {
-      assert.doesNotThrow(() =>
-        validateConfig({
-          name: 'my-cli',
-          options: {
-            level: opt.enum(['low', 'medium', 'high'] as const, {
-              default: 'medium',
-            }),
-          },
-        }),
+      expect(
+        () =>
+          validateConfig({
+            name: 'my-cli',
+            options: {
+              level: opt.enum(['low', 'medium', 'high'] as const, {
+                default: 'medium',
+              }),
+            },
+          }),
+        'not to throw',
       );
 
-      assert.throws(
+      expect(
         () =>
           validateConfig({
             name: 'my-cli',
@@ -311,26 +354,30 @@ describe('validateConfig', () => {
               },
             },
           }),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.options.level.default');
-          assert.match(err.message, /must be one of the choices/);
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          path: 'config.options.level.default',
+          message: /must be one of the choices/,
         },
       );
     });
 
     it('validates array option items', () => {
-      assert.doesNotThrow(() =>
-        validateConfig({
-          name: 'my-cli',
-          options: {
-            files: opt.array('string'),
-            ports: opt.array('number'),
-          },
-        }),
+      expect(
+        () =>
+          validateConfig({
+            name: 'my-cli',
+            options: {
+              files: opt.array('string'),
+              ports: opt.array('number'),
+            },
+          }),
+        'not to throw',
       );
 
-      assert.throws(
+      expect(
         () =>
           validateConfig({
             name: 'my-cli',
@@ -338,26 +385,30 @@ describe('validateConfig', () => {
               files: { items: 'boolean', type: 'array' } as any,
             },
           }),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.options.files.items');
-          assert.match(err.message, /"string" or "number"/);
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          path: 'config.options.files.items',
+          message: /"string" or "number"/,
         },
       );
     });
 
     it('validates array option default matches items type', () => {
-      assert.doesNotThrow(() =>
-        validateConfig({
-          name: 'my-cli',
-          options: {
-            files: opt.array('string', { default: ['a.txt', 'b.txt'] }),
-            ports: opt.array('number', { default: [80, 443] }),
-          },
-        }),
+      expect(
+        () =>
+          validateConfig({
+            name: 'my-cli',
+            options: {
+              files: opt.array('string', { default: ['a.txt', 'b.txt'] }),
+              ports: opt.array('number', { default: [80, 443] }),
+            },
+          }),
+        'not to throw',
       );
 
-      assert.throws(
+      expect(
         () =>
           validateConfig({
             name: 'my-cli',
@@ -365,14 +416,16 @@ describe('validateConfig', () => {
               files: { default: [1, 2, 3], items: 'string', type: 'array' },
             },
           }),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.options.files.default');
-          assert.match(err.message, /must be an array of strings/);
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          path: 'config.options.files.default',
+          message: /must be an array of strings/,
         },
       );
 
-      assert.throws(
+      expect(
         () =>
           validateConfig({
             name: 'my-cli',
@@ -380,25 +433,29 @@ describe('validateConfig', () => {
               ports: { default: ['80', '443'], items: 'number', type: 'array' },
             },
           }),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.options.ports.default');
-          assert.match(err.message, /must be an array of numbers/);
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          path: 'config.options.ports.default',
+          message: /must be an array of numbers/,
         },
       );
     });
 
     it('validates aliases are single characters', () => {
-      assert.doesNotThrow(() =>
-        validateConfig({
-          name: 'my-cli',
-          options: {
-            verbose: opt.boolean({ aliases: ['v'] }),
-          },
-        }),
+      expect(
+        () =>
+          validateConfig({
+            name: 'my-cli',
+            options: {
+              verbose: opt.boolean({ aliases: ['v'] }),
+            },
+          }),
+        'not to throw',
       );
 
-      assert.throws(
+      expect(
         () =>
           validateConfig({
             name: 'my-cli',
@@ -406,16 +463,18 @@ describe('validateConfig', () => {
               verbose: { aliases: ['verbose'], type: 'boolean' },
             },
           }),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.options.verbose.aliases[0]');
-          assert.match(err.message, /must be a single character/);
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          path: 'config.options.verbose.aliases[0]',
+          message: /must be a single character/,
         },
       );
     });
 
     it('detects duplicate aliases across options', () => {
-      assert.throws(
+      expect(
         () =>
           validateConfig({
             name: 'my-cli',
@@ -424,16 +483,14 @@ describe('validateConfig', () => {
               verbose: { aliases: ['v'], type: 'boolean' },
             },
           }),
-        (err: ValidationError) => {
-          // Second option to be validated will fail
-          assert.match(err.message, /alias "v" is already used/);
-          return true;
-        },
+        'to throw error satisfying',
+        // Second option to be validated will fail
+        { message: /alias "v" is already used/ },
       );
     });
 
     it('validates option description is a string', () => {
-      assert.throws(
+      expect(
         () =>
           validateConfig({
             name: 'my-cli',
@@ -441,16 +498,18 @@ describe('validateConfig', () => {
               verbose: { description: 123, type: 'boolean' } as any,
             },
           }),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.options.verbose.description');
-          assert.match(err.message, /must be a string/);
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          path: 'config.options.verbose.description',
+          message: /must be a string/,
         },
       );
     });
 
     it('validates option group is a string', () => {
-      assert.throws(
+      expect(
         () =>
           validateConfig({
             name: 'my-cli',
@@ -458,16 +517,18 @@ describe('validateConfig', () => {
               verbose: { group: true, type: 'boolean' } as any,
             },
           }),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.options.verbose.group');
-          assert.match(err.message, /must be a string/);
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          path: 'config.options.verbose.group',
+          message: /must be a string/,
         },
       );
     });
 
     it('validates option hidden is a boolean', () => {
-      assert.throws(
+      expect(
         () =>
           validateConfig({
             name: 'my-cli',
@@ -475,16 +536,18 @@ describe('validateConfig', () => {
               verbose: { hidden: 'yes', type: 'boolean' } as any,
             },
           }),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.options.verbose.hidden');
-          assert.match(err.message, /must be a boolean/);
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          path: 'config.options.verbose.hidden',
+          message: /must be a boolean/,
         },
       );
     });
 
     it('validates option required is a boolean', () => {
-      assert.throws(
+      expect(
         () =>
           validateConfig({
             name: 'my-cli',
@@ -492,10 +555,12 @@ describe('validateConfig', () => {
               name: { required: 'yes', type: 'string' } as any,
             },
           }),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.options.name.required');
-          assert.match(err.message, /must be a boolean/);
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          path: 'config.options.name.required',
+          message: /must be a boolean/,
         },
       );
     });
@@ -503,103 +568,119 @@ describe('validateConfig', () => {
 
   describe('positionals schema validation', () => {
     it('validates positionals is an array', () => {
-      assert.throws(
+      expect(
         () =>
           validateConfig({
             name: 'my-cli',
             positionals: 'not-an-array' as any,
           }),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.positionals');
-          assert.match(err.message, /must be an array/);
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          path: 'config.positionals',
+          message: /must be an array/,
         },
       );
     });
 
     it('validates positional type discriminator', () => {
-      assert.throws(
+      expect(
         () =>
           validateConfig({
             name: 'my-cli',
             positionals: [{ type: 'invalid' }] as any,
           }),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.positionals[0].type');
-          assert.match(err.message, /must be one of/);
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          path: 'config.positionals[0].type',
+          message: /must be one of/,
         },
       );
     });
 
     it('validates string positional', () => {
-      assert.doesNotThrow(() =>
-        validateConfig({
-          name: 'my-cli',
-          positionals: [opt.stringPos({ default: 'value' })],
-        }),
+      expect(
+        () =>
+          validateConfig({
+            name: 'my-cli',
+            positionals: [opt.stringPos({ default: 'value' })],
+          }),
+        'not to throw',
       );
 
-      assert.throws(
+      expect(
         () =>
           validateConfig({
             name: 'my-cli',
             positionals: [{ default: 123, type: 'string' }] as any,
           }),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.positionals[0].default');
-          assert.match(err.message, /must be a string/);
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          path: 'config.positionals[0].default',
+          message: /must be a string/,
         },
       );
     });
 
     it('validates number positional', () => {
-      assert.doesNotThrow(() =>
-        validateConfig({
-          name: 'my-cli',
-          positionals: [opt.numberPos({ default: 42 })],
-        }),
+      expect(
+        () =>
+          validateConfig({
+            name: 'my-cli',
+            positionals: [opt.numberPos({ default: 42 })],
+          }),
+        'not to throw',
       );
 
-      assert.throws(
+      expect(
         () =>
           validateConfig({
             name: 'my-cli',
             positionals: [{ default: '42', type: 'number' }] as any,
           }),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.positionals[0].default');
-          assert.match(err.message, /must be a number/);
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          path: 'config.positionals[0].default',
+          message: /must be a number/,
         },
       );
     });
 
     it('validates enum positional choices', () => {
-      assert.doesNotThrow(() =>
-        validateConfig({
-          name: 'my-cli',
-          positionals: [opt.enumPos(['a', 'b', 'c'] as const)],
-        }),
+      expect(
+        () =>
+          validateConfig({
+            name: 'my-cli',
+            positionals: [opt.enumPos(['a', 'b', 'c'] as const)],
+          }),
+        'not to throw',
       );
 
-      assert.throws(
+      expect(
         () =>
           validateConfig({
             name: 'my-cli',
             positionals: [{ choices: [], type: 'enum' }] as any,
           }),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.positionals[0].choices');
-          assert.match(err.message, /must not be empty/);
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          path: 'config.positionals[0].choices',
+          message: /must not be empty/,
         },
       );
     });
 
     it('validates enum positional default is in choices', () => {
-      assert.throws(
+      expect(
         () =>
           validateConfig({
             name: 'my-cli',
@@ -607,53 +688,61 @@ describe('validateConfig', () => {
               { choices: ['a', 'b', 'c'], default: 'd', type: 'enum' },
             ],
           }),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.positionals[0].default');
-          assert.match(err.message, /must be one of the choices/);
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          path: 'config.positionals[0].default',
+          message: /must be one of the choices/,
         },
       );
     });
 
     it('validates variadic positional items', () => {
-      assert.doesNotThrow(() =>
-        validateConfig({
-          name: 'my-cli',
-          positionals: [opt.variadic('string')],
-        }),
+      expect(
+        () =>
+          validateConfig({
+            name: 'my-cli',
+            positionals: [opt.variadic('string')],
+          }),
+        'not to throw',
       );
 
-      assert.throws(
+      expect(
         () =>
           validateConfig({
             name: 'my-cli',
             positionals: [{ items: 'boolean', type: 'variadic' }] as any,
           }),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.positionals[0].items');
-          assert.match(err.message, /"string" or "number"/);
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          path: 'config.positionals[0].items',
+          message: /"string" or "number"/,
         },
       );
     });
 
     it('validates variadic positional is last', () => {
-      assert.throws(
+      expect(
         () =>
           validateConfig({
             name: 'my-cli',
             positionals: [opt.variadic('string'), opt.stringPos()],
           }),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.positionals[0]');
-          assert.match(err.message, /variadic positional must be the last/);
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          path: 'config.positionals[0]',
+          message: /variadic positional must be the last/,
         },
       );
     });
 
     it('validates required positionals do not follow optional', () => {
-      assert.throws(
+      expect(
         () =>
           validateConfig({
             name: 'my-cli',
@@ -662,70 +751,77 @@ describe('validateConfig', () => {
               opt.stringPos({ required: true }), // required - invalid!
             ],
           }),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.positionals[1]');
-          assert.match(
-            err.message,
-            /required positional cannot follow an optional/,
-          );
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          path: 'config.positionals[1]',
+          message: /required positional cannot follow an optional/,
         },
       );
     });
 
     it('allows optional after required', () => {
-      assert.doesNotThrow(() =>
-        validateConfig({
-          name: 'my-cli',
-          positionals: [
-            opt.stringPos({ required: true }),
-            opt.stringPos(), // optional - valid
-          ],
-        }),
+      expect(
+        () =>
+          validateConfig({
+            name: 'my-cli',
+            positionals: [
+              opt.stringPos({ required: true }),
+              opt.stringPos(), // optional - valid
+            ],
+          }),
+        'not to throw',
       );
     });
 
     it('validates positional description is a string', () => {
-      assert.throws(
+      expect(
         () =>
           validateConfig({
             name: 'my-cli',
             positionals: [{ description: 123, type: 'string' }] as any,
           }),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.positionals[0].description');
-          assert.match(err.message, /must be a string/);
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          path: 'config.positionals[0].description',
+          message: /must be a string/,
         },
       );
     });
 
     it('validates positional name is a string', () => {
-      assert.throws(
+      expect(
         () =>
           validateConfig({
             name: 'my-cli',
             positionals: [{ name: 123, type: 'string' }] as any,
           }),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.positionals[0].name');
-          assert.match(err.message, /must be a string/);
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          path: 'config.positionals[0].name',
+          message: /must be a string/,
         },
       );
     });
 
     it('validates positional required is a boolean', () => {
-      assert.throws(
+      expect(
         () =>
           validateConfig({
             name: 'my-cli',
             positionals: [{ required: 'yes', type: 'string' }] as any,
           }),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.positionals[0].required');
-          assert.match(err.message, /must be a boolean/);
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          path: 'config.positionals[0].required',
+          message: /must be a boolean/,
         },
       );
     });
@@ -733,64 +829,74 @@ describe('validateConfig', () => {
 
   describe('simple CLI handler validation', () => {
     it('accepts function handler', () => {
-      assert.doesNotThrow(() =>
-        validateConfig({
-          handler: () => {},
-          name: 'my-cli',
-        }),
+      expect(
+        () =>
+          validateConfig({
+            handler: () => {},
+            name: 'my-cli',
+          }),
+        'not to throw',
       );
     });
 
     it('accepts array of function handlers', () => {
-      assert.doesNotThrow(() =>
-        validateConfig({
-          handler: [() => {}, () => {}],
-          name: 'my-cli',
-        }),
+      expect(
+        () =>
+          validateConfig({
+            handler: [() => {}, () => {}],
+            name: 'my-cli',
+          }),
+        'not to throw',
       );
     });
 
     it('rejects non-function handler', () => {
-      assert.throws(
+      expect(
         () =>
           validateConfig({
             handler: 'not-a-function' as any,
             name: 'my-cli',
           }),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.handler');
-          assert.match(err.message, /must be a function/);
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          path: 'config.handler',
+          message: /must be a function/,
         },
       );
     });
 
     it('rejects empty handler array', () => {
-      assert.throws(
+      expect(
         () =>
           validateConfig({
             handler: [] as any,
             name: 'my-cli',
           }),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.handler');
-          assert.match(err.message, /must not be empty/);
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          path: 'config.handler',
+          message: /must not be empty/,
         },
       );
     });
 
     it('rejects array with non-function element', () => {
-      assert.throws(
+      expect(
         () =>
           validateConfig({
             handler: [() => {}, 'not-a-function'] as any,
             name: 'my-cli',
           }),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.handler[1]');
-          assert.match(err.message, /must be a function/);
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          path: 'config.handler[1]',
+          message: /must be a function/,
         },
       );
     });
@@ -798,22 +904,24 @@ describe('validateConfig', () => {
 
   describe('command-based CLI validation', () => {
     it('validates commands is required and non-empty', () => {
-      assert.throws(
+      expect(
         () =>
           validateConfig({
             commands: {},
             name: 'my-cli',
           } as any),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.commands');
-          assert.match(err.message, /must have at least one command/);
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          path: 'config.commands',
+          message: /must have at least one command/,
         },
       );
     });
 
     it('validates command description is required', () => {
-      assert.throws(
+      expect(
         () =>
           validateConfig({
             commands: {
@@ -821,16 +929,18 @@ describe('validateConfig', () => {
             },
             name: 'my-cli',
           }),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.commands.greet.description');
-          assert.match(err.message, /must be a string/);
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          path: 'config.commands.greet.description',
+          message: /must be a string/,
         },
       );
     });
 
     it('validates command handler is required', () => {
-      assert.throws(
+      expect(
         () =>
           validateConfig({
             commands: {
@@ -838,16 +948,18 @@ describe('validateConfig', () => {
             },
             name: 'my-cli',
           }),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.commands.greet.handler');
-          assert.match(err.message, /is required/);
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          path: 'config.commands.greet.handler',
+          message: /is required/,
         },
       );
     });
 
     it('validates command options', () => {
-      assert.throws(
+      expect(
         () =>
           validateConfig({
             commands: {
@@ -861,15 +973,15 @@ describe('validateConfig', () => {
             },
             name: 'my-cli',
           }),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.commands.greet.options.name.type');
-          return true;
-        },
+        'to throw a',
+        Error,
+        'satisfying',
+        { path: 'config.commands.greet.options.name.type' },
       );
     });
 
     it('validates command positionals', () => {
-      assert.throws(
+      expect(
         () =>
           validateConfig({
             commands: {
@@ -881,15 +993,15 @@ describe('validateConfig', () => {
             },
             name: 'my-cli',
           }),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.commands.greet.positionals[0].type');
-          return true;
-        },
+        'to throw a',
+        Error,
+        'satisfying',
+        { path: 'config.commands.greet.positionals[0].type' },
       );
     });
 
     it('detects alias collision between global and command options', () => {
-      assert.throws(
+      expect(
         () =>
           validateConfig({
             commands: {
@@ -906,15 +1018,13 @@ describe('validateConfig', () => {
               verbose: { aliases: ['v'], type: 'boolean' },
             },
           }),
-        (err: ValidationError) => {
-          assert.match(err.message, /alias "v" is already used/);
-          return true;
-        },
+        'to throw error satisfying',
+        { message: /alias "v" is already used/ },
       );
     });
 
     it('rejects top-level positionals in command-based CLI', () => {
-      assert.throws(
+      expect(
         () =>
           validateConfig({
             commands: {
@@ -926,19 +1036,18 @@ describe('validateConfig', () => {
             name: 'my-cli',
             positionals: [opt.stringPos()],
           } as any),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.positionals');
-          assert.match(
-            err.message,
-            /top-level positionals are not allowed in command-based CLIs/,
-          );
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          path: 'config.positionals',
+          message: /top-level positionals are not allowed in command-based CLIs/,
         },
       );
     });
 
     it('rejects top-level handler in command-based CLI', () => {
-      assert.throws(
+      expect(
         () =>
           validateConfig({
             commands: {
@@ -950,46 +1059,52 @@ describe('validateConfig', () => {
             handler: () => {},
             name: 'my-cli',
           } as any),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.handler');
-          assert.match(err.message, /use defaultHandler/);
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          path: 'config.handler',
+          message: /use defaultHandler/,
         },
       );
     });
 
     it('validates defaultHandler as function', () => {
-      assert.doesNotThrow(() =>
-        validateConfig({
-          commands: {
-            greet: {
-              description: 'Say hi',
-              handler: () => {},
+      expect(
+        () =>
+          validateConfig({
+            commands: {
+              greet: {
+                description: 'Say hi',
+                handler: () => {},
+              },
             },
-          },
-          defaultHandler: () => {},
-          name: 'my-cli',
-        }),
+            defaultHandler: () => {},
+            name: 'my-cli',
+          }),
+        'not to throw',
       );
     });
 
     it('validates defaultHandler as command name string', () => {
-      assert.doesNotThrow(() =>
-        validateConfig({
-          commands: {
-            greet: {
-              description: 'Say hi',
-              handler: () => {},
+      expect(
+        () =>
+          validateConfig({
+            commands: {
+              greet: {
+                description: 'Say hi',
+                handler: () => {},
+              },
             },
-          },
-          defaultHandler: 'greet',
-          name: 'my-cli',
-        }),
+            defaultHandler: 'greet',
+            name: 'my-cli',
+          }),
+        'not to throw',
       );
     });
 
     it('rejects defaultHandler referencing non-existent command', () => {
-      assert.throws(
+      expect(
         () =>
           validateConfig({
             commands: {
@@ -1001,16 +1116,18 @@ describe('validateConfig', () => {
             defaultHandler: 'nonexistent',
             name: 'my-cli',
           }),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.defaultHandler');
-          assert.match(err.message, /must reference an existing command/);
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          path: 'config.defaultHandler',
+          message: /must reference an existing command/,
         },
       );
     });
 
     it('rejects invalid defaultHandler type', () => {
-      assert.throws(
+      expect(
         () =>
           validateConfig({
             commands: {
@@ -1022,10 +1139,12 @@ describe('validateConfig', () => {
             defaultHandler: 123 as any,
             name: 'my-cli',
           }),
-        (err: ValidationError) => {
-          assert.equal(err.path, 'config.defaultHandler');
-          assert.match(err.message, /must be a function/);
-          return true;
+        'to throw a',
+        Error,
+        'satisfying',
+        {
+          path: 'config.defaultHandler',
+          message: /must be a function/,
         },
       );
     });
@@ -1033,57 +1152,61 @@ describe('validateConfig', () => {
 
   describe('valid complete configs', () => {
     it('accepts valid simple CLI config', () => {
-      assert.doesNotThrow(() =>
-        validateConfig({
-          description: 'A simple CLI',
-          handler: () => {},
-          name: 'my-cli',
-          options: {
-            count: opt.number({ default: 1 }),
-            debug: opt.boolean({ aliases: ['d'] }),
-            level: opt.enum(['low', 'medium', 'high'] as const, {
-              default: 'medium',
-            }),
-            name: opt.string({ required: true }),
-            verbose: opt.count({ aliases: ['v'] }),
-          },
-          positionals: [
-            opt.stringPos({ name: 'file', required: true }),
-            opt.numberPos({ name: 'count' }),
-          ],
-          version: '1.0.0',
-        }),
+      expect(
+        () =>
+          validateConfig({
+            description: 'A simple CLI',
+            handler: () => {},
+            name: 'my-cli',
+            options: {
+              count: opt.number({ default: 1 }),
+              debug: opt.boolean({ aliases: ['d'] }),
+              level: opt.enum(['low', 'medium', 'high'] as const, {
+                default: 'medium',
+              }),
+              name: opt.string({ required: true }),
+              verbose: opt.count({ aliases: ['v'] }),
+            },
+            positionals: [
+              opt.stringPos({ name: 'file', required: true }),
+              opt.numberPos({ name: 'count' }),
+            ],
+            version: '1.0.0',
+          }),
+        'not to throw',
       );
     });
 
     it('accepts valid command-based CLI config', () => {
-      assert.doesNotThrow(() =>
-        validateConfig({
-          commands: {
-            add: {
-              description: 'Add a task',
-              handler: () => {},
-              options: {
-                priority: opt.enum(['low', 'medium', 'high'] as const),
+      expect(
+        () =>
+          validateConfig({
+            commands: {
+              add: {
+                description: 'Add a task',
+                handler: () => {},
+                options: {
+                  priority: opt.enum(['low', 'medium', 'high'] as const),
+                },
+                positionals: [opt.stringPos({ name: 'title', required: true })],
               },
-              positionals: [opt.stringPos({ name: 'title', required: true })],
-            },
-            list: {
-              description: 'List tasks',
-              handler: () => {},
-              options: {
-                all: opt.boolean(),
+              list: {
+                description: 'List tasks',
+                handler: () => {},
+                options: {
+                  all: opt.boolean(),
+                },
               },
             },
-          },
-          defaultHandler: 'list',
-          description: 'Task manager',
-          name: 'tasks',
-          options: {
-            verbose: opt.boolean({ aliases: ['v'] }),
-          },
-          version: '1.0.0',
-        }),
+            defaultHandler: 'list',
+            description: 'Task manager',
+            name: 'tasks',
+            options: {
+              verbose: opt.boolean({ aliases: ['v'] }),
+            },
+            version: '1.0.0',
+          }),
+        'not to throw',
       );
     });
   });

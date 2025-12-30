@@ -1,5 +1,5 @@
 // test/help.test.ts
-import assert from 'node:assert/strict';
+import { expect } from 'bupkis';
 import { describe, it } from 'node:test';
 
 import { generateCommandHelp, generateHelp } from '../src/help.js';
@@ -18,8 +18,8 @@ describe('generateHelp', () => {
       }),
     );
 
-    assert.ok(help.includes('my-cli'));
-    assert.ok(help.includes('A test CLI'));
+    expect(help, 'to contain', 'my-cli');
+    expect(help, 'to contain', 'A test CLI');
   });
 
   it('includes version when provided', () => {
@@ -30,7 +30,7 @@ describe('generateHelp', () => {
       }),
     );
 
-    assert.ok(help.includes('1.0.0'));
+    expect(help, 'to contain', '1.0.0');
   });
 
   it('lists options with descriptions', () => {
@@ -46,10 +46,10 @@ describe('generateHelp', () => {
       }),
     );
 
-    assert.ok(help.includes('--verbose'));
-    assert.ok(help.includes('-v'));
-    assert.ok(help.includes('Enable verbose output'));
-    assert.ok(help.includes('[boolean]'));
+    expect(help, 'to contain', '--verbose');
+    expect(help, 'to contain', '-v');
+    expect(help, 'to contain', 'Enable verbose output');
+    expect(help, 'to contain', '[boolean]');
   });
 
   it('shows enum choices', () => {
@@ -64,7 +64,7 @@ describe('generateHelp', () => {
       }),
     );
 
-    assert.ok(help.includes('low | medium | high'));
+    expect(help, 'to contain', 'low | medium | high');
   });
 
   it('shows default values', () => {
@@ -77,7 +77,7 @@ describe('generateHelp', () => {
       }),
     );
 
-    assert.ok(help.includes('default: "world"'));
+    expect(help, 'to contain', 'default: "world"');
   });
 
   it('hides options marked as hidden', () => {
@@ -91,8 +91,8 @@ describe('generateHelp', () => {
       }),
     );
 
-    assert.ok(help.includes('--visible'));
-    assert.ok(!help.includes('--secret'));
+    expect(help, 'to contain', '--visible');
+    expect(help, 'not to contain', '--secret');
   });
 
   it('shows commands when present', () => {
@@ -112,11 +112,11 @@ describe('generateHelp', () => {
       }),
     );
 
-    assert.ok(help.includes('COMMANDS'));
-    assert.ok(help.includes('run'));
-    assert.ok(help.includes('Run the thing'));
-    assert.ok(help.includes('build'));
-    assert.ok(help.includes('Build the thing'));
+    expect(help, 'to contain', 'COMMANDS');
+    expect(help, 'to contain', 'run');
+    expect(help, 'to contain', 'Run the thing');
+    expect(help, 'to contain', 'build');
+    expect(help, 'to contain', 'Build the thing');
   });
 
   it('groups options by group name', () => {
@@ -131,8 +131,8 @@ describe('generateHelp', () => {
       }),
     );
 
-    assert.ok(help.includes('LOGGING'));
-    assert.ok(help.includes('NETWORK'));
+    expect(help, 'to contain', 'LOGGING');
+    expect(help, 'to contain', 'NETWORK');
   });
 });
 
@@ -145,8 +145,8 @@ describe('generateHelp positionals', () => {
       }),
     );
 
-    assert.ok(help.includes('<arg0>'));
-    assert.ok(help.includes('[arg1]'));
+    expect(help, 'to contain', '<arg0>');
+    expect(help, 'to contain', '[arg1]');
   });
 
   it('shows positionals with custom names', () => {
@@ -160,8 +160,8 @@ describe('generateHelp positionals', () => {
       }),
     );
 
-    assert.ok(help.includes('<source>'));
-    assert.ok(help.includes('[dest]'));
+    expect(help, 'to contain', '<source>');
+    expect(help, 'to contain', '[dest]');
   });
 
   it('shows variadic positionals with ellipsis', () => {
@@ -172,7 +172,7 @@ describe('generateHelp positionals', () => {
       }),
     );
 
-    assert.ok(help.includes('[files...]'));
+    expect(help, 'to contain', '[files...]');
   });
 
   it('shows positional with default as required (angle brackets)', () => {
@@ -185,7 +185,7 @@ describe('generateHelp positionals', () => {
 
     // Positionals with defaults are considered "required" in terms of display
     // because they always have a value
-    assert.ok(help.includes('<input>'));
+    expect(help, 'to contain', '<input>');
   });
 });
 
@@ -212,11 +212,11 @@ describe('generateCommandHelp', () => {
       ),
     );
 
-    assert.ok(help.includes('my-cli greet'));
-    assert.ok(help.includes('Greet someone'));
-    assert.ok(help.includes('--name'));
-    assert.ok(help.includes('GLOBAL OPTIONS'));
-    assert.ok(help.includes('--verbose'));
+    expect(help, 'to contain', 'my-cli greet');
+    expect(help, 'to contain', 'Greet someone');
+    expect(help, 'to contain', '--name');
+    expect(help, 'to contain', 'GLOBAL OPTIONS');
+    expect(help, 'to contain', '--verbose');
   });
 
   it('returns error for unknown command', () => {
@@ -233,7 +233,7 @@ describe('generateCommandHelp', () => {
       'unknown',
     );
 
-    assert.ok(help.includes('Unknown command: unknown'));
+    expect(help, 'to contain', 'Unknown command: unknown');
   });
 
   it('shows command positionals with custom names', () => {
@@ -256,8 +256,8 @@ describe('generateCommandHelp', () => {
       ),
     );
 
-    assert.ok(help.includes('<source>'));
-    assert.ok(help.includes('<dest>'));
+    expect(help, 'to contain', '<source>');
+    expect(help, 'to contain', '<dest>');
   });
 });
 
@@ -272,7 +272,7 @@ describe('generateHelp with themes', () => {
     };
     const help = generateHelp(config);
     // Should have brightMagenta section headers (default theme)
-    assert.ok(help.includes('\x1b[95m')); // brightMagenta for USAGE
+    expect(help, 'to contain', '\x1b[95m'); // brightMagenta for USAGE
   });
 
   it('uses mono theme for no colors', () => {
@@ -284,7 +284,7 @@ describe('generateHelp with themes', () => {
     };
     const help = generateHelp(config, themes.mono);
     // Should have no ANSI codes
-    assert.ok(!help.includes('\x1b['));
+    expect(help, 'not to contain', '\x1b[');
   });
 
   it('applies custom theme colors', () => {
@@ -307,8 +307,8 @@ describe('generateHelp with themes', () => {
       options: {},
     };
     const help = generateHelp(config, customTheme);
-    assert.ok(help.includes('\x1b[35m')); // magenta script name
-    assert.ok(help.includes('\x1b[34m')); // blue section header
+    expect(help, 'to contain', '\x1b[35m'); // magenta script name
+    expect(help, 'to contain', '\x1b[34m'); // blue section header
   });
 });
 
@@ -324,7 +324,7 @@ describe('generateHelp with positionals', () => {
     };
     const help = stripAnsi(generateHelp(config));
     // Should show positional in usage line
-    assert.ok(help.includes('<arg0>'));
+    expect(help, 'to contain', '<arg0>');
   });
 
   it('shows POSITIONALS section when positionals defined', () => {
@@ -338,9 +338,9 @@ describe('generateHelp with positionals', () => {
       ],
     };
     const help = stripAnsi(generateHelp(config));
-    assert.ok(help.includes('POSITIONALS'));
-    assert.ok(help.includes('Input file'));
-    assert.ok(help.includes('Output file'));
+    expect(help, 'to contain', 'POSITIONALS');
+    expect(help, 'to contain', 'Input file');
+    expect(help, 'to contain', 'Output file');
   });
 
   it('applies positional color from theme', () => {
@@ -367,7 +367,7 @@ describe('generateHelp with positionals', () => {
       ],
     };
     const help = generateHelp(config, customTheme);
-    assert.ok(help.includes('\x1b[33m')); // positional color applied
+    expect(help, 'to contain', '\x1b[33m'); // positional color applied
   });
 });
 
@@ -378,7 +378,7 @@ describe('generateHelp epilog', () => {
       name: 'test-app',
     };
     const help = stripAnsi(generateHelp(config, themes.mono));
-    assert.ok(help.includes('Thanks for using my CLI!'));
+    expect(help, 'to contain', 'Thanks for using my CLI!');
   });
 
   it('disables epilog when set to false', () => {
@@ -388,8 +388,8 @@ describe('generateHelp epilog', () => {
     };
     const help = stripAnsi(generateHelp(config, themes.mono));
     // Should not contain Homepage or Repository (default epilog)
-    assert.ok(!help.includes('Homepage:'));
-    assert.ok(!help.includes('Repository:'));
+    expect(help, 'not to contain', 'Homepage:');
+    expect(help, 'not to contain', 'Repository:');
   });
 
   it('disables epilog when set to empty string', () => {
@@ -399,8 +399,8 @@ describe('generateHelp epilog', () => {
     };
     const help = stripAnsi(generateHelp(config, themes.mono));
     // Should not contain Homepage or Repository (default epilog)
-    assert.ok(!help.includes('Homepage:'));
-    assert.ok(!help.includes('Repository:'));
+    expect(help, 'not to contain', 'Homepage:');
+    expect(help, 'not to contain', 'Repository:');
   });
 
   it('shows default epilog from package.json when epilog not specified', () => {
@@ -412,7 +412,7 @@ describe('generateHelp epilog', () => {
     // So we expect to see either Homepage or Repository
     const hasEpilog =
       help.includes('Homepage:') || help.includes('Repository:');
-    assert.ok(hasEpilog, 'Expected default epilog from package.json');
+    expect(hasEpilog, 'to be truthy');
   });
 
   it('linkifies URLs in custom epilog when hyperlinks supported', () => {
@@ -425,7 +425,7 @@ describe('generateHelp epilog', () => {
       };
       const help = generateHelp(config, themes.mono);
       // Should contain OSC 8 hyperlink sequences
-      assert.ok(help.includes('\x1b]8;;https://example.com'));
+      expect(help, 'to contain', '\x1b]8;;https://example.com');
     } finally {
       if (originalEnv === undefined) {
         delete process.env.FORCE_HYPERLINK;
@@ -446,7 +446,7 @@ describe('generateHelp epilog', () => {
       };
       const help = generateHelp(config, themes.mono);
       // Should contain OSC 8 hyperlink sequences
-      assert.ok(help.includes('\x1b]8;;https://docs.example.com'));
+      expect(help, 'to contain', '\x1b]8;;https://docs.example.com');
     } finally {
       if (originalEnv === undefined) {
         delete process.env.FORCE_HYPERLINK;
@@ -475,7 +475,7 @@ describe('generateCommandHelp epilog', () => {
         themes.mono,
       ),
     );
-    assert.ok(help.includes('Run with --verbose for more info'));
+    expect(help, 'to contain', 'Run with --verbose for more info');
   });
 
   it('disables epilog in command help when set to false', () => {
@@ -495,7 +495,7 @@ describe('generateCommandHelp epilog', () => {
         themes.mono,
       ),
     );
-    assert.ok(!help.includes('Homepage:'));
-    assert.ok(!help.includes('Repository:'));
+    expect(help, 'not to contain', 'Homepage:');
+    expect(help, 'not to contain', 'Repository:');
   });
 });

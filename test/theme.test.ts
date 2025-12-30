@@ -1,5 +1,5 @@
 // test/theme.test.ts
-import assert from 'node:assert/strict';
+import { expect } from 'bupkis';
 import { describe, it } from 'node:test';
 
 import type { Theme } from '../src/theme.js';
@@ -8,17 +8,17 @@ import { createStyler, defaultTheme, getTheme, themes } from '../src/theme.js';
 
 describe('Theme', () => {
   it('should export themes object with default and mono themes', () => {
-    assert.ok('default' in themes);
-    assert.ok('mono' in themes);
+    expect('default' in themes, 'to be truthy');
+    expect('mono' in themes, 'to be truthy');
   });
 
   it('should have defaultTheme matching themes.default', () => {
-    assert.strictEqual(defaultTheme, themes.default);
+    expect(defaultTheme, 'to be', themes.default);
   });
 
   it('getTheme returns theme by name', () => {
-    assert.strictEqual(getTheme('default'), themes.default);
-    assert.strictEqual(getTheme('mono'), themes.mono);
+    expect(getTheme('default'), 'to be', themes.default);
+    expect(getTheme('mono'), 'to be', themes.mono);
   });
 
   it('getTheme merges partial theme with defaults', () => {
@@ -32,14 +32,15 @@ describe('Theme', () => {
     const resolved = getTheme(partial);
 
     // Provided values are used
-    assert.strictEqual(resolved.colors.scriptName, '\x1b[35m');
-    assert.strictEqual(resolved.colors.sectionHeader, '\x1b[34m');
+    expect(resolved.colors.scriptName, 'to be', '\x1b[35m');
+    expect(resolved.colors.sectionHeader, 'to be', '\x1b[34m');
 
     // Missing values fall back to defaults
-    assert.strictEqual(resolved.colors.flag, defaultTheme.colors.flag);
-    assert.strictEqual(resolved.colors.type, defaultTheme.colors.type);
-    assert.strictEqual(
+    expect(resolved.colors.flag, 'to be', defaultTheme.colors.flag);
+    expect(resolved.colors.type, 'to be', defaultTheme.colors.type);
+    expect(
       resolved.colors.defaultText,
+      'to be',
       defaultTheme.colors.defaultText,
     );
   });
@@ -47,7 +48,7 @@ describe('Theme', () => {
   it('mono theme has all colors as empty strings', () => {
     const mono = themes.mono;
     for (const value of Object.values(mono.colors)) {
-      assert.strictEqual(value, '');
+      expect(value, 'to be', '');
     }
   });
 });
@@ -55,59 +56,59 @@ describe('Theme', () => {
 describe('createStyler', () => {
   it('creates styler from default theme', () => {
     const styler = createStyler(themes.default);
-    assert.strictEqual(typeof styler.scriptName, 'function');
-    assert.strictEqual(typeof styler.flag, 'function');
+    expect(typeof styler.scriptName, 'to be', 'function');
+    expect(typeof styler.flag, 'to be', 'function');
   });
 
   it('applies color codes with default theme', () => {
     const styler = createStyler(themes.default);
     const result = styler.sectionHeader('OPTIONS');
-    assert.ok(result.includes('\x1b[95m')); // brightMagenta
-    assert.ok(result.includes('OPTIONS'));
-    assert.ok(result.includes('\x1b[0m')); // reset
+    expect(result, 'to contain', '\x1b[95m'); // brightMagenta
+    expect(result, 'to contain', 'OPTIONS');
+    expect(result, 'to contain', '\x1b[0m'); // reset
   });
 
   it('passes through text with mono theme', () => {
     const styler = createStyler(themes.mono);
     const result = styler.sectionHeader('OPTIONS');
-    assert.strictEqual(result, 'OPTIONS');
+    expect(result, 'to be', 'OPTIONS');
   });
 
   it('applies bold styling for scriptName', () => {
     const styler = createStyler(themes.default);
     const result = styler.scriptName('myapp');
-    assert.ok(result.includes('\x1b[1m')); // bold
-    assert.ok(result.includes('myapp'));
+    expect(result, 'to contain', '\x1b[1m'); // bold
+    expect(result, 'to contain', 'myapp');
   });
 
   it('has epilog and url style functions', () => {
     const styler = createStyler(themes.default);
-    assert.strictEqual(typeof styler.epilog, 'function');
-    assert.strictEqual(typeof styler.url, 'function');
+    expect(typeof styler.epilog, 'to be', 'function');
+    expect(typeof styler.url, 'to be', 'function');
   });
 
   it('applies epilog styling with default theme', () => {
     const styler = createStyler(themes.default);
     const result = styler.epilog('Homepage: https://example.com');
     // Default epilog color is dim
-    assert.ok(result.includes('\x1b[2m')); // dim
-    assert.ok(result.includes('Homepage: https://example.com'));
+    expect(result, 'to contain', '\x1b[2m'); // dim
+    expect(result, 'to contain', 'Homepage: https://example.com');
   });
 
   it('applies url styling with default theme', () => {
     const styler = createStyler(themes.default);
     const result = styler.url('https://example.com');
     // Default url color is cyan
-    assert.ok(result.includes('\x1b[36m')); // cyan
-    assert.ok(result.includes('https://example.com'));
+    expect(result, 'to contain', '\x1b[36m'); // cyan
+    expect(result, 'to contain', 'https://example.com');
   });
 });
 
 describe('Theme colors', () => {
   it('all themes have epilog and url colors', () => {
     for (const [name, theme] of Object.entries(themes)) {
-      assert.ok('epilog' in theme.colors, `Theme ${name} missing epilog color`);
-      assert.ok('url' in theme.colors, `Theme ${name} missing url color`);
+      expect('epilog' in theme.colors, 'to be truthy');
+      expect('url' in theme.colors, 'to be truthy');
     }
   });
 });

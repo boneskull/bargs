@@ -1,5 +1,5 @@
 // test/bargs.test.ts
-import assert from 'node:assert/strict';
+import { expect, expectAsync } from 'bupkis';
 import { describe, it } from 'node:test';
 
 import type { Theme } from '../src/theme.js';
@@ -18,11 +18,11 @@ describe('bargs (sync)', () => {
       },
     });
 
-    assert.deepEqual(result.values, { name: 'Alice' });
+    expect(result.values, 'to deeply equal', { name: 'Alice' });
   });
 
   it('calls handler for simple CLI', () => {
-    let handlerResult: unknown = null;
+    let handlerResult: { values: { name: string } };
 
     bargs({
       args: ['--name', 'Bob'],
@@ -35,13 +35,13 @@ describe('bargs (sync)', () => {
       },
     });
 
-    assert.deepEqual((handlerResult as { values: unknown }).values, {
+    expect(handlerResult!.values, 'to deeply equal', {
       name: 'Bob',
     });
   });
 
   it('parses command-based CLI', () => {
-    let handlerResult: unknown = null;
+    let handlerResult: { command: string; values: { name: string } };
 
     bargs({
       args: ['greet', '--name', 'Charlie'],
@@ -59,9 +59,11 @@ describe('bargs (sync)', () => {
       name: 'test-cli',
     });
 
-    assert.equal((handlerResult as { command: string }).command, 'greet');
-    assert.deepEqual((handlerResult as { values: unknown }).values, {
-      name: 'Charlie',
+    expect(handlerResult!, 'to satisfy', {
+      command: 'greet',
+      values: {
+        name: 'Charlie',
+      },
     });
   });
 
@@ -74,7 +76,7 @@ describe('bargs (sync)', () => {
       },
     });
 
-    assert.equal(result.command, undefined);
+    expect(result.command, 'to be', undefined);
   });
 
   it('applies defaults when no args provided', () => {
@@ -87,7 +89,10 @@ describe('bargs (sync)', () => {
       },
     });
 
-    assert.deepEqual(result.values, { count: 42, name: 'default-name' });
+    expect(result.values, 'to deeply equal', {
+      count: 42,
+      name: 'default-name',
+    });
   });
 
   it('parses positionals for simple CLI', () => {
@@ -97,7 +102,7 @@ describe('bargs (sync)', () => {
       positionals: [opt.stringPos({ required: true })],
     });
 
-    assert.deepEqual(result.positionals, ['hello']);
+    expect(result.positionals, 'to deeply equal', ['hello']);
   });
 
   it('accepts array of sync handlers for simple CLI', () => {
@@ -123,7 +128,7 @@ describe('bargs (sync)', () => {
     });
 
     // Handlers should run in order
-    assert.deepEqual(calls, ['first', 'second', 'third']);
+    expect(calls, 'to deeply equal', ['first', 'second', 'third']);
   });
 
   it('accepts array of sync handlers for command', () => {
@@ -147,11 +152,11 @@ describe('bargs (sync)', () => {
       name: 'test-cli',
     });
 
-    assert.deepEqual(calls, ['handler-1', 'handler-2']);
+    expect(calls, 'to deeply equal', ['handler-1', 'handler-2']);
   });
 
   it('throws when sync handler returns a thenable', () => {
-    assert.throws(
+    expect(
       () => {
         bargs({
           args: ['--name', 'Test'],
@@ -164,13 +169,15 @@ describe('bargs (sync)', () => {
           },
         });
       },
-      (err: Error) =>
-        err instanceof BargsError && err.message.includes('thenable'),
+      'to throw a',
+      BargsError,
+      'satisfying',
+      { message: /thenable/ },
     );
   });
 
   it('throws when command sync handler returns a thenable', () => {
-    assert.throws(
+    expect(
       () => {
         bargs({
           args: ['greet'],
@@ -185,8 +192,10 @@ describe('bargs (sync)', () => {
           name: 'test-cli',
         });
       },
-      (err: Error) =>
-        err instanceof BargsError && err.message.includes('thenable'),
+      'to throw a',
+      BargsError,
+      'satisfying',
+      { message: /thenable/ },
     );
   });
 
@@ -205,8 +214,8 @@ describe('bargs (sync)', () => {
     });
 
     // Should parse --help as a regular boolean option, not trigger built-in help
-    assert.equal(result.values.help, true);
-    assert.equal(customHelpCalled, true);
+    expect(result.values.help, 'to be', true);
+    expect(customHelpCalled, 'to be', true);
   });
 
   it('allows user to override -h alias with custom option', () => {
@@ -219,7 +228,7 @@ describe('bargs (sync)', () => {
     });
 
     // Should parse -h as verbose, not trigger built-in help
-    assert.equal(result.values.verbose, true);
+    expect(result.values.verbose, 'to be', true);
   });
 
   it('allows user to override --version with custom option', () => {
@@ -232,40 +241,45 @@ describe('bargs (sync)', () => {
     });
 
     // Should parse --version as a regular boolean option
-    assert.equal(result.values.version, true);
+    expect(result.values.version, 'to be', true);
   });
 });
 
 describe('bargsAsync', () => {
   it('parses simple CLI and returns result', async () => {
-    const result = await bargsAsync({
-      args: ['--name', 'Alice'],
-      name: 'test-cli',
-      options: {
-        name: opt.string({ default: 'world' }),
-      },
-    });
-
-    assert.deepEqual(result.values, { name: 'Alice' });
+    await expectAsync(
+      bargsAsync({
+        args: ['--name', 'Alice'],
+        name: 'test-cli',
+        options: {
+          name: opt.string({ default: 'world' }),
+        },
+      }),
+      'to resolve with value satisfying',
+      { values: { name: 'Alice' } },
+    );
   });
 
   it('calls async handler for simple CLI', async () => {
-    let handlerResult: unknown = null;
+    let handlerResult: { values: { name: string } };
 
-    await bargsAsync({
-      args: ['--name', 'Bob'],
-      handler: async (result) => {
-        // Simulate async work
-        await Promise.resolve();
-        handlerResult = result;
-      },
-      name: 'test-cli',
-      options: {
-        name: opt.string({ default: 'world' }),
-      },
-    });
+    await expectAsync(
+      bargsAsync({
+        args: ['--name', 'Bob'],
+        handler: async (result) => {
+          // Simulate async work
+          await Promise.resolve();
+          handlerResult = result;
+        },
+        name: 'test-cli',
+        options: {
+          name: opt.string({ default: 'world' }),
+        },
+      }),
+      'to resolve',
+    );
 
-    assert.deepEqual((handlerResult as { values: unknown }).values, {
+    expect(handlerResult!.values, 'to deeply equal', {
       name: 'Bob',
     });
   });
@@ -273,53 +287,59 @@ describe('bargsAsync', () => {
   it('accepts array of async handlers for simple CLI', async () => {
     const calls: string[] = [];
 
-    await bargsAsync({
-      args: ['--name', 'Test'],
-      handler: [
-        () => {
-          calls.push('first');
+    await expectAsync(
+      bargsAsync({
+        args: ['--name', 'Test'],
+        handler: [
+          () => {
+            calls.push('first');
+          },
+          async () => {
+            await Promise.resolve();
+            calls.push('second');
+          },
+          () => {
+            calls.push('third');
+          },
+        ],
+        name: 'test-cli',
+        options: {
+          name: opt.string({ default: 'world' }),
         },
-        async () => {
-          await Promise.resolve();
-          calls.push('second');
-        },
-        () => {
-          calls.push('third');
-        },
-      ],
-      name: 'test-cli',
-      options: {
-        name: opt.string({ default: 'world' }),
-      },
-    });
+      }),
+      'to resolve',
+    );
 
     // Handlers should run in order
-    assert.deepEqual(calls, ['first', 'second', 'third']);
+    expect(calls, 'to deeply equal', ['first', 'second', 'third']);
   });
 
   it('accepts array of async handlers for command', async () => {
     const calls: string[] = [];
 
-    await bargsAsync({
-      args: ['greet'],
-      commands: {
-        greet: opt.command({
-          description: 'Greet',
-          handler: [
-            () => {
-              calls.push('handler-1');
-            },
-            async () => {
-              await Promise.resolve();
-              calls.push('handler-2');
-            },
-          ],
-        }),
-      },
-      name: 'test-cli',
-    });
+    await expectAsync(
+      bargsAsync({
+        args: ['greet'],
+        commands: {
+          greet: opt.command({
+            description: 'Greet',
+            handler: [
+              () => {
+                calls.push('handler-1');
+              },
+              async () => {
+                await Promise.resolve();
+                calls.push('handler-2');
+              },
+            ],
+          }),
+        },
+        name: 'test-cli',
+      }),
+      'to resolve',
+    );
 
-    assert.deepEqual(calls, ['handler-1', 'handler-2']);
+    expect(calls, 'to deeply equal', ['handler-1', 'handler-2']);
   });
 });
 
@@ -333,7 +353,7 @@ describe('bargs with options (second parameter)', () => {
       },
       { theme: 'mono' },
     );
-    assert.strictEqual(result.values.foo, 'bar');
+    expect(result.values.foo, 'to be', 'bar');
   });
 
   it('accepts custom theme object in options', () => {
@@ -359,7 +379,7 @@ describe('bargs with options (second parameter)', () => {
       },
       { theme: customTheme },
     );
-    assert.strictEqual(result.values.foo, 'bar');
+    expect(result.values.foo, 'to be', 'bar');
   });
 
   it('works without options parameter', () => {
@@ -368,21 +388,28 @@ describe('bargs with options (second parameter)', () => {
       name: 'test',
       options: { foo: { type: 'string' } },
     });
-    assert.strictEqual(result.values.foo, 'bar');
+    expect(result.values.foo, 'to be', 'bar');
   });
 });
 
 describe('bargsAsync with options (second parameter)', () => {
   it('accepts theme by name in options', async () => {
-    const result = await bargsAsync(
+    await expectAsync(
+      bargsAsync(
+        {
+          args: ['--foo', 'bar'],
+          name: 'test',
+          options: { foo: { type: 'string' } },
+        },
+        { theme: 'mono' },
+      ),
+      'to resolve with value satisfying',
       {
-        args: ['--foo', 'bar'],
-        name: 'test',
-        options: { foo: { type: 'string' } },
+        values: {
+          foo: 'bar',
+        },
       },
-      { theme: 'mono' },
     );
-    assert.strictEqual(result.values.foo, 'bar');
   });
 
   it('accepts custom theme object in options', async () => {
@@ -400,23 +427,38 @@ describe('bargsAsync with options (second parameter)', () => {
         usage: '',
       },
     };
-    const result = await bargsAsync(
+
+    await expectAsync(
+      bargsAsync(
+        {
+          args: ['--foo', 'bar'],
+          name: 'test',
+          options: { foo: { type: 'string' } },
+        },
+        { theme: customTheme },
+      ),
+      'to resolve with value satisfying',
       {
-        args: ['--foo', 'bar'],
-        name: 'test',
-        options: { foo: { type: 'string' } },
+        values: {
+          foo: 'bar',
+        },
       },
-      { theme: customTheme },
     );
-    assert.strictEqual(result.values.foo, 'bar');
   });
 
   it('works without options parameter', async () => {
-    const result = await bargsAsync({
-      args: ['--foo', 'bar'],
-      name: 'test',
-      options: { foo: { type: 'string' } },
-    });
-    assert.strictEqual(result.values.foo, 'bar');
+    await expectAsync(
+      bargsAsync({
+        args: ['--foo', 'bar'],
+        name: 'test',
+        options: { foo: { type: 'string' } },
+      }),
+      'to resolve with value satisfying',
+      {
+        values: {
+          foo: 'bar',
+        },
+      },
+    );
   });
 });

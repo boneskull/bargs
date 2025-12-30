@@ -1,5 +1,5 @@
 // test/ansi.test.ts
-import assert from 'node:assert/strict';
+import { expect } from 'bupkis';
 import { describe, it } from 'node:test';
 
 import { stripAnsi } from '../src/theme.js';
@@ -12,19 +12,19 @@ const RESET = '\x1b[0m';
 describe('stripAnsi', () => {
   it('removes ANSI codes from string', () => {
     const colored = `${RED}red${RESET}`;
-    assert.strictEqual(stripAnsi(colored), 'red');
+    expect(stripAnsi(colored), 'to be', 'red');
   });
 
   it('passes through plain text', () => {
-    assert.strictEqual(stripAnsi('hello'), 'hello');
+    expect(stripAnsi('hello'), 'to be', 'hello');
   });
 
   it('removes multiple ANSI codes', () => {
     const multiStyled = `${BOLD}${RED}bold red${RESET}`;
-    assert.strictEqual(stripAnsi(multiStyled), 'bold red');
+    expect(stripAnsi(multiStyled), 'to be', 'bold red');
   });
 
   it('handles empty string', () => {
-    assert.strictEqual(stripAnsi(''), '');
+    expect(stripAnsi(''), 'to be', '');
   });
 });

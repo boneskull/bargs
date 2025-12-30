@@ -1,5 +1,5 @@
 // test/opt.test.ts
-import assert from 'node:assert/strict';
+import { expect } from 'bupkis';
 import { describe, it } from 'node:test';
 
 import { opt } from '../src/opt.js';
@@ -10,8 +10,10 @@ describe('opt.options', () => {
     const b = opt.options({ bar: opt.boolean() });
     const merged = opt.options(a, b);
 
-    assert.ok('foo' in merged);
-    assert.ok('bar' in merged);
+    expect(merged, 'to satisfy', {
+      bar: { type: 'boolean' },
+      foo: { type: 'string' },
+    });
   });
 
   it('later schema wins on name conflict', () => {
@@ -19,15 +21,16 @@ describe('opt.options', () => {
     const b = opt.options({ name: opt.string({ default: 'b' }) });
     const merged = opt.options(a, b);
 
-    assert.equal(merged.name.default, 'b');
+    expect(merged.name.default, 'to be', 'b');
   });
 
   it('throws on alias conflict', () => {
     const a = opt.options({ verbose: opt.boolean({ aliases: ['v'] }) });
     const b = opt.options({ version: opt.string({ aliases: ['v'] }) });
 
-    assert.throws(
+    expect(
       () => opt.options(a, b),
+      'to throw',
       /Alias conflict.*-v.*--verbose.*--version/,
     );
   });
@@ -45,7 +48,7 @@ describe('opt.options', () => {
     // Note: When merging options with same key but different literal defaults,
     // TypeScript intersects { default: false } & { default: true } = never.
     // Runtime is correct - later schema wins. Cast to check runtime value.
-    assert.equal((merged.verbose as { default?: boolean }).default, true);
+    expect((merged.verbose as { default?: boolean }).default, 'to be', true);
   });
 });
 
@@ -55,9 +58,7 @@ describe('opt.positionals', () => {
       opt.stringPos({ description: 'Input file', required: true }),
     );
 
-    assert.equal(positionals.length, 1);
-    assert.equal(positionals[0].type, 'string');
-    assert.equal(positionals[0].required, true);
+    expect(positionals, 'to satisfy', [{ required: true, type: 'string' }]);
   });
 
   it('creates a positionals schema with multiple positionals', () => {
@@ -67,11 +68,11 @@ describe('opt.positionals', () => {
       opt.numberPos({ default: 0 }),
     );
 
-    assert.equal(positionals.length, 3);
-    assert.equal(positionals[0].type, 'string');
-    assert.equal(positionals[1].type, 'string');
-    assert.equal(positionals[2].type, 'number');
-    assert.equal(positionals[2].default, 0);
+    expect(positionals, 'to satisfy', [
+      { type: 'string' },
+      { type: 'string' },
+      { default: 0, type: 'number' },
+    ]);
   });
 
   it('preserves positional order', () => {
@@ -81,9 +82,11 @@ describe('opt.positionals', () => {
       opt.variadic('string', { description: 'rest' }),
     );
 
-    assert.equal(positionals[0].description, 'first');
-    assert.equal(positionals[1].description, 'second');
-    assert.equal(positionals[2].description, 'rest');
+    expect(positionals, 'to satisfy', [
+      { description: 'first' },
+      { description: 'second' },
+      { description: 'rest' },
+    ]);
   });
 });
 
@@ -93,64 +96,82 @@ describe('opt builders', () => {
       default: 'test',
       description: 'A string option',
     });
-    assert.equal(option.type, 'string');
-    assert.equal(option.default, 'test');
-    assert.equal(option.description, 'A string option');
+
+    expect(option, 'to satisfy', {
+      default: 'test',
+      description: 'A string option',
+      type: 'string',
+    });
   });
 
   it('creates number options', () => {
     const option = opt.number({ default: 42 });
-    assert.equal(option.type, 'number');
-    assert.equal(option.default, 42);
+
+    expect(option, 'to satisfy', { default: 42, type: 'number' });
   });
 
   it('creates boolean options', () => {
     const option = opt.boolean({ aliases: ['v'], default: false });
-    assert.equal(option.type, 'boolean');
-    assert.equal(option.default, false);
-    assert.deepEqual(option.aliases, ['v']);
+
+    expect(option, 'to satisfy', {
+      aliases: ['v'],
+      default: false,
+      type: 'boolean',
+    });
   });
 
   it('creates enum options', () => {
     const option = opt.enum(['low', 'medium', 'high'] as const, {
       default: 'medium',
     });
-    assert.equal(option.type, 'enum');
-    assert.deepEqual(option.choices, ['low', 'medium', 'high']);
-    assert.equal(option.default, 'medium');
+
+    expect(option, 'to satisfy', {
+      choices: ['low', 'medium', 'high'],
+      default: 'medium',
+      type: 'enum',
+    });
   });
 
   it('creates array options', () => {
     const option = opt.array('string', { description: 'Files to process' });
-    assert.equal(option.type, 'array');
-    assert.equal(option.items, 'string');
-    assert.equal(option.description, 'Files to process');
+
+    expect(option, 'to satisfy', {
+      description: 'Files to process',
+      items: 'string',
+      type: 'array',
+    });
   });
 
   it('creates count options', () => {
     const option = opt.count({ aliases: ['v'] });
-    assert.equal(option.type, 'count');
-    assert.deepEqual(option.aliases, ['v']);
+
+    expect(option, 'to satisfy', { aliases: ['v'], type: 'count' });
   });
 
   it('creates string positionals', () => {
     const pos = opt.stringPos({ description: 'Input file', required: true });
-    assert.equal(pos.type, 'string');
-    assert.equal(pos.required, true);
-    assert.equal(pos.description, 'Input file');
+
+    expect(pos, 'to satisfy', {
+      description: 'Input file',
+      required: true,
+      type: 'string',
+    });
   });
 
   it('creates number positionals', () => {
     const pos = opt.numberPos({ default: 0 });
-    assert.equal(pos.type, 'number');
-    assert.equal(pos.default, 0);
+
+    expect(pos, 'to satisfy', { default: 0, type: 'number' });
   });
 
   it('creates variadic positionals', () => {
     const pos = opt.variadic('string', { description: 'Rest args' });
-    assert.equal(pos.type, 'variadic');
-    assert.equal(pos.items, 'string');
-    assert.equal(pos.description, 'Rest args');
+
+    expect(pos, 'to satisfy', {
+      description: 'Rest args',
+      items: 'string',
+      type: 'variadic',
+    });
   });
 
   it('creates commands', () => {
@@ -159,8 +180,11 @@ describe('opt builders', () => {
       handler: () => {},
       options: { verbose: opt.boolean() },
     });
-    assert.equal(cmd.description, 'Test command');
-    assert.ok('verbose' in cmd.options!);
-    assert.equal(typeof cmd.handler, 'function');
+
+    expect(cmd, 'to satisfy', {
+      description: 'Test command',
+      handler: expect.it('to be a', 'function'),
+      options: { verbose: { type: 'boolean' } },
+    });
   });
 });

@@ -1,5 +1,5 @@
 // test/parser-commands.test.ts
-import assert from 'node:assert/strict';
+import { expect, expectAsync } from 'bupkis';
 import { describe, it } from 'node:test';
 
 import { opt } from '../src/opt.js';
@@ -24,8 +24,8 @@ describe('parseCommands', () => {
       },
     });
 
-    assert.equal(result.command, 'greet');
-    assert.deepEqual(result.values, { name: 'Alice', verbose: true });
+    expect(result.command, 'to be', 'greet');
+    expect(result.values, 'to deeply equal', { name: 'Alice', verbose: true });
   });
 
   it('parses command positionals', async () => {
@@ -41,8 +41,8 @@ describe('parseCommands', () => {
       name: 'test-cli',
     });
 
-    assert.equal(result.command, 'echo');
-    assert.deepEqual(result.positionals, ['hello']);
+    expect(result.command, 'to be', 'echo');
+    expect(result.positionals, 'to deeply equal', ['hello']);
   });
 
   it('calls command handler', async () => {
@@ -61,7 +61,7 @@ describe('parseCommands', () => {
       name: 'test-cli',
     });
 
-    assert.equal(handlerCalled, true);
+    expect(handlerCalled, 'to be', true);
   });
 
   it('uses defaultHandler when no command given', async () => {
@@ -81,7 +81,7 @@ describe('parseCommands', () => {
       name: 'test-cli',
     });
 
-    assert.equal(defaultCalled, true);
+    expect(defaultCalled, 'to be', true);
   });
 
   it('uses array defaultHandler when no command given', async () => {
@@ -106,11 +106,11 @@ describe('parseCommands', () => {
       name: 'test-cli',
     });
 
-    assert.deepEqual(calls, [1, 2]);
+    expect(calls, 'to deeply equal', [1, 2]);
   });
 
   it('throws on unknown command', async () => {
-    await assert.rejects(
+    await expectAsync(
       parseCommands({
         args: ['unknown'],
         commands: {
@@ -121,6 +121,7 @@ describe('parseCommands', () => {
         },
         name: 'test-cli',
       }),
+      'to reject with error satisfying',
       /Unknown command: unknown/,
     );
   });
@@ -144,11 +145,11 @@ describe('parseCommands', () => {
       },
     });
 
-    assert.equal(result.command, 'test');
-    assert.equal(result.values.verbose, true);
-    assert.equal(result.values.debug, false);
+    expect(result.command, 'to be', 'test');
+    expect(result.values.verbose, 'to be', true);
+    expect(result.values.debug, 'to be', false);
     // Command-specific options are merged at runtime but not in the return type
-    assert.equal((result.values as Record<string, unknown>).filter, 'foo');
+    expect((result.values as Record<string, unknown>).filter, 'to be', 'foo');
   });
 
   it('uses named default command when no command given', async () => {
@@ -172,6 +173,6 @@ describe('parseCommands', () => {
       name: 'test-cli',
     });
 
-    assert.equal(runCalled, true);
+    expect(runCalled, 'to be', true);
   });
 });
