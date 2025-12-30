@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import { opt } from '../src/opt.js';
-import { parseCommands } from '../src/parser.js';
+import { parseCommandsAsync as parseCommands } from '../src/parser.js';
 
 describe('parseCommands', () => {
   it('parses a command with options', async () => {
