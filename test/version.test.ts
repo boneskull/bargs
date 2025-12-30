@@ -1,4 +1,4 @@
-import { expect, expectAsync } from 'bupkis';
+import { expect } from 'bupkis';
 import { describe, it } from 'node:test';
 
 import { detectVersion } from '../src/version.js';

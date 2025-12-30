@@ -46,6 +46,7 @@ describe('osc', () => {
       expect(
         result,
         'to match',
+        // eslint-disable-next-line no-control-regex
         /\x1b\]8;;https:\/\/test\.com\x07test\x1b\]8;;\x07/,
       );
     });

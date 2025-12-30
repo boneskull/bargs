@@ -106,7 +106,7 @@ describe('createStyler', () => {
 
 describe('Theme colors', () => {
   it('all themes have epilog and url colors', () => {
-    for (const [name, theme] of Object.entries(themes)) {
+    for (const theme of Object.values(themes)) {
       expect('epilog' in theme.colors, 'to be truthy');
       expect('url' in theme.colors, 'to be truthy');
     }

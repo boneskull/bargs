@@ -4,7 +4,6 @@
 import { expect } from 'bupkis';
 import { describe, it } from 'node:test';
 
-import { type ValidationError } from '../src/errors.js';
 import { opt } from '../src/opt.js';
 import { validateConfig } from '../src/validate.js';
 
@@ -17,9 +16,9 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
+          message: /must be an object/,
           name: 'ValidationError',
           path: 'config',
-          message: /must be an object/,
         },
       );
 
@@ -37,8 +36,8 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
-          path: 'config.name',
           message: /must be a string/,
+          path: 'config.name',
         },
       );
 
@@ -48,8 +47,8 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
-          path: 'config.name',
           message: /must not be empty/,
+          path: 'config.name',
         },
       );
     });
@@ -70,8 +69,8 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
-          path: 'config.description',
           message: /must be a string/,
+          path: 'config.description',
         },
       );
     });
@@ -88,8 +87,8 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
-          path: 'config.version',
           message: /must be a string/,
+          path: 'config.version',
         },
       );
     });
@@ -106,8 +105,8 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
-          path: 'config.args',
           message: /must be an array of strings/,
+          path: 'config.args',
         },
       );
 
@@ -117,8 +116,8 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
-          path: 'config.args',
           message: /must be an array of strings/,
+          path: 'config.args',
         },
       );
     });
@@ -138,8 +137,8 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
-          path: 'config.options.flag.type',
           message: /must be one of/,
+          path: 'config.options.flag.type',
         },
       );
 
@@ -155,8 +154,8 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
-          path: 'config.options.flag.type',
           message: /must be a string/,
+          path: 'config.options.flag.type',
         },
       );
     });
@@ -185,8 +184,8 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
-          path: 'config.options.name.default',
           message: /must be a string/,
+          path: 'config.options.name.default',
         },
       );
     });
@@ -215,8 +214,8 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
-          path: 'config.options.verbose.default',
           message: /must be a boolean/,
+          path: 'config.options.verbose.default',
         },
       );
     });
@@ -245,8 +244,8 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
-          path: 'config.options.count.default',
           message: /must be a number/,
+          path: 'config.options.count.default',
         },
       );
     });
@@ -275,8 +274,8 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
-          path: 'config.options.verbose.default',
           message: /must be a number/,
+          path: 'config.options.verbose.default',
         },
       );
     });
@@ -305,8 +304,8 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
-          path: 'config.options.level.choices',
           message: /must be a non-empty array/,
+          path: 'config.options.level.choices',
         },
       );
 
@@ -322,8 +321,8 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
-          path: 'config.options.level.choices',
           message: /must not be empty/,
+          path: 'config.options.level.choices',
         },
       );
     });
@@ -358,8 +357,8 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
-          path: 'config.options.level.default',
           message: /must be one of the choices/,
+          path: 'config.options.level.default',
         },
       );
     });
@@ -389,8 +388,8 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
-          path: 'config.options.files.items',
           message: /"string" or "number"/,
+          path: 'config.options.files.items',
         },
       );
     });
@@ -420,8 +419,8 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
-          path: 'config.options.files.default',
           message: /must be an array of strings/,
+          path: 'config.options.files.default',
         },
       );
 
@@ -437,8 +436,8 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
-          path: 'config.options.ports.default',
           message: /must be an array of numbers/,
+          path: 'config.options.ports.default',
         },
       );
     });
@@ -467,8 +466,8 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
-          path: 'config.options.verbose.aliases[0]',
           message: /must be a single character/,
+          path: 'config.options.verbose.aliases[0]',
         },
       );
     });
@@ -502,8 +501,8 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
-          path: 'config.options.verbose.description',
           message: /must be a string/,
+          path: 'config.options.verbose.description',
         },
       );
     });
@@ -521,8 +520,8 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
-          path: 'config.options.verbose.group',
           message: /must be a string/,
+          path: 'config.options.verbose.group',
         },
       );
     });
@@ -540,8 +539,8 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
-          path: 'config.options.verbose.hidden',
           message: /must be a boolean/,
+          path: 'config.options.verbose.hidden',
         },
       );
     });
@@ -559,8 +558,8 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
-          path: 'config.options.name.required',
           message: /must be a boolean/,
+          path: 'config.options.name.required',
         },
       );
     });
@@ -578,8 +577,8 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
-          path: 'config.positionals',
           message: /must be an array/,
+          path: 'config.positionals',
         },
       );
     });
@@ -595,8 +594,8 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
-          path: 'config.positionals[0].type',
           message: /must be one of/,
+          path: 'config.positionals[0].type',
         },
       );
     });
@@ -621,8 +620,8 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
-          path: 'config.positionals[0].default',
           message: /must be a string/,
+          path: 'config.positionals[0].default',
         },
       );
     });
@@ -647,8 +646,8 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
-          path: 'config.positionals[0].default',
           message: /must be a number/,
+          path: 'config.positionals[0].default',
         },
       );
     });
@@ -673,8 +672,8 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
-          path: 'config.positionals[0].choices',
           message: /must not be empty/,
+          path: 'config.positionals[0].choices',
         },
       );
     });
@@ -692,8 +691,8 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
-          path: 'config.positionals[0].default',
           message: /must be one of the choices/,
+          path: 'config.positionals[0].default',
         },
       );
     });
@@ -718,8 +717,8 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
-          path: 'config.positionals[0].items',
           message: /"string" or "number"/,
+          path: 'config.positionals[0].items',
         },
       );
     });
@@ -735,8 +734,8 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
-          path: 'config.positionals[0]',
           message: /variadic positional must be the last/,
+          path: 'config.positionals[0]',
         },
       );
     });
@@ -755,8 +754,8 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
-          path: 'config.positionals[1]',
           message: /required positional cannot follow an optional/,
+          path: 'config.positionals[1]',
         },
       );
     });
@@ -786,8 +785,8 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
-          path: 'config.positionals[0].description',
           message: /must be a string/,
+          path: 'config.positionals[0].description',
         },
       );
     });
@@ -803,8 +802,8 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
-          path: 'config.positionals[0].name',
           message: /must be a string/,
+          path: 'config.positionals[0].name',
         },
       );
     });
@@ -820,8 +819,8 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
-          path: 'config.positionals[0].required',
           message: /must be a boolean/,
+          path: 'config.positionals[0].required',
         },
       );
     });
@@ -861,8 +860,8 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
-          path: 'config.handler',
           message: /must be a function/,
+          path: 'config.handler',
         },
       );
     });
@@ -878,8 +877,8 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
-          path: 'config.handler',
           message: /must not be empty/,
+          path: 'config.handler',
         },
       );
     });
@@ -895,8 +894,8 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
-          path: 'config.handler[1]',
           message: /must be a function/,
+          path: 'config.handler[1]',
         },
       );
     });
@@ -914,8 +913,8 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
-          path: 'config.commands',
           message: /must have at least one command/,
+          path: 'config.commands',
         },
       );
     });
@@ -933,8 +932,8 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
-          path: 'config.commands.greet.description',
           message: /must be a string/,
+          path: 'config.commands.greet.description',
         },
       );
     });
@@ -952,8 +951,8 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
-          path: 'config.commands.greet.handler',
           message: /is required/,
+          path: 'config.commands.greet.handler',
         },
       );
     });
@@ -1040,8 +1039,9 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
+          message:
+            /top-level positionals are not allowed in command-based CLIs/,
           path: 'config.positionals',
-          message: /top-level positionals are not allowed in command-based CLIs/,
         },
       );
     });
@@ -1063,8 +1063,8 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
-          path: 'config.handler',
           message: /use defaultHandler/,
+          path: 'config.handler',
         },
       );
     });
@@ -1120,8 +1120,8 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
-          path: 'config.defaultHandler',
           message: /must reference an existing command/,
+          path: 'config.defaultHandler',
         },
       );
     });
@@ -1143,8 +1143,8 @@ describe('validateConfig', () => {
         Error,
         'satisfying',
         {
-          path: 'config.defaultHandler',
           message: /must be a function/,
+          path: 'config.defaultHandler',
         },
       );
     });
