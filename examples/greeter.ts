@@ -34,36 +34,36 @@ const optionsDef = bargs.options({
 });
 
 const positionalsDef = bargs.positionals(
-  bargs.stringPos({ description: 'Name to greet', required: true }),
+  bargs.stringPos({
+    description: 'Name to greet',
+    required: true,
+    name: 'name',
+  }),
 );
 
-const main = async () => {
-  const result = await bargs({
-    name: 'greeter',
-    version: '1.0.0',
-    description: 'A friendly greeter CLI',
-    options: optionsDef,
-    positionals: positionalsDef,
-  });
+const result = bargs({
+  name: 'greeter',
+  version: '1.0.0',
+  description: 'A friendly greeter CLI',
+  options: optionsDef,
+  positionals: positionalsDef,
+});
 
-  // Destructure the result
-  const { positionals, values } = result;
-  const [name] = positionals;
-  const { greeting, shout, verbose } = values;
+// Destructure the result
+const { positionals, values } = result;
+const [name] = positionals;
+const { greeting, shout, verbose } = values;
 
-  // Build the message
-  let message = `${greeting}, ${name}!`;
+// Build the message
+let message = `${greeting}, ${name}!`;
 
-  if (shout) {
-    message = message.toUpperCase();
-  }
+if (shout) {
+  message = message.toUpperCase();
+}
 
-  // Output
-  if (verbose) {
-    console.log('Configuration:', { greeting, name, shout });
-  }
+// Output
+if (verbose) {
+  console.log('Configuration:', { greeting, name, shout });
+}
 
-  console.log(message);
-};
-
-void main();
+console.log(message);

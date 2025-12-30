@@ -338,5 +338,7 @@ interface OptionBase {
  */
 interface PositionalBase {
   description?: string;
+  /** Display name for help text (defaults to arg0, arg1, etc.) */
+  name?: string;
   required?: boolean;
 }

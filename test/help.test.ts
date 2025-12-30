@@ -133,6 +133,59 @@ describe('generateHelp', () => {
   });
 });
 
+describe('generateHelp positionals', () => {
+  it('shows positionals in usage line with default names', () => {
+    const help = stripAnsi(
+      generateHelp({
+        name: 'my-cli',
+        positionals: [opt.stringPos({ required: true }), opt.stringPos()],
+      }),
+    );
+
+    assert.ok(help.includes('<arg0>'));
+    assert.ok(help.includes('[arg1]'));
+  });
+
+  it('shows positionals with custom names', () => {
+    const help = stripAnsi(
+      generateHelp({
+        name: 'my-cli',
+        positionals: [
+          opt.stringPos({ name: 'source', required: true }),
+          opt.stringPos({ name: 'dest' }),
+        ],
+      }),
+    );
+
+    assert.ok(help.includes('<source>'));
+    assert.ok(help.includes('[dest]'));
+  });
+
+  it('shows variadic positionals with ellipsis', () => {
+    const help = stripAnsi(
+      generateHelp({
+        name: 'my-cli',
+        positionals: [opt.variadic('string', { name: 'files' })],
+      }),
+    );
+
+    assert.ok(help.includes('[files...]'));
+  });
+
+  it('shows positional with default as required (angle brackets)', () => {
+    const help = stripAnsi(
+      generateHelp({
+        name: 'my-cli',
+        positionals: [opt.stringPos({ default: 'foo', name: 'input' })],
+      }),
+    );
+
+    // Positionals with defaults are considered "required" in terms of display
+    // because they always have a value
+    assert.ok(help.includes('<input>'));
+  });
+});
+
 describe('generateCommandHelp', () => {
   it('generates help for a specific command', () => {
     const help = stripAnsi(
@@ -178,5 +231,29 @@ describe('generateCommandHelp', () => {
     );
 
     assert.ok(help.includes('Unknown command: unknown'));
+  });
+
+  it('shows command positionals with custom names', () => {
+    const help = stripAnsi(
+      generateCommandHelp(
+        {
+          commands: {
+            copy: opt.command({
+              description: 'Copy files',
+              handler: () => {},
+              positionals: [
+                opt.stringPos({ name: 'source', required: true }),
+                opt.stringPos({ name: 'dest', required: true }),
+              ],
+            }),
+          },
+          name: 'my-cli',
+        },
+        'copy',
+      ),
+    );
+
+    assert.ok(help.includes('<source>'));
+    assert.ok(help.includes('<dest>'));
   });
 });

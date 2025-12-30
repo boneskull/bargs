@@ -62,7 +62,11 @@ await bargs({
         }),
       },
       positionals: [
-        bargs.stringPos({ description: 'Task description', required: true }),
+        bargs.stringPos({
+          description: 'Task description',
+          name: 'text',
+          required: true,
+        }),
       ],
       handler: async ({ positionals, values }) => {
         const [text] = positionals;
@@ -126,7 +130,7 @@ await bargs({
     done: bargs.command({
       description: 'Mark a task as complete',
       positionals: [
-        bargs.stringPos({ description: 'Task ID', required: true }),
+        bargs.stringPos({ description: 'Task ID', name: 'id', required: true }),
       ],
       handler: async ({ positionals, values }) => {
         const [idStr] = positionals;

@@ -5,10 +5,37 @@ import type {
   CommandConfigInput,
   OptionDef,
   OptionsSchema,
+  PositionalDef,
   PositionalsSchema,
 } from './types.js';
 
 import { bold, cyan, dim, yellow } from './ansi.js';
+
+/**
+ * Format a single positional for help usage line. Required positionals use
+ * <name>, optional use [name]. Variadic positionals append "...".
+ */
+const formatPositionalUsage = (def: PositionalDef, index: number): string => {
+  const name = def.name ?? `arg${index}`;
+  const isRequired = def.required || 'default' in def;
+  const isVariadic = def.type === 'variadic';
+  const displayName = isVariadic ? `${name}...` : name;
+
+  return isRequired ? `<${displayName}>` : `[${displayName}]`;
+};
+
+/**
+ * Build the positionals usage string from a schema.
+ */
+const buildPositionalsUsage = (schema?: PositionalsSchema): string => {
+  if (!schema || schema.length === 0) {
+    return '';
+  }
+
+  return schema
+    .map((def, index) => formatPositionalUsage(def, index))
+    .join(' ');
+};
 
 /**
  * Get type label for help display.
@@ -100,7 +127,11 @@ export const generateHelp = <
   if (hasCommands(config)) {
     lines.push(`  $ ${config.name} <command> [options]`);
   } else {
-    lines.push(`  $ ${config.name} [options]`);
+    const positionalsPart = buildPositionalsUsage(config.positionals);
+    const usageParts = [`$ ${config.name}`, '[options]', positionalsPart]
+      .filter(Boolean)
+      .join(' ');
+    lines.push(`  ${usageParts}`);
   }
   lines.push('');
 
@@ -194,7 +225,15 @@ export const generateCommandHelp = <
 
   // Usage
   lines.push(yellow('USAGE'));
-  lines.push(`  $ ${config.name} ${commandName} [options]`);
+  const positionalsPart = buildPositionalsUsage(command.positionals);
+  const usageParts = [
+    `$ ${config.name} ${commandName}`,
+    '[options]',
+    positionalsPart,
+  ]
+    .filter(Boolean)
+    .join(' ');
+  lines.push(`  ${usageParts}`);
   lines.push('');
 
   // Command options
