@@ -93,7 +93,7 @@ const formatOptionHelp = (
   const suffixParts = [styler.type(`[${typeLabel}]`)];
   if ('default' in def && def.default !== undefined) {
     suffixParts.push(
-      styler.defaultValue(`default: ${JSON.stringify(def.default)}`),
+      `${styler.defaultText('default:')} ${styler.defaultValue(JSON.stringify(def.default))}`,
     );
   }
 

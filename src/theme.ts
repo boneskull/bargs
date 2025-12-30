@@ -8,10 +8,11 @@ import { stripVTControlCharacters } from 'node:util';
 export const stripAnsi = stripVTControlCharacters;
 
 /**
- * A bargs color theme.
+ * A bargs color theme. All color properties are optional and fall back to the
+ * default theme.
  */
 export interface Theme {
-  colors: ThemeColors;
+  colors?: Partial<ThemeColors>;
 }
 
 /**
@@ -21,7 +22,9 @@ export interface Theme {
 export interface ThemeColors {
   /** Command names (e.g., "init", "build") */
   command: string;
-  /** Default value annotations (e.g., "default: false") */
+  /** The "default: " label text */
+  defaultText: string;
+  /** Default value annotations (e.g., "false", ""hello"") */
   defaultValue: string;
   /** Description text for options/commands */
   description: string;
@@ -47,6 +50,13 @@ export interface ThemeColors {
 export type ThemeInput = keyof typeof themes | Theme;
 
 /**
+ * Internal resolved theme with all colors defined.
+ */
+interface ResolvedTheme {
+  colors: ThemeColors;
+}
+
+/**
  * ANSI escape codes.
  */
 const ansi = {
@@ -70,29 +80,36 @@ const ansi = {
 } as const;
 
 /**
+ * Default color values used when theme colors are not specified.
+ */
+const defaultColors: ThemeColors = {
+  command: ansi.bold,
+  defaultText: ansi.dim,
+  defaultValue: '',
+  description: '',
+  example: ansi.dim,
+  flag: ansi.cyan,
+  positional: ansi.yellow,
+  scriptName: ansi.bold,
+  sectionHeader: ansi.yellow,
+  type: ansi.cyan,
+  usage: '',
+};
+
+/**
  * Built-in themes.
  */
 export const themes = {
   /** Default colorful theme */
   default: {
-    colors: {
-      command: ansi.bold,
-      defaultValue: ansi.dim,
-      description: '',
-      example: ansi.dim,
-      flag: ansi.cyan,
-      positional: ansi.yellow,
-      scriptName: ansi.bold,
-      sectionHeader: ansi.yellow,
-      type: ansi.cyan,
-      usage: '',
-    },
+    colors: { ...defaultColors },
   },
 
   /** No colors (monochrome) */
   mono: {
     colors: {
       command: '',
+      defaultText: '',
       defaultValue: '',
       description: '',
       example: '',
@@ -109,7 +126,8 @@ export const themes = {
   ocean: {
     colors: {
       command: ansi.bold + ansi.brightCyan,
-      defaultValue: ansi.dim,
+      defaultText: ansi.dim,
+      defaultValue: ansi.brightCyan,
       description: '',
       example: ansi.dim,
       flag: ansi.brightCyan,
@@ -125,7 +143,8 @@ export const themes = {
   warm: {
     colors: {
       command: ansi.bold + ansi.yellow,
-      defaultValue: ansi.dim,
+      defaultText: ansi.dim,
+      defaultValue: ansi.brightYellow,
       description: '',
       example: ansi.dim,
       flag: ansi.brightYellow,
@@ -136,21 +155,25 @@ export const themes = {
       usage: '',
     },
   },
-} as const satisfies Record<string, Theme>;
+} as const satisfies Record<string, ResolvedTheme>;
 
 /**
  * Default theme export for convenience.
  */
-export const defaultTheme: Theme = themes.default;
+export const defaultTheme: ResolvedTheme = themes.default;
 
 /**
- * Resolve a theme input to a Theme object.
+ * Resolve a theme input to a fully resolved Theme with all colors defined.
+ * Missing colors fall back to the default theme.
  */
-export const getTheme = (input: ThemeInput): Theme => {
+export const getTheme = (input: ThemeInput): ResolvedTheme => {
   if (typeof input === 'string') {
     return themes[input];
   }
-  return input;
+  // Merge with defaults for partial themes
+  return {
+    colors: { ...defaultColors, ...input.colors },
+  };
 };
 
 /**
@@ -163,6 +186,7 @@ export type StyleFn = (text: string) => string;
  */
 export interface Styler {
   command: StyleFn;
+  defaultText: StyleFn;
   defaultValue: StyleFn;
   description: StyleFn;
   example: StyleFn;
@@ -191,17 +215,22 @@ const makeStyleFn = (color: string): StyleFn => {
 };
 
 /**
- * Create a Styler from a Theme.
+ * Create a Styler from a Theme. If the theme has missing colors, they fall back
+ * to the default theme.
  */
-export const createStyler = (theme: Theme): Styler => ({
-  command: makeStyleFn(theme.colors.command),
-  defaultValue: makeStyleFn(theme.colors.defaultValue),
-  description: makeStyleFn(theme.colors.description),
-  example: makeStyleFn(theme.colors.example),
-  flag: makeStyleFn(theme.colors.flag),
-  positional: makeStyleFn(theme.colors.positional),
-  scriptName: makeStyleFn(theme.colors.scriptName),
-  sectionHeader: makeStyleFn(theme.colors.sectionHeader),
-  type: makeStyleFn(theme.colors.type),
-  usage: makeStyleFn(theme.colors.usage),
-});
+export const createStyler = (theme: Theme): Styler => {
+  const resolved = getTheme(theme as ThemeInput);
+  return {
+    command: makeStyleFn(resolved.colors.command),
+    defaultText: makeStyleFn(resolved.colors.defaultText),
+    defaultValue: makeStyleFn(resolved.colors.defaultValue),
+    description: makeStyleFn(resolved.colors.description),
+    example: makeStyleFn(resolved.colors.example),
+    flag: makeStyleFn(resolved.colors.flag),
+    positional: makeStyleFn(resolved.colors.positional),
+    scriptName: makeStyleFn(resolved.colors.scriptName),
+    sectionHeader: makeStyleFn(resolved.colors.sectionHeader),
+    type: makeStyleFn(resolved.colors.type),
+    usage: makeStyleFn(resolved.colors.usage),
+  };
+};
