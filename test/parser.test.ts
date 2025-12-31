@@ -180,7 +180,10 @@ describe('parseSimple', () => {
       },
     });
 
-    expect(result.values, 'to deeply equal', { name: 'default-name', verbose: false });
+    expect(result.values, 'to deeply equal', {
+      name: 'default-name',
+      verbose: false,
+    });
   });
 
   it('parses short aliases', () => {
@@ -281,7 +284,10 @@ describe('parseSimple positionals', () => {
       positionals: [opt.stringPos({ required: true }), opt.variadic('string')],
     });
 
-    expect(result.positionals, 'to deeply equal', ['first', ['second', 'third']]);
+    expect(result.positionals, 'to deeply equal', [
+      'first',
+      ['second', 'third'],
+    ]);
   });
 
   it('applies positional defaults', () => {
@@ -406,7 +412,10 @@ describe('parseSimple positionals', () => {
       ],
     });
 
-    expect(result.positionals, 'to deeply equal', ['override', 'required-value']);
+    expect(result.positionals, 'to deeply equal', [
+      'override',
+      'required-value',
+    ]);
   });
 
   it('allows multiple optional positionals in sequence', () => {
@@ -415,6 +424,10 @@ describe('parseSimple positionals', () => {
       positionals: [opt.stringPos(), opt.stringPos(), opt.stringPos()],
     });
 
-    expect(result.positionals, 'to deeply equal', ['first', undefined, undefined]);
+    expect(result.positionals, 'to deeply equal', [
+      'first',
+      undefined,
+      undefined,
+    ]);
   });
 });
