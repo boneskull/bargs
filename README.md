@@ -249,6 +249,8 @@ All option helpers accept these properties:
 | `hidden`      | `boolean`  | Hide from `--help` output                        |
 | `required`    | `boolean`  | Mark as required (makes the option non-nullable) |
 
+Example:
+
 ```typescript
 bargs.string({
   aliases: ['o'],
@@ -278,6 +280,8 @@ bargs.variadic('string'); // [files...]
 | `description` | `string`  | Help text description                                  |
 | `name`        | `string`  | Display name in help (defaults to `arg0`, `arg1`, ...) |
 | `required`    | `boolean` | Mark as required (shown as `<name>` vs `[name]`)       |
+
+Example:
 
 ```typescript
 bargs.stringPos({
