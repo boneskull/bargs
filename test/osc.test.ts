@@ -5,10 +5,15 @@ import { link, linkifyUrls, supportsHyperlinks } from '../src/osc.js';
 
 describe('osc', () => {
   const envKeys = [
-    'FORCE_HYPERLINK',
-    'VTE_VERSION',
-    'TERM_PROGRAM',
+    'CI',
     'CURSOR_TRACE_ID',
+    'FORCE_HYPERLINK',
+    'NETLIFY',
+    'TEAMCITY_VERSION',
+    'TERM',
+    'TERM_PROGRAM',
+    'VTE_VERSION',
+    'WT_SESSION',
   ] as const;
 
   let savedEnv: Record<string, string | undefined>;
@@ -76,9 +81,9 @@ describe('osc', () => {
     });
 
     it('should return false for VTE 0.50.0 (dotted format) due to segfault bug', () => {
+      delete process.env.CI;
       delete process.env.FORCE_HYPERLINK;
       delete process.env.TERM_PROGRAM;
-      delete process.env.CURSOR_TRACE_ID;
       process.env.VTE_VERSION = '0.50.0';
 
       const mockStream = { isTTY: true } as NodeJS.WriteStream;
@@ -86,9 +91,9 @@ describe('osc', () => {
     });
 
     it('should return false for VTE 0.50.0 (compact format "5000") due to segfault bug', () => {
+      delete process.env.CI;
       delete process.env.FORCE_HYPERLINK;
       delete process.env.TERM_PROGRAM;
-      delete process.env.CURSOR_TRACE_ID;
       process.env.VTE_VERSION = '5000';
 
       const mockStream = { isTTY: true } as NodeJS.WriteStream;
@@ -96,9 +101,9 @@ describe('osc', () => {
     });
 
     it('should return true for VTE 0.50.1 (compact format "5001")', () => {
+      delete process.env.CI;
       delete process.env.FORCE_HYPERLINK;
       delete process.env.TERM_PROGRAM;
-      delete process.env.CURSOR_TRACE_ID;
       process.env.VTE_VERSION = '5001';
 
       const mockStream = { isTTY: true } as NodeJS.WriteStream;
