@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/boneskull/bargs/compare/bargs-v0.1.0...bargs-v0.1.1) (2025-12-31)
+
+
+### Bug Fixes
+
+* rename package to @boneskull/bargs ([3333794](https://github.com/boneskull/bargs/commit/333379426efa4d9c80fe8275cb8c1bf434468d7a))
+
 ## 0.1.0 (2025-12-31)
 
 
