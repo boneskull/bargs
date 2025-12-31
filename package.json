@@ -1,5 +1,5 @@
 {
-  "name": "bargs",
+  "name": "@boneskull/bargs",
   "version": "0.1.0",
   "type": "module",
   "description": "A TypeScript-first CLI argument parser wrapping util.parseArgs() with full type inference",
@@ -88,6 +88,9 @@
     "typescript": "5.9.3",
     "typescript-eslint": "8.50.0",
     "zshy": "0.6.0"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "knip": {
     "ignoreDependencies": [

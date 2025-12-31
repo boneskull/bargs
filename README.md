@@ -11,7 +11,7 @@
 ## Install
 
 ```shell
-npm install bargs
+npm install @boneskull/bargs
 ```
 
 ## Why bargs?
@@ -74,7 +74,7 @@ Only Node.js v22+.
 ## Quick Start
 
 ```typescript
-import { bargs } from 'bargs';
+import { bargs } from '@boneskull/bargs';
 
 const result = bargs({
   name: 'greet',
@@ -111,7 +111,7 @@ const result = bargs({
 Instead, use **`bargsAsync()`**:
 
 ```typescript
-import { bargsAsync } from 'bargs';
+import { bargsAsync } from '@boneskull/bargs';
 
 // Async - handlers can return Promises
 const result = await bargsAsync({
@@ -353,7 +353,7 @@ bargs(config, { theme: 'mono' });
 The `ansi` export provides common ANSI escape codes for styled terminal output: text styles (`bold`, `dim`, `italic`, `underline`, etc.), foreground colors, background colors, and their `bright*` variants. Use this to create your own themes (instead of hardcoding ANSI escape codes).
 
 ```typescript
-import { ansi } from 'bargs';
+import { ansi } from '@boneskull/bargs';
 
 bargs(someConfig, {
   theme: {
@@ -402,7 +402,12 @@ Available theme color slots:
 **bargs** exports some `Error` subclasses:
 
 ```typescript
-import { bargs, BargsError, HelpError, ValidationError } from 'bargs';
+import {
+  bargs,
+  BargsError,
+  HelpError,
+  ValidationError,
+} from '@boneskull/bargs';
 
 try {
   bargs(config);
@@ -425,7 +430,7 @@ try {
 Generate help text without calling `bargs()`:
 
 ```typescript
-import { generateHelp, generateCommandHelp } from 'bargs';
+import { generateHelp, generateCommandHelp } from '@boneskull/bargs';
 
 const helpText = generateHelp(config);
 const commandHelp = generateCommandHelp(config, 'migrate');
@@ -436,7 +441,7 @@ const commandHelp = generateCommandHelp(config, 'migrate');
 Create clickable terminal hyperlinks ([OSC 8](https://github.com/Alhadis/OSC8-Adoption)):
 
 ```typescript
-import { link, linkifyUrls, supportsHyperlinks } from 'bargs';
+import { link, linkifyUrls, supportsHyperlinks } from '@boneskull/bargs';
 
 // Check if terminal supports hyperlinks
 if (supportsHyperlinks()) {
@@ -460,7 +465,7 @@ import {
   defaultTheme, // The default theme object
   stripAnsi, // Remove ANSI codes from string
   themes, // All built-in themes
-} from 'bargs';
+} from '@boneskull/bargs';
 
 // Create a custom styler
 const styler = createStyler({ colors: { flag: ansi.green } });

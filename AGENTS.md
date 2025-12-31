@@ -30,7 +30,7 @@ node --import tsx --test --test-name-pattern="parses string" "test/**/*.test.ts"
 `src/index.ts` exports `bargs` as a function with builder methods attached via `Object.assign(parseAsync, opt)`. This allows:
 
 ```typescript
-import { bargs } from 'bargs';
+import { bargs } from '@boneskull/bargs';
 bargs({ ... });           // Call as function
 bargs.string({ ... });    // Use as builder namespace
 ```

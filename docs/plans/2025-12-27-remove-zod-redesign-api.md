@@ -391,7 +391,7 @@ const validateAliasConflicts = (schema: OptionsSchema): void => {
  * @example
  *
  * ```typescript
- * import { opt } from 'bargs';
+ * import { opt } from '@boneskull/bargs';
  *
  * const options = opt.options({
  *   verbose: opt.boolean({ aliases: ['v'] }),
@@ -2270,7 +2270,7 @@ This plan removes Zod and replaces it with an explicit, traditional argument par
 **Before (Zod):**
 
 ```typescript
-import { bargs } from 'bargs';
+import { bargs } from '@boneskull/bargs';
 import { z } from 'zod';
 
 await bargs({
@@ -2286,7 +2286,7 @@ await bargs({
 **After (No Zod):**
 
 ```typescript
-import { bargs, opt } from 'bargs';
+import { bargs, opt } from '@boneskull/bargs';
 
 await bargs({
   name: 'my-cli',
@@ -2301,7 +2301,7 @@ await bargs({
 **Composition Example:**
 
 ```typescript
-import { bargs, opt } from 'bargs';
+import { bargs, opt } from '@boneskull/bargs';
 
 // Reusable option sets
 const loggingOptions = opt.options({
