@@ -13,7 +13,7 @@ permissions:
   pull-requests: write
   issues: write
   # enable for publishing
-  #id-token: write
+  id-token: write
 
 jobs:
   release-please:
