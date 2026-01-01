@@ -22,9 +22,7 @@ import type { ThemeInput } from './theme.js';
  */
 export interface AnyCommandConfig {
   description: string;
-  handler:
-    | ((result: any) => Promise<void> | void)[]
-    | ((result: any) => Promise<void> | void);
+  handler: (result: any) => Promise<void> | void;
   options?: OptionsSchema;
   positionals?: PositionalsSchema;
   transforms?: TransformsConfig<any, any, any, any>;
@@ -228,10 +226,10 @@ export interface EnumPositional<
 }
 
 /**
- * Handler - either a single function or an array of functions. When an array is
- * provided, handlers run sequentially in order.
+ * Handler function signature. Handler arrays are no longer supported - use
+ * transforms for middleware-like sequential processing instead.
  */
-export type Handler<TResult> = HandlerFn<TResult> | HandlerFn<TResult>[];
+export type Handler<TResult> = HandlerFn<TResult>;
 
 /**
  * Single handler function signature.

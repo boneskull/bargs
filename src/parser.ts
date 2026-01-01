@@ -37,35 +37,25 @@ const isThenable = (value: unknown): value is PromiseLike<unknown> =>
   typeof (value as { then?: unknown }).then === 'function';
 
 /**
- * Run a handler or array of handlers synchronously. Throws if any handler
- * returns a thenable.
+ * Run a handler synchronously. Throws if handler returns a thenable.
  */
-export const runSyncHandlers = <T>(
-  handler: HandlerFn<T> | HandlerFn<T>[],
-  result: T,
-): void => {
-  const handlers: HandlerFn<T>[] = Array.isArray(handler) ? handler : [handler];
-  for (const h of handlers) {
-    const maybePromise = h(result);
-    if (isThenable(maybePromise)) {
-      throw new BargsError(
-        'Handler returned a thenable. Use bargsAsync() for async handlers.',
-      );
-    }
+export const runSyncHandler = <T>(handler: HandlerFn<T>, result: T): void => {
+  const maybePromise = handler(result);
+  if (isThenable(maybePromise)) {
+    throw new BargsError(
+      'Handler returned a thenable. Use bargsAsync() for async handlers.',
+    );
   }
 };
 
 /**
- * Run a handler or array of handlers sequentially (async).
+ * Run a handler (async).
  */
-export const runHandlers = async <T>(
-  handler: HandlerFn<T> | HandlerFn<T>[],
+export const runHandler = async <T>(
+  handler: HandlerFn<T>,
   result: T,
 ): Promise<void> => {
-  const handlers: HandlerFn<T>[] = Array.isArray(handler) ? handler : [handler];
-  for (const h of handlers) {
-    await h(result);
-  }
+  await handler(result);
 };
 
 /**
@@ -277,7 +267,7 @@ export const parseSimple = <
  * Result from parseCommandsCore including the handler to run.
  */
 interface ParseCommandsCoreResult<TOptions extends OptionsSchema> {
-  handler: HandlerFn<unknown> | HandlerFn<unknown>[] | undefined;
+  handler: HandlerFn<unknown> | undefined;
   result: BargsResult<
     InferOptions<TOptions>,
     readonly unknown[],
@@ -323,10 +313,7 @@ const parseCommandsCore = <
         args: [defaultHandler, ...args],
         defaultHandler: undefined,
       });
-    } else if (
-      typeof defaultHandler === 'function' ||
-      Array.isArray(defaultHandler)
-    ) {
+    } else if (typeof defaultHandler === 'function') {
       // Parse global options only
       const parseArgsOptions = buildParseArgsConfig(globalOptions);
       const { values } = parseArgs({
@@ -339,7 +326,7 @@ const parseCommandsCore = <
 
       const result: BargsResult<
         InferOptions<TOptions>,
-        unknown[],
+        readonly [],
         string | undefined
       > = {
         command: undefined,
@@ -348,7 +335,7 @@ const parseCommandsCore = <
       };
 
       return {
-        handler: defaultHandler as HandlerFn<unknown> | HandlerFn<unknown>[],
+        handler: defaultHandler as HandlerFn<unknown>,
         result,
       };
     } else {
@@ -411,7 +398,7 @@ export const parseCommandsSync = <
   const { handler, result } = parseCommandsCore(config);
 
   if (handler) {
-    runSyncHandlers(handler, result);
+    runSyncHandler(handler, result);
   }
 
   return result;
@@ -434,7 +421,7 @@ export const parseCommandsAsync = async <
   const { handler, result } = parseCommandsCore(config);
 
   if (handler) {
-    await runHandlers(handler, result);
+    await runHandler(handler, result);
   }
 
   return result;

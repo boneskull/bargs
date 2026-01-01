@@ -28,8 +28,8 @@ import {
   parseCommandsAsync,
   parseCommandsSync,
   parseSimple,
-  runHandlers,
-  runSyncHandlers,
+  runHandler,
+  runSyncHandler,
 } from './parser.js';
 import { defaultTheme, getTheme, type Theme } from './theme.js';
 import { validateConfig } from './validate.js';
@@ -215,9 +215,9 @@ export function bargs(
         positionals: config.positionals,
       });
 
-      // Call handler(s) if provided (sync)
+      // Call handler if provided (sync)
       if (config.handler) {
-        runSyncHandlers(config.handler, result);
+        runSyncHandler(config.handler, result);
       }
 
       return result;
@@ -288,9 +288,9 @@ export async function bargsAsync(
         positionals: config.positionals,
       });
 
-      // Call handler(s) if provided (async)
+      // Call handler if provided (async)
       if (config.handler) {
-        await runHandlers(config.handler, result);
+        await runHandler(config.handler, result);
       }
 
       return result;

@@ -11,11 +11,15 @@
  * - Bargs.command() for type inference
  * - DefaultHandler for no-command case
  *
+ * This examples eschews the use of helper functions like `bargs.command()` and
+ * `bargs.positionals()` in favor of raw object literals. Either way works if
+ * you're defining the config inline!
+ *
  * Usage: npx tsx examples/tasks.ts add "Buy groceries" --priority high npx tsx
  * examples/tasks.ts list npx tsx examples/tasks.ts done 1 npx tsx
  * examples/tasks.ts --help npx tsx examples/tasks.ts add --help
  */
-import { bargs } from '../src/index.js';
+import { bargs, bargsAsync } from '../src/index.js';
 
 // In-memory task storage (in a real app, this would be a file or database)
 interface Task {
@@ -32,35 +36,40 @@ const tasks: Task[] = [
 let nextId = 2;
 
 // Run the CLI
-await bargs({
+await bargsAsync({
   name: 'tasks',
   version: '1.0.0',
   description: 'A simple task manager',
 
   // Global options available to all commands
   options: {
-    file: bargs.string({
+    file: {
       description: 'Task storage file',
       default: 'tasks.json',
       aliases: ['f'],
-    }),
-    verbose: bargs.boolean({
+      type: 'string',
+    },
+    verbose: {
       description: 'Show detailed output',
       default: false,
       aliases: ['v'],
-    }),
+      type: 'boolean',
+    },
   },
 
   commands: {
-    add: bargs.command({
+    add: {
       description: 'Add a new task',
       options: {
-        priority: bargs.enum(['low', 'medium', 'high'], {
+        priority: {
+          choices: ['low', 'medium', 'high'],
+          type: 'enum',
           description: 'Task priority',
           default: 'medium',
           aliases: ['p'],
-        }),
+        },
       },
+      // Raw array works with const type parameter inference
       positionals: [
         bargs.stringPos({
           description: 'Task description',
@@ -78,7 +87,7 @@ await bargs({
           done: false,
           id: nextId++,
           priority,
-          text: text as string,
+          text: text,
         };
         tasks.push(task);
 
@@ -88,16 +97,17 @@ await bargs({
           console.log(`Added task #${task.id}: ${text}`);
         }
       },
-    }),
+    },
 
-    list: bargs.command({
+    list: {
       description: 'List all tasks',
       options: {
-        all: bargs.boolean({
+        all: {
           description: 'Show completed tasks too',
           default: false,
           aliases: ['a'],
-        }),
+          type: 'boolean',
+        },
       },
       handler: async ({ values }) => {
         // all is typed from command options, verbose from global
@@ -125,16 +135,23 @@ await bargs({
           }
         }
       },
-    }),
+    },
 
-    done: bargs.command({
+    done: {
       description: 'Mark a task as complete',
+      // Raw array works with const type parameter inference
       positionals: [
-        bargs.stringPos({ description: 'Task ID', name: 'id', required: true }),
+        {
+          type: 'string',
+          description: 'Task ID',
+          name: 'id',
+          required: true,
+        },
       ],
       handler: async ({ positionals, values }) => {
         const [idStr] = positionals;
-        const id = parseInt(idStr as string, 10);
+        // idStr is now properly typed as string (required: true)
+        const id = parseInt(idStr, 10);
         // verbose is accessible from global options
         const { verbose } = values;
 
@@ -152,7 +169,7 @@ await bargs({
           console.log(`Completed task #${id}: ${task.text}`);
         }
       },
-    }),
+    },
   },
 
   // Default handler when no command is given - show task count
