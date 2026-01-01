@@ -482,6 +482,10 @@ const plain = stripAnsi('\x1b[32m--verbose\x1b[0m'); // '--verbose'
 const customTheme = { ...themes.ocean, colors: { flag: ansi.green } };
 ```
 
+## Motivation
+
+I've always reached for [yargs](https://github.com/yargs/yargs) in my CLI projects. However, I find myself repeatedly doing the same things; I have a sort of boilerplate in my head, ready to go (`requiresArg: true` and `nargs: 1`, amirite?). I don't want boilerplate in my head. I wanted to distill my chosen subset of yargs' behavior into a composable API. And so **bargs** was begat.
+
 ## License
 
 Copyright © 2025 [Christopher "boneskull" Hiller](https://github.com/boneskull). Licensed under the [Blue Oak Model License 1.0.0](./LICENSE).

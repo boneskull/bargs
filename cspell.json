@@ -53,7 +53,9 @@
     "Sorhus",
     "linkification",
     "linkifying",
-    "wallabyjs"
+    "wallabyjs",
+    "ptmux",
+    "nargs"
   ],
   "words": [
     "bupkis",
@@ -62,7 +64,6 @@
     "linkifies",
     "linkify",
     "positionals",
-    "ptmux",
     "subcommand",
     "subcommands"
   ]
