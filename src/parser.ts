@@ -343,15 +343,21 @@ export const parseSimple = <
 };
 
 /**
- * Result from parseCommandsCore including the handler to run.
+ * Result from parseCommandsCore including the handler and transforms to run.
  */
 interface ParseCommandsCoreResult<TOptions extends OptionsSchema> {
+  commandTransforms:
+    | TransformsConfig<unknown, unknown, readonly unknown[], readonly unknown[]>
+    | undefined;
   handler: HandlerFn<unknown> | undefined;
   result: BargsResult<
     InferOptions<TOptions>,
     readonly unknown[],
     string | undefined
   >;
+  topLevelTransforms:
+    | TransformsConfig<unknown, unknown, readonly unknown[], readonly unknown[]>
+    | undefined;
 }
 
 /**
@@ -414,8 +420,17 @@ const parseCommandsCore = <
       };
 
       return {
+        commandTransforms: undefined,
         handler: defaultHandler as HandlerFn<unknown>,
         result,
+        topLevelTransforms: config.transforms as
+          | TransformsConfig<
+              unknown,
+              unknown,
+              readonly unknown[],
+              readonly unknown[]
+            >
+          | undefined,
       };
     } else {
       throw new HelpError('No command specified.');
@@ -454,12 +469,31 @@ const parseCommandsCore = <
     values: coercedValues,
   } as BargsResult<InferOptions<TOptions>, unknown[], string>;
 
-  return { handler: command.handler, result };
+  return {
+    commandTransforms: command.transforms as
+      | TransformsConfig<
+          unknown,
+          unknown,
+          readonly unknown[],
+          readonly unknown[]
+        >
+      | undefined,
+    handler: command.handler,
+    result,
+    topLevelTransforms: config.transforms as
+      | TransformsConfig<
+          unknown,
+          unknown,
+          readonly unknown[],
+          readonly unknown[]
+        >
+      | undefined,
+  };
 };
 
 /**
- * Parse arguments for a command-based CLI (sync). Throws if any handler returns
- * a thenable.
+ * Parse arguments for a command-based CLI (sync). Throws if any handler or
+ * transform returns a thenable.
  */
 export const parseCommandsSync = <
   TOptions extends OptionsSchema = OptionsSchema,
@@ -474,13 +508,48 @@ export const parseCommandsSync = <
   readonly unknown[],
   string | undefined
 > => {
-  const { handler, result } = parseCommandsCore(config);
+  const { commandTransforms, handler, result, topLevelTransforms } =
+    parseCommandsCore(config);
 
-  if (handler) {
-    runSyncHandler(handler, result);
+  // Apply transforms: top-level first, then command-level
+  let currentValues: unknown = result.values;
+  let currentPositionals: readonly unknown[] = result.positionals;
+
+  if (topLevelTransforms) {
+    const transformed = runSyncTransforms(
+      topLevelTransforms,
+      currentValues,
+      currentPositionals,
+    );
+    currentValues = transformed.values;
+    currentPositionals = transformed.positionals;
   }
 
-  return result;
+  if (commandTransforms) {
+    const transformed = runSyncTransforms(
+      commandTransforms,
+      currentValues,
+      currentPositionals,
+    );
+    currentValues = transformed.values;
+    currentPositionals = transformed.positionals;
+  }
+
+  const finalResult = {
+    command: result.command,
+    positionals: currentPositionals,
+    values: currentValues,
+  } as BargsResult<
+    InferOptions<TOptions>,
+    readonly unknown[],
+    string | undefined
+  >;
+
+  if (handler) {
+    runSyncHandler(handler, finalResult);
+  }
+
+  return finalResult;
 };
 
 /**
@@ -497,11 +566,46 @@ export const parseCommandsAsync = async <
 ): Promise<
   BargsResult<InferOptions<TOptions>, readonly unknown[], string | undefined>
 > => {
-  const { handler, result } = parseCommandsCore(config);
+  const { commandTransforms, handler, result, topLevelTransforms } =
+    parseCommandsCore(config);
 
-  if (handler) {
-    await runHandler(handler, result);
+  // Apply transforms: top-level first, then command-level
+  let currentValues: unknown = result.values;
+  let currentPositionals: readonly unknown[] = result.positionals;
+
+  if (topLevelTransforms) {
+    const transformed = await runTransforms(
+      topLevelTransforms,
+      currentValues,
+      currentPositionals,
+    );
+    currentValues = transformed.values;
+    currentPositionals = transformed.positionals;
   }
 
-  return result;
+  if (commandTransforms) {
+    const transformed = await runTransforms(
+      commandTransforms,
+      currentValues,
+      currentPositionals,
+    );
+    currentValues = transformed.values;
+    currentPositionals = transformed.positionals;
+  }
+
+  const finalResult = {
+    command: result.command,
+    positionals: currentPositionals,
+    values: currentValues,
+  } as BargsResult<
+    InferOptions<TOptions>,
+    readonly unknown[],
+    string | undefined
+  >;
+
+  if (handler) {
+    await runHandler(handler, finalResult);
+  }
+
+  return finalResult;
 };
