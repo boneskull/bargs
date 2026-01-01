@@ -23,6 +23,7 @@ import type {
   InferPositionals,
   OptionsSchema,
   PositionalsSchema,
+  TransformsConfig,
 } from './types.js';
 
 import { BargsError, HelpError } from './errors.js';
@@ -56,6 +57,84 @@ export const runHandler = async <T>(
   result: T,
 ): Promise<void> => {
   await handler(result);
+};
+
+/**
+ * Run transforms synchronously. Throws if any transform returns a thenable.
+ */
+export const runSyncTransforms = <
+  TValuesIn,
+  TValuesOut,
+  TPositionalsIn extends readonly unknown[],
+  TPositionalsOut extends readonly unknown[],
+>(
+  transforms:
+    | TransformsConfig<TValuesIn, TValuesOut, TPositionalsIn, TPositionalsOut>
+    | undefined,
+  values: TValuesIn,
+  positionals: TPositionalsIn,
+): { positionals: TPositionalsOut; values: TValuesOut } => {
+  let currentValues: unknown = values;
+  let currentPositionals: unknown = positionals;
+
+  if (transforms?.values) {
+    const result = transforms.values(currentValues as TValuesIn);
+    if (isThenable(result)) {
+      throw new BargsError(
+        'Transform returned a thenable. Use bargsAsync() for async transforms.',
+      );
+    }
+    currentValues = result;
+  }
+
+  if (transforms?.positionals) {
+    const result = transforms.positionals(currentPositionals as TPositionalsIn);
+    if (isThenable(result)) {
+      throw new BargsError(
+        'Transform returned a thenable. Use bargsAsync() for async transforms.',
+      );
+    }
+    currentPositionals = result;
+  }
+
+  return {
+    positionals: currentPositionals as TPositionalsOut,
+    values: currentValues as TValuesOut,
+  };
+};
+
+/**
+ * Run transforms asynchronously.
+ */
+export const runTransforms = async <
+  TValuesIn,
+  TValuesOut,
+  TPositionalsIn extends readonly unknown[],
+  TPositionalsOut extends readonly unknown[],
+>(
+  transforms:
+    | TransformsConfig<TValuesIn, TValuesOut, TPositionalsIn, TPositionalsOut>
+    | undefined,
+  values: TValuesIn,
+  positionals: TPositionalsIn,
+): Promise<{ positionals: TPositionalsOut; values: TValuesOut }> => {
+  let currentValues: unknown = values;
+  let currentPositionals: unknown = positionals;
+
+  if (transforms?.values) {
+    currentValues = await transforms.values(currentValues as TValuesIn);
+  }
+
+  if (transforms?.positionals) {
+    currentPositionals = await transforms.positionals(
+      currentPositionals as TPositionalsIn,
+    );
+  }
+
+  return {
+    positionals: currentPositionals as TPositionalsOut,
+    values: currentValues as TValuesOut,
+  };
 };
 
 /**
