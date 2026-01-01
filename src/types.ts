@@ -278,6 +278,28 @@ export type InferPositionals<T extends PositionalsSchema> = {
 };
 
 /**
+ * Infer the output positionals type from a transforms config. If no positionals
+ * transform, output equals input.
+ */
+export type InferTransformedPositionals<
+  TPositionalsIn extends readonly unknown[],
+  TTransforms,
+> = TTransforms extends { positionals: PositionalsTransformFn<any, infer TOut> }
+  ? TOut extends readonly unknown[]
+    ? TOut
+    : TPositionalsIn
+  : TPositionalsIn;
+
+/**
+ * Infer the output values type from a transforms config. If no values
+ * transform, output equals input.
+ */
+export type InferTransformedValues<TValuesIn, TTransforms> =
+  TTransforms extends { values: ValuesTransformFn<any, infer TOut> }
+    ? TOut
+    : TValuesIn;
+
+/**
  * Number option definition.
  */
 export interface NumberOption extends OptionBase {
@@ -324,6 +346,16 @@ export type PositionalDef =
 export type PositionalsSchema = PositionalDef[];
 
 /**
+ * Positionals transform function. Receives parsed positionals tuple, returns
+ * transformed positionals tuple. The return type becomes the new positionals
+ * type for the handler.
+ */
+export type PositionalsTransformFn<
+  TIn extends readonly unknown[],
+  TOut extends readonly unknown[],
+> = (positionals: TIn) => Promise<TOut> | TOut;
+
+/**
  * String option definition.
  */
 export interface StringOption extends OptionBase {
@@ -338,6 +370,30 @@ export interface StringPositional extends PositionalBase {
   default?: string;
   type: 'string';
 }
+
+/**
+ * Transforms configuration for modifying parsed results before handler
+ * execution. Each transform is optional and can be sync or async.
+ */
+export interface TransformsConfig<
+  TValuesIn,
+  TValuesOut,
+  TPositionalsIn extends readonly unknown[],
+  TPositionalsOut extends readonly unknown[],
+> {
+  /** Transform parsed positionals tuple */
+  positionals?: PositionalsTransformFn<TPositionalsIn, TPositionalsOut>;
+  /** Transform parsed option values */
+  values?: ValuesTransformFn<TValuesIn, TValuesOut>;
+}
+
+/**
+ * Values transform function. Receives parsed values, returns transformed
+ * values. The return type becomes the new values type for the handler.
+ */
+export type ValuesTransformFn<TIn, TOut> = (
+  values: TIn,
+) => Promise<TOut> | TOut;
 
 /**
  * Variadic positional (rest args).
