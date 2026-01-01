@@ -159,8 +159,8 @@ const handleHelpError = (
  * if any handler returns a thenable.
  */
 export function bargs<
-  TOptions extends OptionsSchema,
-  TPositionals extends PositionalsSchema,
+  const TOptions extends OptionsSchema,
+  const TPositionals extends PositionalsSchema,
 >(
   config: BargsConfig<TOptions, TPositionals, undefined>,
   options?: BargsOptions,
@@ -175,12 +175,12 @@ export function bargs<
  * handler returns a thenable.
  */
 export function bargs<
-  TOptions extends OptionsSchema,
-  TCommands extends Record<string, CommandConfigInput>,
+  const TOptions extends OptionsSchema,
+  const TCommands extends Record<string, CommandConfigInput>,
 >(
   config: BargsConfigWithCommands<TOptions, TCommands>,
   options?: BargsOptions,
-): BargsResult<InferOptions<TOptions>, unknown[], string | undefined>;
+): BargsResult<InferOptions<TOptions>, readonly unknown[], string | undefined>;
 
 /**
  * Main bargs entry point (sync implementation). Throws BargsError if any
@@ -193,7 +193,7 @@ export function bargs(
     Record<string, CommandConfigInput> | undefined
   >,
   options?: BargsOptions,
-): BargsResult<unknown, unknown[], string | undefined> {
+): BargsResult<unknown, readonly unknown[], string | undefined> {
   // Validate config upfront (throws ValidationError if invalid)
   validateConfig(config);
 
@@ -251,7 +251,9 @@ export async function bargsAsync<
 >(
   config: BargsConfigWithCommands<TOptions, TCommands>,
   options?: BargsOptions,
-): Promise<BargsResult<InferOptions<TOptions>, unknown[], string | undefined>>;
+): Promise<
+  BargsResult<InferOptions<TOptions>, readonly unknown[], string | undefined>
+>;
 
 /**
  * Main bargs entry point (async implementation). Awaits all handlers,
@@ -264,7 +266,7 @@ export async function bargsAsync(
     Record<string, CommandConfigInput> | undefined
   >,
   options?: BargsOptions,
-): Promise<BargsResult<unknown, unknown[], string | undefined>> {
+): Promise<BargsResult<unknown, readonly unknown[], string | undefined>> {
   // Validate config upfront (throws ValidationError if invalid)
   validateConfig(config);
 

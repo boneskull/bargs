@@ -93,7 +93,7 @@ export type BargsConfigWithCommands<
 > & {
   commands: TCommands;
   defaultHandler?:
-    | Handler<BargsResult<InferOptions<TOptions>, [], undefined>>
+    | Handler<BargsResult<InferOptions<TOptions>, readonly [], undefined>>
     | keyof TCommands;
 };
 
@@ -271,11 +271,24 @@ export type InferPositional<T extends PositionalDef> =
           : never;
 
 /**
- * Infer positionals tuple type from schema.
+ * Recursively build a tuple type from a positionals schema array. Preserves
+ * tuple structure (order and length) rather than producing a mapped object
+ * type.
  */
-export type InferPositionals<T extends PositionalsSchema> = {
-  [K in keyof T]: T[K] extends PositionalDef ? InferPositional<T[K]> : never;
-};
+export type InferPositionals<T extends PositionalsSchema> = T extends readonly [
+  infer First,
+  ...infer Rest,
+]
+  ? First extends PositionalDef
+    ? Rest extends PositionalsSchema
+      ? readonly [InferPositional<First>, ...InferPositionals<Rest>]
+      : readonly [InferPositional<First>]
+    : readonly []
+  : T extends readonly [infer Only]
+    ? Only extends PositionalDef
+      ? readonly [InferPositional<Only>]
+      : readonly []
+    : readonly [];
 
 /**
  * Infer the output positionals type from a transforms config. If no positionals
@@ -343,7 +356,7 @@ export type PositionalDef =
 /**
  * Positionals can be a tuple (ordered) or a single variadic.
  */
-export type PositionalsSchema = PositionalDef[];
+export type PositionalsSchema = readonly PositionalDef[];
 
 /**
  * Positionals transform function. Receives parsed positionals tuple, returns

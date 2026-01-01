@@ -174,7 +174,7 @@ const coerceValues = (
 const coercePositionals = (
   positionals: string[],
   schema: PositionalsSchema,
-): unknown[] => {
+): readonly unknown[] => {
   const result: unknown[] = [];
 
   for (let i = 0; i < schema.length; i++) {
@@ -278,7 +278,11 @@ export const parseSimple = <
  */
 interface ParseCommandsCoreResult<TOptions extends OptionsSchema> {
   handler: HandlerFn<unknown> | HandlerFn<unknown>[] | undefined;
-  result: BargsResult<InferOptions<TOptions>, unknown[], string | undefined>;
+  result: BargsResult<
+    InferOptions<TOptions>,
+    readonly unknown[],
+    string | undefined
+  >;
 }
 
 /**
@@ -399,7 +403,11 @@ export const parseCommandsSync = <
   >,
 >(
   config: BargsConfigWithCommands<TOptions, TCommands>,
-): BargsResult<InferOptions<TOptions>, unknown[], string | undefined> => {
+): BargsResult<
+  InferOptions<TOptions>,
+  readonly unknown[],
+  string | undefined
+> => {
   const { handler, result } = parseCommandsCore(config);
 
   if (handler) {
@@ -421,7 +429,7 @@ export const parseCommandsAsync = async <
 >(
   config: BargsConfigWithCommands<TOptions, TCommands>,
 ): Promise<
-  BargsResult<InferOptions<TOptions>, unknown[], string | undefined>
+  BargsResult<InferOptions<TOptions>, readonly unknown[], string | undefined>
 > => {
   const { handler, result } = parseCommandsCore(config);
 
