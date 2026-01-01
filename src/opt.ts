@@ -25,6 +25,7 @@ import type {
   PositionalsSchema,
   StringOption,
   StringPositional,
+  TransformsConfig,
   VariadicPositional,
 } from './types.js';
 
@@ -127,8 +128,11 @@ export const opt = {
    *   options: opt.options({
    *     name: opt.string({ default: 'world' }),
    *   }),
+   *   transforms: {
+   *     values: (v) => ({ ...v, timestamp: Date.now() }),
+   *   },
    *   handler: ({ values }) => {
-   *     console.log(`Hello, ${values.name}!`);
+   *     console.log(`Hello, ${values.name}! (${values.timestamp})`);
    *   },
    * });
    * ```
@@ -136,9 +140,11 @@ export const opt = {
   command: <
     TOptions extends OptionsSchema = OptionsSchema,
     TPositionals extends PositionalsSchema = PositionalsSchema,
+    TTransforms extends TransformsConfig<any, any, any, any> | undefined =
+      undefined,
   >(
-    config: CommandConfig<TOptions, TPositionals>,
-  ): CommandConfig<TOptions, TPositionals> => config,
+    config: CommandConfig<TOptions, TPositionals, TTransforms>,
+  ): CommandConfig<TOptions, TPositionals, TTransforms> => config,
 
   /**
    * Define a count option (--verbose --verbose = 2).
