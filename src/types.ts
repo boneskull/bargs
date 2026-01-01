@@ -42,11 +42,18 @@ export interface ArrayOption extends OptionBase {
 
 /**
  * Main bargs configuration.
+ *
+ * @typeParam TOptions - Options schema type
+ * @typeParam TPositionals - Positionals schema type
+ * @typeParam TCommands - Commands record type (undefined for simple CLIs)
+ * @typeParam TTransforms - Transforms config type (affects handler input types)
  */
 export interface BargsConfig<
   TOptions extends OptionsSchema = OptionsSchema,
   TPositionals extends PositionalsSchema = PositionalsSchema,
   TCommands extends Record<string, AnyCommandConfig> | undefined = undefined,
+  TTransforms extends TransformsConfig<any, any, any, any> | undefined =
+    undefined,
 > {
   args?: string[];
   commands?: TCommands;
@@ -57,16 +64,27 @@ export interface BargsConfig<
    * string to disable.
    */
   epilog?: false | string;
+  /**
+   * Handler receives the final transformed values and positionals. When
+   * transforms are defined, types flow through the transform pipeline. Handler
+   * arrays are no longer supported - use a single handler function.
+   */
   handler?: Handler<
     BargsResult<
-      InferOptions<TOptions>,
-      InferPositionals<TPositionals>,
+      InferTransformedValues<InferOptions<TOptions>, TTransforms>,
+      InferTransformedPositionals<InferPositionals<TPositionals>, TTransforms>,
       undefined
     >
   >;
   name: string;
   options?: TOptions;
   positionals?: TPositionals;
+  /**
+   * Transform functions that modify parsed values before handler execution.
+   * Values transform receives InferOptions<TOptions>, positionals transform
+   * receives InferPositionals<TPositionals>.
+   */
+  transforms?: TTransforms;
   version?: string;
 }
 
@@ -87,13 +105,21 @@ export type BargsConfigWithCommands<
     string,
     CommandConfigInput
   >,
+  TTransforms extends TransformsConfig<any, any, any, any> | undefined =
+    undefined,
 > = Omit<
-  BargsConfig<TOptions, PositionalsSchema, TCommands>,
+  BargsConfig<TOptions, PositionalsSchema, TCommands, TTransforms>,
   'handler' | 'positionals'
 > & {
   commands: TCommands;
   defaultHandler?:
-    | Handler<BargsResult<InferOptions<TOptions>, readonly [], undefined>>
+    | Handler<
+        BargsResult<
+          InferTransformedValues<InferOptions<TOptions>, TTransforms>,
+          readonly [],
+          undefined
+        >
+      >
     | keyof TCommands;
 };
 

@@ -5,7 +5,11 @@
  */
 import { describe, test } from 'node:test';
 
-import type { InferPositionals } from '../src/types.js';
+import type {
+  BargsConfig,
+  InferPositionals,
+  ValuesTransformFn,
+} from '../src/types.js';
 
 import { opt } from '../src/opt.js';
 
@@ -70,5 +74,39 @@ describe('InferPositionals tuple inference', () => {
       readonly [string | undefined, string[]],
       Result
     >;
+  });
+});
+
+describe('BargsConfig with transforms', () => {
+  test('transforms config is accepted in BargsConfig', () => {
+    // This should type-check without errors - verifies BargsConfig accepts transforms
+    type ConfigWithTransforms = BargsConfig<
+      { verbose: { default: false; type: 'boolean' } },
+      readonly [],
+      undefined,
+      {
+        values: (v: { verbose: boolean }) => {
+          extra: string;
+          verbose: boolean;
+        };
+      }
+    >;
+
+    // Verify the config has a transforms property
+    type _HasTransformsProperty = ConfigWithTransforms['transforms'];
+  });
+
+  test('transforms config accepts proper transform functions', () => {
+    // Verify ValuesTransformFn type works correctly
+    type _TransformFn = ValuesTransformFn<
+      { name: string },
+      { name: string; uppercased: string }
+    >;
+
+    // Should be assignable to a function that transforms values
+    const _fn: _TransformFn = (v) => ({
+      ...v,
+      uppercased: v.name.toUpperCase(),
+    });
   });
 });
