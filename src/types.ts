@@ -22,12 +22,12 @@ import type { ThemeInput } from './theme.js';
  */
 export interface AnyCommandConfig {
   description: string;
-
   handler:
     | ((result: any) => Promise<void> | void)[]
     | ((result: any) => Promise<void> | void);
   options?: OptionsSchema;
   positionals?: PositionalsSchema;
+  transforms?: TransformsConfig<any, any, any, any>;
 }
 
 /**
@@ -158,21 +158,32 @@ export interface BooleanOption extends OptionBase {
  * The handler receives typed local options plus access to global options (as
  * Record<string, unknown>). Global options are available at runtime but require
  * type narrowing to access safely.
+ *
+ * @typeParam TOptions - Command-specific options schema
+ * @typeParam TPositionals - Command positionals schema
+ * @typeParam TTransforms - Command-level transforms config
  */
 export interface CommandConfig<
   TOptions extends OptionsSchema = OptionsSchema,
   TPositionals extends PositionalsSchema = PositionalsSchema,
+  TTransforms extends TransformsConfig<any, any, any, any> | undefined =
+    undefined,
 > {
   description: string;
   handler: Handler<
     BargsResult<
-      InferOptions<TOptions> & Record<string, unknown>,
-      InferPositionals<TPositionals>,
+      InferTransformedValues<
+        InferOptions<TOptions> & Record<string, unknown>,
+        TTransforms
+      >,
+      InferTransformedPositionals<InferPositionals<TPositionals>, TTransforms>,
       string
     >
   >;
   options?: TOptions;
   positionals?: TPositionals;
+  /** Command-level transforms run after top-level transforms */
+  transforms?: TTransforms;
 }
 
 /**
@@ -185,6 +196,7 @@ export interface CommandConfigInput {
   handler: Handler<any>;
   options?: OptionsSchema;
   positionals?: PositionalsSchema;
+  transforms?: TransformsConfig<any, any, any, any>;
 }
 
 /**
