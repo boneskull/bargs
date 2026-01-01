@@ -18,8 +18,11 @@ import type {
   CommandConfigInput,
   InferOptions,
   InferPositionals,
+  InferTransformedPositionals,
+  InferTransformedValues,
   OptionsSchema,
   PositionalsSchema,
+  TransformsConfig,
 } from './types.js';
 
 import { HelpError } from './errors.js';
@@ -30,6 +33,8 @@ import {
   parseSimple,
   runHandler,
   runSyncHandler,
+  runSyncTransforms,
+  runTransforms,
 } from './parser.js';
 import { defaultTheme, getTheme, type Theme } from './theme.js';
 import { validateConfig } from './validate.js';
@@ -156,17 +161,25 @@ const handleHelpError = (
 
 /**
  * Main bargs entry point for simple CLIs (no commands) - sync version. Throws
- * if any handler returns a thenable.
+ * if any handler or transform returns a thenable.
  */
 export function bargs<
   const TOptions extends OptionsSchema,
   const TPositionals extends PositionalsSchema,
+  const TTransforms extends
+    | TransformsConfig<
+        InferOptions<TOptions>,
+        any,
+        InferPositionals<TPositionals>,
+        any
+      >
+    | undefined = undefined,
 >(
-  config: BargsConfig<TOptions, TPositionals, undefined>,
+  config: BargsConfig<TOptions, TPositionals, undefined, TTransforms>,
   options?: BargsOptions,
 ): BargsResult<
-  InferOptions<TOptions>,
-  InferPositionals<TPositionals>,
+  InferTransformedValues<InferOptions<TOptions>, TTransforms>,
+  InferTransformedPositionals<InferPositionals<TPositionals>, TTransforms>,
   undefined
 >;
 
@@ -209,15 +222,34 @@ export function bargs(
     if (hasCommands(config)) {
       return parseCommandsSync({ ...config, args });
     } else {
-      const result = parseSimple({
+      const parsed = parseSimple({
         args,
         options: config.options,
         positionals: config.positionals,
       });
 
+      // Run transforms if present (type-erased in implementation)
+      const transforms = config.transforms as
+        | TransformsConfig<
+            unknown,
+            unknown,
+            readonly unknown[],
+            readonly unknown[]
+          >
+        | undefined;
+      const transformed = transforms
+        ? runSyncTransforms(transforms, parsed.values, parsed.positionals)
+        : { positionals: parsed.positionals, values: parsed.values };
+
+      const result = {
+        command: undefined,
+        positionals: transformed.positionals,
+        values: transformed.values,
+      } as BargsResult<unknown, readonly unknown[], undefined>;
+
       // Call handler if provided (sync)
       if (config.handler) {
-        runSyncHandler(config.handler, result);
+        runSyncHandler(config.handler as (r: typeof result) => void, result);
       }
 
       return result;
@@ -235,11 +267,23 @@ export function bargs(
 export async function bargsAsync<
   TOptions extends OptionsSchema,
   TPositionals extends PositionalsSchema,
+  TTransforms extends
+    | TransformsConfig<
+        InferOptions<TOptions>,
+        any,
+        InferPositionals<TPositionals>,
+        any
+      >
+    | undefined = undefined,
 >(
-  config: BargsConfig<TOptions, TPositionals, undefined>,
+  config: BargsConfig<TOptions, TPositionals, undefined, TTransforms>,
   options?: BargsOptions,
 ): Promise<
-  BargsResult<InferOptions<TOptions>, InferPositionals<TPositionals>, undefined>
+  BargsResult<
+    InferTransformedValues<InferOptions<TOptions>, TTransforms>,
+    InferTransformedPositionals<InferPositionals<TPositionals>, TTransforms>,
+    undefined
+  >
 >;
 
 /**
@@ -282,15 +326,37 @@ export async function bargsAsync(
     if (hasCommands(config)) {
       return await parseCommandsAsync({ ...config, args });
     } else {
-      const result = parseSimple({
+      const parsed = parseSimple({
         args,
         options: config.options,
         positionals: config.positionals,
       });
 
+      // Run transforms if present (type-erased in implementation)
+      const transforms = config.transforms as
+        | TransformsConfig<
+            unknown,
+            unknown,
+            readonly unknown[],
+            readonly unknown[]
+          >
+        | undefined;
+      const transformed = transforms
+        ? await runTransforms(transforms, parsed.values, parsed.positionals)
+        : { positionals: parsed.positionals, values: parsed.values };
+
+      const result = {
+        command: undefined,
+        positionals: transformed.positionals,
+        values: transformed.values,
+      } as BargsResult<unknown, readonly unknown[], undefined>;
+
       // Call handler if provided (async)
       if (config.handler) {
-        await runHandler(config.handler, result);
+        await runHandler(
+          config.handler as (r: typeof result) => Promise<void> | void,
+          result,
+        );
       }
 
       return result;
