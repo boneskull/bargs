@@ -838,17 +838,6 @@ describe('validateConfig', () => {
       );
     });
 
-    it('accepts array of function handlers', () => {
-      expect(
-        () =>
-          validateConfig({
-            handler: [() => {}, () => {}],
-            name: 'my-cli',
-          }),
-        'not to throw',
-      );
-    });
-
     it('rejects non-function handler', () => {
       expect(
         () =>
@@ -862,40 +851,6 @@ describe('validateConfig', () => {
         {
           message: /must be a function/,
           path: 'config.handler',
-        },
-      );
-    });
-
-    it('rejects empty handler array', () => {
-      expect(
-        () =>
-          validateConfig({
-            handler: [] as any,
-            name: 'my-cli',
-          }),
-        'to throw a',
-        Error,
-        'satisfying',
-        {
-          message: /must not be empty/,
-          path: 'config.handler',
-        },
-      );
-    });
-
-    it('rejects array with non-function element', () => {
-      expect(
-        () =>
-          validateConfig({
-            handler: [() => {}, 'not-a-function'] as any,
-            name: 'my-cli',
-          }),
-        'to throw a',
-        Error,
-        'satisfying',
-        {
-          message: /must be a function/,
-          path: 'config.handler[1]',
         },
       );
     });

@@ -59,10 +59,43 @@ export const runHandler = async <T>(
   await handler(result);
 };
 
+// ─── Sync Transform Runner ──────────────────────────────────────────────────
+
+/**
+ * Run transforms synchronously when transforms are defined.
+ */
+export function runSyncTransforms<
+  TValuesIn,
+  TValuesOut,
+  TPositionalsIn extends readonly unknown[],
+  TPositionalsOut extends readonly unknown[],
+>(
+  transforms: TransformsConfig<
+    TValuesIn,
+    TValuesOut,
+    TPositionalsIn,
+    TPositionalsOut
+  >,
+  values: TValuesIn,
+  positionals: TPositionalsIn,
+): { positionals: TPositionalsOut; values: TValuesOut };
+
+/**
+ * Pass through unchanged when transforms are undefined.
+ */
+export function runSyncTransforms<
+  TValues,
+  TPositionals extends readonly unknown[],
+>(
+  transforms: undefined,
+  values: TValues,
+  positionals: TPositionals,
+): { positionals: TPositionals; values: TValues };
+
 /**
  * Run transforms synchronously. Throws if any transform returns a thenable.
  */
-export const runSyncTransforms = <
+export function runSyncTransforms<
   TValuesIn,
   TValuesOut,
   TPositionalsIn extends readonly unknown[],
@@ -73,40 +106,80 @@ export const runSyncTransforms = <
     | undefined,
   values: TValuesIn,
   positionals: TPositionalsIn,
-): { positionals: TPositionalsOut; values: TValuesOut } => {
-  let currentValues: unknown = values;
-  let currentPositionals: unknown = positionals;
-
-  if (transforms?.values) {
-    const result = transforms.values(currentValues as TValuesIn);
-    if (isThenable(result)) {
-      throw new BargsError(
-        'Transform returned a thenable. Use bargsAsync() for async transforms.',
-      );
-    }
-    currentValues = result;
+): {
+  positionals: TPositionalsIn | TPositionalsOut;
+  values: TValuesIn | TValuesOut;
+} {
+  if (!transforms) {
+    return { positionals, values };
   }
 
-  if (transforms?.positionals) {
-    const result = transforms.positionals(currentPositionals as TPositionalsIn);
-    if (isThenable(result)) {
-      throw new BargsError(
-        'Transform returned a thenable. Use bargsAsync() for async transforms.',
-      );
-    }
-    currentPositionals = result;
-  }
+  // Apply values transform
+  const transformedValues = transforms.values
+    ? (() => {
+        const result = transforms.values(values);
+        if (isThenable(result)) {
+          throw new BargsError(
+            'Transform returned a thenable. Use bargsAsync() for async transforms.',
+          );
+        }
+        return result;
+      })()
+    : values;
+
+  // Apply positionals transform
+  const transformedPositionals = transforms.positionals
+    ? (() => {
+        const result = transforms.positionals(positionals);
+        if (isThenable(result)) {
+          throw new BargsError(
+            'Transform returned a thenable. Use bargsAsync() for async transforms.',
+          );
+        }
+        return result;
+      })()
+    : positionals;
 
   return {
-    positionals: currentPositionals as TPositionalsOut,
-    values: currentValues as TValuesOut,
+    positionals: transformedPositionals,
+    values: transformedValues,
   };
-};
+}
+
+// ─── Async Transform Runner ─────────────────────────────────────────────────
+
+/**
+ * Run transforms asynchronously when transforms are defined.
+ */
+export function runTransforms<
+  TValuesIn,
+  TValuesOut,
+  TPositionalsIn extends readonly unknown[],
+  TPositionalsOut extends readonly unknown[],
+>(
+  transforms: TransformsConfig<
+    TValuesIn,
+    TValuesOut,
+    TPositionalsIn,
+    TPositionalsOut
+  >,
+  values: TValuesIn,
+  positionals: TPositionalsIn,
+): Promise<{ positionals: TPositionalsOut; values: TValuesOut }>;
+
+/**
+ * Pass through unchanged when transforms are undefined.
+ */
+export function runTransforms<TValues, TPositionals extends readonly unknown[]>(
+  transforms: undefined,
+  values: TValues,
+  positionals: TPositionals,
+): Promise<{ positionals: TPositionals; values: TValues }>;
 
 /**
  * Run transforms asynchronously.
  */
-export const runTransforms = async <
+export async function runTransforms<
   TValuesIn,
   TValuesOut,
   TPositionalsIn extends readonly unknown[],
@@ -117,25 +190,29 @@ export const runTransforms = async <
     | undefined,
   values: TValuesIn,
   positionals: TPositionalsIn,
-): Promise<{ positionals: TPositionalsOut; values: TValuesOut }> => {
-  let currentValues: unknown = values;
-  let currentPositionals: unknown = positionals;
-
-  if (transforms?.values) {
-    currentValues = await transforms.values(currentValues as TValuesIn);
+): Promise<{
+  positionals: TPositionalsIn | TPositionalsOut;
+  values: TValuesIn | TValuesOut;
+}> {
+  if (!transforms) {
+    return { positionals, values };
   }
 
-  if (transforms?.positionals) {
-    currentPositionals = await transforms.positionals(
-      currentPositionals as TPositionalsIn,
-    );
-  }
+  // Apply values transform (await if needed)
+  const transformedValues = transforms.values
+    ? await transforms.values(values)
+    : values;
+
+  // Apply positionals transform (await if needed)
+  const transformedPositionals = transforms.positionals
+    ? await transforms.positionals(positionals)
+    : positionals;
 
   return {
-    positionals: currentPositionals as TPositionalsOut,
-    values: currentValues as TValuesOut,
+    positionals: transformedPositionals,
+    values: transformedValues,
   };
-};
+}
 
 /**
  * Build parseArgs options config from our options schema.

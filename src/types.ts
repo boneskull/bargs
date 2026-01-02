@@ -82,7 +82,9 @@ export interface BargsConfig<
    * Values transform receives InferOptions<TOptions>, positionals transform
    * receives InferPositionals<TPositionals>.
    */
-  transforms?: TTransforms;
+  transforms?: [TTransforms] extends [undefined]
+    ? TransformsConfig<any, any, any, any>
+    : TTransforms;
   version?: string;
 }
 

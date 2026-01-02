@@ -105,56 +105,6 @@ describe('bargs (sync)', () => {
     expect(result.positionals, 'to deeply equal', ['hello']);
   });
 
-  it('accepts array of sync handlers for simple CLI', () => {
-    const calls: string[] = [];
-
-    bargs({
-      args: ['--name', 'Test'],
-      handler: [
-        () => {
-          calls.push('first');
-        },
-        () => {
-          calls.push('second');
-        },
-        () => {
-          calls.push('third');
-        },
-      ],
-      name: 'test-cli',
-      options: {
-        name: opt.string({ default: 'world' }),
-      },
-    });
-
-    // Handlers should run in order
-    expect(calls, 'to deeply equal', ['first', 'second', 'third']);
-  });
-
-  it('accepts array of sync handlers for command', () => {
-    const calls: string[] = [];
-
-    bargs({
-      args: ['greet'],
-      commands: {
-        greet: opt.command({
-          description: 'Greet',
-          handler: [
-            () => {
-              calls.push('handler-1');
-            },
-            () => {
-              calls.push('handler-2');
-            },
-          ],
-        }),
-      },
-      name: 'test-cli',
-    });
-
-    expect(calls, 'to deeply equal', ['handler-1', 'handler-2']);
-  });
-
   it('throws when sync handler returns a thenable', () => {
     expect(
       () => {
@@ -282,64 +232,6 @@ describe('bargsAsync', () => {
     expect(handlerResult!.values, 'to deeply equal', {
       name: 'Bob',
     });
-  });
-
-  it('accepts array of async handlers for simple CLI', async () => {
-    const calls: string[] = [];
-
-    await expectAsync(
-      bargsAsync({
-        args: ['--name', 'Test'],
-        handler: [
-          () => {
-            calls.push('first');
-          },
-          async () => {
-            await Promise.resolve();
-            calls.push('second');
-          },
-          () => {
-            calls.push('third');
-          },
-        ],
-        name: 'test-cli',
-        options: {
-          name: opt.string({ default: 'world' }),
-        },
-      }),
-      'to resolve',
-    );
-
-    // Handlers should run in order
-    expect(calls, 'to deeply equal', ['first', 'second', 'third']);
-  });
-
-  it('accepts array of async handlers for command', async () => {
-    const calls: string[] = [];
-
-    await expectAsync(
-      bargsAsync({
-        args: ['greet'],
-        commands: {
-          greet: opt.command({
-            description: 'Greet',
-            handler: [
-              () => {
-                calls.push('handler-1');
-              },
-              async () => {
-                await Promise.resolve();
-                calls.push('handler-2');
-              },
-            ],
-          }),
-        },
-        name: 'test-cli',
-      }),
-      'to resolve',
-    );
-
-    expect(calls, 'to deeply equal', ['handler-1', 'handler-2']);
   });
 });
 

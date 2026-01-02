@@ -166,14 +166,8 @@ const handleHelpError = (
 export function bargs<
   const TOptions extends OptionsSchema,
   const TPositionals extends PositionalsSchema,
-  const TTransforms extends
-    | TransformsConfig<
-        InferOptions<TOptions>,
-        any,
-        InferPositionals<TPositionals>,
-        any
-      >
-    | undefined = undefined,
+  const TTransforms extends TransformsConfig<any, any, any, any> | undefined =
+    undefined,
 >(
   config: BargsConfig<TOptions, TPositionals, undefined, TTransforms>,
   options?: BargsOptions,
@@ -265,16 +259,10 @@ export function bargs(
  * Main bargs entry point for simple CLIs (no commands) - async version.
  */
 export async function bargsAsync<
-  TOptions extends OptionsSchema,
-  TPositionals extends PositionalsSchema,
-  TTransforms extends
-    | TransformsConfig<
-        InferOptions<TOptions>,
-        any,
-        InferPositionals<TPositionals>,
-        any
-      >
-    | undefined = undefined,
+  const TOptions extends OptionsSchema,
+  const TPositionals extends PositionalsSchema,
+  const TTransforms extends TransformsConfig<any, any, any, any> | undefined =
+    undefined,
 >(
   config: BargsConfig<TOptions, TPositionals, undefined, TTransforms>,
   options?: BargsOptions,
@@ -290,8 +278,8 @@ export async function bargsAsync<
  * Main bargs entry point for command-based CLIs - async version.
  */
 export async function bargsAsync<
-  TOptions extends OptionsSchema,
-  TCommands extends Record<string, CommandConfigInput>,
+  const TOptions extends OptionsSchema,
+  const TCommands extends Record<string, CommandConfigInput>,
 >(
   config: BargsConfigWithCommands<TOptions, TCommands>,
   options?: BargsOptions,
@@ -307,7 +295,9 @@ export async function bargsAsync(
   config: BargsConfig<
     OptionsSchema,
     PositionalsSchema,
-    Record<string, CommandConfigInput> | undefined
+    Record<string, CommandConfigInput> | undefined,
+    | TransformsConfig<unknown, unknown, readonly unknown[], readonly unknown[]>
+    | undefined
   >,
   options?: BargsOptions,
 ): Promise<BargsResult<unknown, readonly unknown[], string | undefined>> {
@@ -333,14 +323,7 @@ export async function bargsAsync(
       });
 
       // Run transforms if present (type-erased in implementation)
-      const transforms = config.transforms as
-        | TransformsConfig<
-            unknown,
-            unknown,
-            readonly unknown[],
-            readonly unknown[]
-          >
-        | undefined;
+      const transforms = config.transforms;
       const transformed = transforms
         ? await runTransforms(transforms, parsed.values, parsed.positionals)
         : { positionals: parsed.positionals, values: parsed.values };

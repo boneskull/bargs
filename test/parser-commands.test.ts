@@ -84,31 +84,6 @@ describe('parseCommands', () => {
     expect(defaultCalled, 'to be', true);
   });
 
-  it('uses array defaultHandler when no command given', async () => {
-    const calls: number[] = [];
-
-    await parseCommands({
-      args: [],
-      commands: {
-        run: opt.command({
-          description: 'Run something',
-          handler: () => {},
-        }),
-      },
-      defaultHandler: [
-        () => {
-          calls.push(1);
-        },
-        () => {
-          calls.push(2);
-        },
-      ],
-      name: 'test-cli',
-    });
-
-    expect(calls, 'to deeply equal', [1, 2]);
-  });
-
   it('throws on unknown command', async () => {
     await expectAsync(
       parseCommands({

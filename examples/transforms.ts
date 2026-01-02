@@ -80,7 +80,7 @@ const main = async () => {
           }
           return true;
         });
-        return [validFiles] as const;
+        return [validFiles];
       },
     },
     handler: ({ values, positionals }) => {

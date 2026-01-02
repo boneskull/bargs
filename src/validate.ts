@@ -418,24 +418,41 @@ const validatePositionalsSchema = (schema: unknown, path: string): void => {
 // ─── Handler Validation ─────────────────────────────────────────────────────
 
 /**
- * Validate a handler (function or array of functions).
+ * Validate a handler function.
  */
 const validateHandler = (handler: unknown, path: string): void => {
   if (handler === undefined) {
     return; // handlers are optional in some contexts
   }
 
-  if (Array.isArray(handler)) {
-    if (handler.length === 0) {
-      throw new ValidationError(path, 'handler array must not be empty');
-    }
-    for (let i = 0; i < handler.length; i++) {
-      if (!isFunction(handler[i])) {
-        throw new ValidationError(`${path}[${i}]`, 'must be a function');
-      }
-    }
-  } else if (!isFunction(handler)) {
-    throw new ValidationError(path, 'must be a function or array of functions');
+  if (!isFunction(handler)) {
+    throw new ValidationError(path, 'must be a function');
+  }
+};
+
+// ─── Transforms Validation ──────────────────────────────────────────────────
+
+/**
+ * Validate a transforms configuration object.
+ */
+const validateTransforms = (transforms: unknown, path: string): void => {
+  if (transforms === undefined) {
+    return; // transforms are optional
+  }
+
+  if (!isObject(transforms)) {
+    throw new ValidationError(path, 'must be an object');
+  }
+
+  if (transforms['values'] !== undefined && !isFunction(transforms['values'])) {
+    throw new ValidationError(`${path}.values`, 'must be a function');
+  }
+
+  if (
+    transforms['positionals'] !== undefined &&
+    !isFunction(transforms['positionals'])
+  ) {
+    throw new ValidationError(`${path}.positionals`, 'must be a function');
   }
 };
 
@@ -472,6 +489,9 @@ const validateCommand = (
 
   // Validate positionals
   validatePositionalsSchema(cmd['positionals'], `${path}.positionals`);
+
+  // Validate transforms (optional)
+  validateTransforms(cmd['transforms'], `${path}.transforms`);
 };
 
 /**
@@ -568,6 +588,9 @@ const validateSimpleConfig = (
 
   // Validate handler (optional for simple CLI)
   validateHandler(config['handler'], `${path}.handler`);
+
+  // Validate transforms (optional)
+  validateTransforms(config['transforms'], `${path}.transforms`);
 };
 
 /**
@@ -615,16 +638,16 @@ const validateCommandConfig = (
           `must reference an existing command, got "${defaultHandler}"`,
         );
       }
-    } else if (Array.isArray(defaultHandler)) {
-      // Array of handlers
-      validateHandler(defaultHandler, `${path}.defaultHandler`);
     } else if (!isFunction(defaultHandler)) {
       throw new ValidationError(
         `${path}.defaultHandler`,
-        'must be a function, array of functions, or command name string',
+        'must be a function or command name string',
       );
     }
   }
+
+  // Validate top-level transforms (optional, run before command-level transforms)
+  validateTransforms(config['transforms'], `${path}.transforms`);
 };
 
 /**
