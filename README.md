@@ -67,6 +67,9 @@ const sharedPos = bargs.positionals(
 );
 ```
 
+> [!TIP]
+> Helper functions are provided for convenience and composability, but you can also just use raw object literals. See the ["tasks" example](./examples/tasks.ts) to see how.
+
 ### Zero (0) Dependencies
 
 Only Node.js v22+.
@@ -185,21 +188,99 @@ bargs({
 });
 ```
 
+## Transforms
+
+Transforms let you modify parsed values and positionals before they reach your handler. This is useful for:
+
+- Loading and merging configuration files
+- Adding computed/derived values
+- Validating or normalizing inputs
+- Async operations like file system checks
+
+```typescript
+const result = await bargsAsync({
+  name: 'my-cli',
+  options: {
+    config: bargsAsync.string({ aliases: ['c'] }),
+    verbose: bargsAsync.boolean({ default: false }),
+  },
+  positionals: [bargsAsync.variadic('string', { name: 'files' })],
+  transforms: {
+    // Transform option values
+    values: (values) => {
+      // Load config file if specified
+      const fileConfig = values.config
+        ? JSON.parse(readFileSync(values.config, 'utf8'))
+        : {};
+
+      return {
+        ...fileConfig,
+        ...values,
+        // Add computed values
+        timestamp: new Date().toISOString(),
+      };
+    },
+    // Transform positionals
+    positionals: (positionals) => {
+      const [files] = positionals;
+      // Filter to only existing files
+      return [files.filter((f) => existsSync(f))];
+    },
+  },
+  handler: ({ values, positionals }) => {
+    // values.timestamp is available here
+    // positionals contains only valid files
+  },
+});
+```
+
+### Transform Properties
+
+Transforms are akin to yargs' "middleware". They execute after parsing but before the handler (if present). Transforms should also be used in place of yargs' "coerce" option.
+
+| Property      | Type                                      | Description                       |
+| ------------- | ----------------------------------------- | --------------------------------- |
+| `values`      | `(values) => TransformedValues`           | Transform parsed option values    |
+| `positionals` | `(positionals) => TransformedPositionals` | Transform parsed positional tuple |
+
+Both transforms can be sync or async. The return type of each transform becomes the type available in your handler.
+
+### Type Inference
+
+Transforms are fully type-safe. TypeScript infers the transformed types:
+
+```typescript
+bargs({
+  name: 'example',
+  options: { count: bargs.number() },
+  transforms: {
+    values: (values) => ({
+      ...values,
+      doubled: (values.count ?? 0) * 2, // Add computed property
+    }),
+  },
+  handler: ({ values }) => {
+    console.log(values.doubled); // number - fully typed!
+  },
+});
+```
+
 ## Configuration
 
 ### Config Properties
 
-| Property      | Type                  | Description                                       |
-| ------------- | --------------------- | ------------------------------------------------- |
-| `name`        | `string`              | CLI name (required)                               |
-| `description` | `string`              | Description shown in help                         |
-| `version`     | `string`              | Enables `--version` flag                          |
-| `options`     | `OptionsSchema`       | Named options (`--flag`)                          |
-| `positionals` | `PositionalsSchema`   | Positional arguments                              |
-| `commands`    | `Record<string, ...>` | Subcommands                                       |
-| `handler`     | `Handler`             | Handler function(s) for simple CLIs               |
-| `epilog`      | `string \| false`     | Footer text in help (see [Epilog](#epilog))       |
-| `args`        | `string[]`            | Custom args (defaults to `process.argv.slice(2)`) |
+| Property      | Type                  | Description                                                  |
+| ------------- | --------------------- | ------------------------------------------------------------ |
+| `name`        | `string`              | CLI name (required)                                          |
+| `description` | `string`              | Description shown in help                                    |
+| `version`     | `string`              | Enables `--version` flag                                     |
+| `options`     | `OptionsSchema`       | Named options (`--flag`)                                     |
+| `positionals` | `PositionalsSchema`   | Positional arguments                                         |
+| `commands`    | `Record<string, ...>` | Subcommands                                                  |
+| `transforms`  | `TransformsConfig`    | Transform values/positionals (see [Transforms](#transforms)) |
+| `handler`     | `Handler`             | Handler function for simple CLIs                             |
+| `epilog`      | `string \| false`     | Footer text in help (see [Epilog](#epilog))                  |
+| `args`        | `string[]`            | Custom args (defaults to `process.argv.slice(2)`)            |
 
 ```typescript
 bargs({

@@ -19,7 +19,7 @@
  * examples/tasks.ts list npx tsx examples/tasks.ts done 1 npx tsx
  * examples/tasks.ts --help npx tsx examples/tasks.ts add --help
  */
-import { bargs, bargsAsync } from '../src/index.js';
+import { bargsAsync } from '../src/index.js';
 
 // In-memory task storage (in a real app, this would be a file or database)
 interface Task {
@@ -71,11 +71,12 @@ await bargsAsync({
       },
       // Raw array works with const type parameter inference
       positionals: [
-        bargs.stringPos({
+        {
           description: 'Task description',
           name: 'text',
           required: true,
-        }),
+          type: 'string',
+        },
       ],
       handler: async ({ positionals, values }) => {
         const [text] = positionals;
