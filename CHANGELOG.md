@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.0.0](https://github.com/boneskull/bargs/compare/bargs-v0.1.1...bargs-v1.0.0) (2026-01-02)
+
+
+### ⚠ BREAKING CHANGES
+
+* **types:** Handler arrays are no longer supported. Use transforms for middleware-like sequential processing instead.
+
+### Features
+
+* **bargs:** execute transforms before handlers ([06afa07](https://github.com/boneskull/bargs/commit/06afa07ea9f879393cc62b707aca1249e2a9ba62))
+* **opt:** add transforms support to command builder ([3d0f683](https://github.com/boneskull/bargs/commit/3d0f6832c32935d7df26c5f1bb50978a8fb2b45c))
+* **parser:** apply transforms in command parsing ([cd2dcda](https://github.com/boneskull/bargs/commit/cd2dcda3ecad6b43203076b448c3eb2916add276))
+* **parser:** implement transform runner functions ([f9d143a](https://github.com/boneskull/bargs/commit/f9d143aaff0f046127730618980338fbe4374c13))
+* **types:** add transform type definitions ([da7fcb2](https://github.com/boneskull/bargs/commit/da7fcb2f0900500d370487df36ca96b23111f2be))
+* **types:** add transforms support to BargsConfig ([d099aac](https://github.com/boneskull/bargs/commit/d099aac07639692e271c786f20732cd84ac5ec2a))
+* **types:** add transforms support to CommandConfig ([843c6bf](https://github.com/boneskull/bargs/commit/843c6bfcda7a08b4adcc9e4b5f42579589bd0c2b))
+
+
+### Code Refactoring
+
+* **types:** remove handler array support in favor of transforms ([2b3a6bd](https://github.com/boneskull/bargs/commit/2b3a6bd60b0e661ef140d701418ed6caee1e422f))
+
 ## [0.1.1](https://github.com/boneskull/bargs/compare/bargs-v0.1.0...bargs-v0.1.1) (2025-12-31)
 
 
