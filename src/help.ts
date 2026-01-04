@@ -10,6 +10,7 @@
  */
 
 import type {
+  AnyCommandConfig,
   BargsConfig,
   BargsConfigWithCommands,
   CommandConfigInput,
@@ -200,9 +201,12 @@ const hasCommands = <
 export const generateHelp = <
   TOptions extends OptionsSchema = OptionsSchema,
   TPositionals extends PositionalsSchema = PositionalsSchema,
-  TCommands extends Record<string, CommandConfigInput> | undefined = undefined,
+  TCommands extends Record<string, AnyCommandConfig> = Record<
+    string,
+    AnyCommandConfig
+  >,
 >(
-  config: BargsConfig<TOptions, TPositionals, TCommands>,
+  config: BargsConfig<TOptions, TPositionals, TCommands | undefined>,
   theme: Theme = defaultTheme,
 ): string => {
   const styler = createStyler(theme);

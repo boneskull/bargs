@@ -18,27 +18,27 @@ import { bargs, bargsAsync } from '../src/index.js';
 
 const optionsDef = bargs.options({
   greeting: bargs.string({
-    description: 'The greeting to use',
-    default: 'Hello',
     aliases: ['g'],
+    default: 'Hello',
+    description: 'The greeting to use',
   }),
   shout: bargs.boolean({
-    description: 'SHOUT THE GREETING',
-    default: false,
     aliases: ['s'],
+    default: false,
+    description: 'SHOUT THE GREETING',
   }),
   verbose: bargs.boolean({
-    description: 'Show extra output',
-    default: false,
     aliases: ['v'],
+    default: false,
+    description: 'Show extra output',
   }),
 });
 
 const positionalsDef = bargs.positionals(
   bargs.stringPos({
     description: 'Name to greet',
-    required: true,
     name: 'name',
+    required: true,
   }),
 );
 
@@ -48,11 +48,11 @@ const main = async () => {
   // You can also pass a custom Theme object
   const result = await bargsAsync(
     {
-      name: 'greeter',
-      version: '1.0.0',
       description: 'A friendly greeter CLI',
+      name: 'greeter',
       options: optionsDef,
       positionals: positionalsDef,
+      version: '1.0.0',
     },
     { theme: 'ocean' },
   );

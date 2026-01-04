@@ -17,8 +17,21 @@
 import type { ThemeInput } from './theme.js';
 
 /**
- * Any command config (type-erased for collections). Uses a permissive handler
- * type to avoid variance issues.
+ * Type-erased command config for use in collections and constraints.
+ *
+ * WARNING: The handler uses `any` which will leak into inline command handlers.
+ * For proper type inference in command handlers, use one of these patterns:
+ *
+ * 1. Use `bargs.command<typeof globalOptions>()({...})` to define commands
+ * 2. Define commands in a separate variable with explicit types
+ * 3. Add explicit type annotations to handler parameters
+ *
+ * @example // Option 1: Use bargs.command() (recommended) const myCmd =
+ * bargs.command<typeof globalOpts>()({ handler: ({ values }) => { ... } //
+ * values is properly typed });
+ *
+ * // Option 2: Explicit parameter types handler: ({ values }: BargsResult<...>)
+ * => { ... }
  */
 export interface AnyCommandConfig {
   description: string;
@@ -82,28 +95,49 @@ export interface BargsConfig<
    * Values transform receives InferOptions<TOptions>, positionals transform
    * receives InferPositionals<TPositionals>.
    */
-  transforms?: [TTransforms] extends [undefined]
-    ? TransformsConfig<any, any, any, any>
-    : TTransforms;
+  transforms?: 0 extends 1 & TTransforms // Check if TTransforms is `any`
+    ? TransformsConfig<any, any, any, any> // If any, accept any transforms
+    : [TTransforms] extends [undefined]
+      ? TransformsInput<InferOptions<TOptions>, InferPositionals<TPositionals>>
+      : TTransforms;
   version?: string;
 }
 
-/**
- * Bargs config with commands (requires commands, allows defaultHandler).
- *
- * Commands can be defined in two ways:
- *
- * 1. Using opt.command() - handler receives local options only (legacy)
- * 2. Inline definition - handler can receive both global and local options
- *
- * Note: Top-level `positionals` is not allowed for command-based CLIs. Each
- * command defines its own positionals.
- */
 export type BargsConfigWithCommands<
   TOptions extends OptionsSchema = OptionsSchema,
-  TCommands extends Record<string, CommandConfigInput> = Record<
+  TCommands extends Record<string, AnyCommandConfig> = Record<
     string,
-    CommandConfigInput
+    AnyCommandConfig
+  >,
+  TTransforms extends TransformsConfig<any, any, any, any> | undefined =
+    undefined,
+> = Omit<
+  BargsConfig<TOptions, PositionalsSchema, TCommands, TTransforms>,
+  'commands' | 'handler' | 'positionals'
+> & {
+  commands: CommandsInput<TOptions, TTransforms, TCommands>;
+  defaultHandler?:
+    | CommandNames<TCommands>
+    | Handler<
+        BargsResult<
+          InferTransformedValues<InferOptions<TOptions>, TTransforms>,
+          readonly [],
+          undefined
+        >
+      >;
+};
+
+/**
+ * Internal type for command-based config (used by parser). Uses raw TCommands
+ * without InferredCommands transformation.
+ *
+ * @internal
+ */
+export type BargsConfigWithCommandsInternal<
+  TOptions extends OptionsSchema = OptionsSchema,
+  TCommands extends Record<string, AnyCommandConfig> = Record<
+    string,
+    AnyCommandConfig
   >,
   TTransforms extends TransformsConfig<any, any, any, any> | undefined =
     undefined,
@@ -155,15 +189,17 @@ export interface BooleanOption extends OptionBase {
 /**
  * Command configuration.
  *
- * The handler receives typed local options plus access to global options (as
- * Record<string, unknown>). Global options are available at runtime but require
- * type narrowing to access safely.
+ * The handler receives typed global options merged with command-specific
+ * options, properly transformed. Use `bargs.command<TGlobalOptions>()` to pass
+ * global options type for full type inference.
  *
+ * @typeParam TGlobalOptions - Global options schema (from parent config)
  * @typeParam TOptions - Command-specific options schema
  * @typeParam TPositionals - Command positionals schema
  * @typeParam TTransforms - Command-level transforms config
  */
 export interface CommandConfig<
+  TGlobalOptions extends OptionsSchema = OptionsSchema,
   TOptions extends OptionsSchema = OptionsSchema,
   TPositionals extends PositionalsSchema = PositionalsSchema,
   TTransforms extends TransformsConfig<any, any, any, any> | undefined =
@@ -173,7 +209,7 @@ export interface CommandConfig<
   handler: Handler<
     BargsResult<
       InferTransformedValues<
-        InferOptions<TOptions> & Record<string, unknown>,
+        InferOptions<TGlobalOptions> & InferOptions<TOptions>,
         TTransforms
       >,
       InferTransformedPositionals<InferPositionals<TPositionals>, TTransforms>,
@@ -187,13 +223,13 @@ export interface CommandConfig<
 }
 
 /**
- * Command config input type for inline command definitions. The handler type is
- * intentionally loose here - it accepts any result type, allowing commands
- * defined with opt.command() or inline to work.
+ * Command config input type for inline command definitions. Uses `any` for
+ * handler result to accept any handler signature. See AnyCommandConfig for
+ * workarounds to get proper type inference.
  */
 export interface CommandConfigInput {
   description: string;
-  handler: Handler<any>;
+  handler: (result: any) => Promise<void> | void;
   options?: OptionsSchema;
   positionals?: PositionalsSchema;
   transforms?: TransformsConfig<any, any, any, any>;
@@ -237,6 +273,36 @@ export type Handler<TResult> = HandlerFn<TResult>;
  * Single handler function signature.
  */
 export type HandlerFn<TResult> = (result: TResult) => Promise<void> | void;
+
+/**
+ * Compute the handler result type for a single command. Separating this makes
+ * the type easier for TypeScript to evaluate.
+ */
+export type InferCommandResult<
+  TGlobalOptions extends OptionsSchema,
+  TGlobalTransforms extends TransformsConfig<any, any, any, any> | undefined,
+  TCommandOptions extends OptionsSchema | undefined,
+  TCommandPositionals extends PositionalsSchema | undefined,
+  TCommandTransforms extends TransformsConfig<any, any, any, any> | undefined,
+> = BargsResult<
+  InferTransformedValues<
+    InferTransformedValues<
+      InferOptions<TGlobalOptions> &
+        (TCommandOptions extends OptionsSchema
+          ? InferOptions<TCommandOptions>
+          : Record<string, never>),
+      TGlobalTransforms
+    >,
+    TCommandTransforms
+  >,
+  InferTransformedPositionals<
+    TCommandPositionals extends PositionalsSchema
+      ? InferPositionals<TCommandPositionals>
+      : readonly [],
+    TCommandTransforms
+  >,
+  string
+>;
 
 /**
  * Infer the TypeScript type from an option definition.
@@ -327,6 +393,59 @@ export type InferPositionals<T extends PositionalsSchema> = T extends readonly [
       ? readonly [InferPositional<Only>]
       : readonly []
     : readonly [];
+
+/**
+ * Compute proper handler types for each command in a commands record.
+ *
+ * This mapped type enables type inference for inline command definitions by
+ * computing the handler signature from each command's options, positionals, and
+ * transforms - plus the global options and transforms from the parent config.
+ *
+ * The handler receives:
+ *
+ * - Values: global options + command options, transformed by global then command
+ *   transforms
+ * - Positionals: command positionals, transformed by command transforms
+ * - Command: the command name (string)
+ *
+ * Commands defined with `opt.command()` (returning `CommandConfig`) are passed
+ * through unchanged to preserve their existing handler types. Only inline
+ * command definitions get the computed handler type.
+ *
+ * @typeParam TGlobalOptions - Top-level options schema
+ * @typeParam TGlobalTransforms - Top-level transforms config
+ * @typeParam TCommands - Record of command configurations
+ */
+export type InferredCommands<
+  TGlobalOptions extends OptionsSchema,
+  TGlobalTransforms extends TransformsConfig<any, any, any, any> | undefined,
+  TCommands extends Record<string, AnyCommandConfig>,
+> = {
+  [K in keyof TCommands]: TCommands[K] extends CommandConfig<
+    infer _TGlobalOpts,
+    infer _TOpts,
+    infer _TPos,
+    infer _TTrans
+  >
+    ? // Command created via opt.command() - preserve its existing type
+      TCommands[K]
+    : // Inline command - compute handler type from schema
+      {
+        description: TCommands[K]['description'];
+        handler: Handler<
+          InferCommandResult<
+            TGlobalOptions,
+            TGlobalTransforms,
+            TCommands[K]['options'],
+            TCommands[K]['positionals'],
+            TCommands[K]['transforms']
+          >
+        >;
+        options?: TCommands[K]['options'];
+        positionals?: TCommands[K]['positionals'];
+        transforms?: TCommands[K]['transforms'];
+      };
+};
 
 /**
  * Infer the output positionals type from a transforms config. If no positionals
@@ -455,6 +574,94 @@ export interface VariadicPositional extends PositionalBase {
 }
 
 /**
+ * Command input type that computes the proper handler signature from the
+ * command's own options/positionals schemas. This provides contextual typing
+ * for inline command handlers.
+ *
+ * @typeParam TGlobalOptions - Global options schema from parent config
+ * @typeParam TGlobalTransforms - Global transforms from parent config
+ * @typeParam TOptions - Command's own options schema
+ * @typeParam TPositionals - Command's own positionals schema
+ * @typeParam TTransforms - Command's own transforms
+ */
+interface CommandInput<
+  TGlobalOptions extends OptionsSchema,
+  TGlobalTransforms extends TransformsConfig<any, any, any, any> | undefined,
+  TOptions extends OptionsSchema = Record<string, never>,
+  TPositionals extends PositionalsSchema = [],
+  TTransforms extends TransformsConfig<any, any, any, any> | undefined =
+    undefined,
+> {
+  description: string;
+  handler: Handler<
+    InferCommandResult<
+      TGlobalOptions,
+      TGlobalTransforms,
+      TOptions,
+      TPositionals,
+      TTransforms
+    >
+  >;
+  options?: TOptions;
+  positionals?: TPositionals;
+  transforms?: TTransforms;
+}
+
+/**
+ * Helper type to extract command names from a commands record for
+ * defaultHandler typing.
+ */
+type CommandNames<T> = T extends Record<infer K, AnyCommandConfig> ? K : never;
+
+/**
+ * Bargs config with commands (requires commands, allows defaultHandler).
+ *
+ * Commands can be defined in two ways:
+ *
+ * 1. Using opt.command() - handler receives local options only (legacy)
+ * 2. Inline definition - handler receives both global and local options
+ *
+ * Note: Top-level `positionals` is not allowed for command-based CLIs. Each
+ * command defines its own positionals.
+ *
+ * The `commands` property uses `InferredCommands` to compute proper handler
+ * types for inline command definitions. Each command's handler type includes
+ * global options merged with command options, transformed appropriately.
+ */
+/**
+ * Mapped type that computes the expected command input type for each command in
+ * the record. This provides contextual typing for inline command handlers.
+ */
+type CommandsInput<
+  TGlobalOptions extends OptionsSchema,
+  TGlobalTransforms extends TransformsConfig<any, any, any, any> | undefined,
+  TCommands extends Record<string, AnyCommandConfig>,
+> = {
+  [K in keyof TCommands]: TCommands[K] extends CommandConfig<
+    infer _TGlobalOpts,
+    infer _TOpts,
+    infer _TPos,
+    infer _TTrans
+  >
+    ? // Command created via opt.command() - preserve its existing type
+      TCommands[K]
+    : // Inline command - compute handler type from schema
+      CommandInput<
+        TGlobalOptions,
+        TGlobalTransforms,
+        TCommands[K]['options'] extends OptionsSchema
+          ? TCommands[K]['options']
+          : Record<string, never>,
+        TCommands[K]['positionals'] extends PositionalsSchema
+          ? TCommands[K]['positionals']
+          : [],
+        TCommands[K]['transforms'] extends TransformsConfig<any, any, any, any>
+          ? TCommands[K]['transforms']
+          : undefined
+      >;
+};
+
+/**
  * Base properties shared by all option definitions.
  */
 interface OptionBase {
@@ -479,3 +686,29 @@ interface PositionalBase {
   name?: string;
   required?: boolean;
 }
+
+/**
+ * Partial transform config for inline transforms. Structurally compatible with
+ * TransformsConfig while providing contextual typing for callback parameters.
+ *
+ * Note: Because TypeScript cannot infer return types from inline callbacks and
+ * flow them to handlers, using inline transforms without explicit typing means
+ * the handler won't know about properties added by transforms. For full type
+ * safety, either:
+ *
+ * 1. Define transforms separately with explicit return types
+ * 2. Add type annotations to handler parameters
+ *
+ * @typeParam TValuesIn - The input values type (from parsed options)
+ * @typeParam TPositionalsIn - The input positionals type (from parsed
+ *   positionals)
+ */
+type TransformsInput<TValuesIn, TPositionalsIn extends readonly unknown[]> = {
+  /** Transform parsed positionals tuple */
+  positionals?: (
+    positionals: TPositionalsIn,
+  ) => Promise<readonly unknown[]> | readonly unknown[];
+  /** Transform parsed option values */
+  // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents -- union needed for return type inference
+  values?: (values: TValuesIn) => Promise<unknown> | unknown;
+};

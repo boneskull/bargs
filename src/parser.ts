@@ -15,7 +15,7 @@
 import { parseArgs } from 'node:util';
 
 import type {
-  BargsConfigWithCommands,
+  BargsConfigWithCommandsInternal,
   BargsResult,
   CommandConfigInput,
   HandlerFn,
@@ -448,7 +448,7 @@ const parseCommandsCore = <
     CommandConfigInput
   >,
 >(
-  config: BargsConfigWithCommands<TOptions, TCommands>,
+  config: BargsConfigWithCommandsInternal<TOptions, TCommands>,
 ): ParseCommandsCoreResult<TOptions> => {
   const {
     args = process.argv.slice(2),
@@ -579,7 +579,7 @@ export const parseCommandsSync = <
     CommandConfigInput
   >,
 >(
-  config: BargsConfigWithCommands<TOptions, TCommands>,
+  config: BargsConfigWithCommandsInternal<TOptions, TCommands>,
 ): BargsResult<
   InferOptions<TOptions>,
   readonly unknown[],
@@ -639,7 +639,7 @@ export const parseCommandsAsync = async <
     CommandConfigInput
   >,
 >(
-  config: BargsConfigWithCommands<TOptions, TCommands>,
+  config: BargsConfigWithCommandsInternal<TOptions, TCommands>,
 ): Promise<
   BargsResult<InferOptions<TOptions>, readonly unknown[], string | undefined>
 > => {

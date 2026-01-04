@@ -12,67 +12,48 @@
  * examples/transforms.ts --config config.json npx tsx examples/transforms.ts
  * file1.txt file2.txt
  */
-import { readFileSync, existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
 import { bargsAsync } from '../src/index.js';
 
+/**
+ * Config that can be loaded from a JSON file.
+ */
 interface Config {
-  verbose?: boolean;
-  outputDir?: string;
   maxRetries?: number;
+  outputDir?: string;
+  verbose?: boolean;
 }
 
 const main = async () => {
+  /* eslint-disable perfectionist/sort-objects -- transforms must come before handler for type inference */
   const result = await bargsAsync({
-    name: 'transforms-demo',
-    version: '1.0.0',
     description: 'Demonstrates transforms feature',
+    name: 'transforms-demo',
     options: {
       config: bargsAsync.string({
-        description: 'Path to JSON config file',
         aliases: ['c'],
-      }),
-      verbose: bargsAsync.boolean({
-        description: 'Enable verbose output',
-        aliases: ['v'],
-        default: false,
+        description: 'Path to JSON config file',
       }),
       outputDir: bargsAsync.string({
-        description: 'Output directory',
         aliases: ['o'],
+        description: 'Output directory',
+      }),
+      verbose: bargsAsync.boolean({
+        aliases: ['v'],
+        default: false,
+        description: 'Enable verbose output',
       }),
     },
     positionals: [
       bargsAsync.variadic('string', {
-        name: 'files',
         description: 'Input files to process',
+        name: 'files',
       }),
     ],
     transforms: {
-      // Transform values: load config file and merge with CLI options
-      values: (values) => {
-        let fileConfig: Config = {};
-
-        // Load config file if specified
-        if (values.config && existsSync(values.config)) {
-          const content = readFileSync(values.config, 'utf8');
-          fileConfig = JSON.parse(content) as Config;
-        }
-
-        // CLI options take precedence over file config
-        const merged = {
-          ...fileConfig,
-          ...values,
-          // Add computed values
-          configLoaded: !!values.config,
-          timestamp: new Date().toISOString(),
-        };
-
-        return merged;
-      },
-      // Transform positionals: normalize file paths
       positionals: (positionals) => {
-        const [files] = positionals; // Filter out non-existent files and normalize paths
+        const [files] = positionals;
         const validFiles = files.filter((f) => {
           if (!existsSync(f)) {
             console.warn(`Warning: File not found: ${f}`);
@@ -80,17 +61,32 @@ const main = async () => {
           }
           return true;
         });
-        return [validFiles];
+        return [validFiles] as const;
+      },
+      values: (values) => {
+        let fileConfig: Config = {};
+
+        if (values.config && existsSync(values.config)) {
+          const content = readFileSync(values.config, 'utf8');
+          fileConfig = JSON.parse(content) as Config;
+        }
+
+        return {
+          ...fileConfig,
+          ...values,
+          configLoaded: !!values.config,
+          timestamp: new Date().toISOString(),
+        };
       },
     },
-    handler: ({ values, positionals }) => {
+    handler: ({ positionals, values }) => {
       const [files] = positionals;
 
       if (values.verbose) {
         console.log('Configuration:', {
           configLoaded: values.configLoaded,
-          timestamp: values.timestamp,
           outputDir: values.outputDir,
+          timestamp: values.timestamp,
           verbose: values.verbose,
         });
       }
@@ -104,9 +100,10 @@ const main = async () => {
         console.log(`Output will be written to: ${values.outputDir}`);
       }
     },
+    version: '1.0.0',
   });
+  /* eslint-enable perfectionist/sort-objects */
 
-  // Result contains transformed values
   if (result.values.verbose) {
     console.log('\nFinal result:', result);
   }

@@ -29,6 +29,7 @@
     "*.js",
     ".*.js",
     "scripts/**/*.ts",
-    "scripts/**/*.js"
+    "scripts/**/*.js",
+    "examples/**/*.ts"
   ]
 }

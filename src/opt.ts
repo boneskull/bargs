@@ -32,6 +32,91 @@ import type {
 import { BargsError } from './errors.js';
 
 /**
+ * Command builder interface that supports both direct config and curried global
+ * options patterns.
+ */
+export interface CommandBuilder {
+  // Direct usage: bargs.command({ ... })
+  <
+    const TOptions extends OptionsSchema = OptionsSchema,
+    const TPositionals extends PositionalsSchema = PositionalsSchema,
+    const TTransforms extends TransformsConfig<any, any, any, any> | undefined =
+      undefined,
+  >(
+    config: CommandConfig<
+      Record<string, never>,
+      TOptions,
+      TPositionals,
+      TTransforms
+    >,
+  ): CommandConfig<Record<string, never>, TOptions, TPositionals, TTransforms>;
+
+  // Curried usage: bargs.command<typeof globalOpts>()({ ... })
+  <TGlobalOptions extends OptionsSchema>(): <
+    const TOptions extends OptionsSchema = OptionsSchema,
+    const TPositionals extends PositionalsSchema = PositionalsSchema,
+    const TTransforms extends TransformsConfig<any, any, any, any> | undefined =
+      undefined,
+  >(
+    config: CommandConfig<TGlobalOptions, TOptions, TPositionals, TTransforms>,
+  ) => CommandConfig<TGlobalOptions, TOptions, TPositionals, TTransforms>;
+}
+
+/**
+ * Implementation of command builder that detects whether it's called with
+ * config (direct) or without args (curried for global options).
+ */
+const commandBuilder = <
+  const TGlobalOptions extends OptionsSchema = Record<string, never>,
+  const TOptions extends OptionsSchema = OptionsSchema,
+  const TPositionals extends PositionalsSchema = PositionalsSchema,
+  const TTransforms extends TransformsConfig<any, any, any, any> | undefined =
+    undefined,
+>(
+  configOrNothing?: CommandConfig<
+    TGlobalOptions,
+    TOptions,
+    TPositionals,
+    TTransforms
+  >,
+):
+  | (<
+      const TOptions2 extends OptionsSchema,
+      const TPositionals2 extends PositionalsSchema,
+      const TTransforms2 extends
+        | TransformsConfig<any, any, any, any>
+        | undefined,
+    >(
+      config: CommandConfig<
+        TGlobalOptions,
+        TOptions2,
+        TPositionals2,
+        TTransforms2
+      >,
+    ) => CommandConfig<TGlobalOptions, TOptions2, TPositionals2, TTransforms2>)
+  | CommandConfig<TGlobalOptions, TOptions, TPositionals, TTransforms> => {
+  if (configOrNothing === undefined) {
+    // Curried usage: return function that accepts config
+    return <
+      const TOptions2 extends OptionsSchema,
+      const TPositionals2 extends PositionalsSchema,
+      const TTransforms2 extends
+        | TransformsConfig<any, any, any, any>
+        | undefined,
+    >(
+      config: CommandConfig<
+        TGlobalOptions,
+        TOptions2,
+        TPositionals2,
+        TTransforms2
+      >,
+    ) => config;
+  }
+  // Direct usage: return config as-is
+  return configOrNothing;
+};
+
+/**
  * Validate that no alias conflicts exist in a merged options schema. Throws
  * BargsError if the same alias is used by multiple options.
  */
@@ -120,31 +205,36 @@ export const opt = {
   /**
    * Define a command with proper type inference.
    *
+   * Two usage patterns:
+   *
+   * 1. Simple usage (no global options): `bargs.command({ ... })`
+   * 2. With global options: `bargs.command<typeof globalOptions>()({ ... })`
+   *
    * @example
    *
    * ```typescript
-   * const greetCmd = opt.command({
+   * // Simple usage - no global options typed
+   * const simpleCmd = bargs.command({
+   *   description: 'Simple command',
+   *   handler: ({ values }) => { ... },
+   * });
+   *
+   * // With global options typed
+   * const globalOptions = {
+   *   verbose: bargs.boolean({ aliases: ['v'] }),
+   * } as const;
+   *
+   * const greetCmd = bargs.command<typeof globalOptions>()({
    *   description: 'Greet someone',
-   *   options: opt.options({
-   *     name: opt.string({ default: 'world' }),
-   *   }),
-   *   transforms: {
-   *     values: (v) => ({ ...v, timestamp: Date.now() }),
-   *   },
+   *   options: { name: bargs.string({ default: 'world' }) },
    *   handler: ({ values }) => {
-   *     console.log(`Hello, ${values.name}! (${values.timestamp})`);
+   *     // values.verbose is properly typed as boolean | undefined
+   *     console.log(`Hello, ${values.name}!`);
    *   },
    * });
    * ```
    */
-  command: <
-    TOptions extends OptionsSchema = OptionsSchema,
-    TPositionals extends PositionalsSchema = PositionalsSchema,
-    TTransforms extends TransformsConfig<any, any, any, any> | undefined =
-      undefined,
-  >(
-    config: CommandConfig<TOptions, TPositionals, TTransforms>,
-  ): CommandConfig<TOptions, TPositionals, TTransforms> => config,
+  command: commandBuilder as CommandBuilder,
 
   /**
    * Define a count option (--verbose --verbose = 2).
@@ -210,14 +300,18 @@ export const opt = {
   // ─── Positional Builders ───────────────────────────────────────────
 
   /**
-   * Define a number positional argument.
+   * Define a number positional argument. Props type is preserved to enable
+   * required inference.
    */
-  numberPos: (
-    props: Omit<NumberPositional, 'type'> = {},
-  ): NumberPositional => ({
-    type: 'number',
-    ...props,
-  }),
+  numberPos: <
+    P extends Omit<NumberPositional, 'type'> = Omit<NumberPositional, 'type'>,
+  >(
+    props: P = {} as P,
+  ): NumberPositional & P =>
+    ({
+      type: 'number',
+      ...props,
+    }) as NumberPositional & P,
 
   /**
    * Compose multiple option schemas into one. Later schemas override earlier
@@ -311,14 +405,18 @@ export const opt = {
   // ─── Composition ───────────────────────────────────────────────────
 
   /**
-   * Define a string positional argument.
+   * Define a string positional argument. Props type is preserved to enable
+   * required inference.
    */
-  stringPos: (
-    props: Omit<StringPositional, 'type'> = {},
-  ): StringPositional => ({
-    type: 'string',
-    ...props,
-  }),
+  stringPos: <
+    P extends Omit<StringPositional, 'type'> = Omit<StringPositional, 'type'>,
+  >(
+    props: P = {} as P,
+  ): P & StringPositional =>
+    ({
+      type: 'string',
+      ...props,
+    }) as P & StringPositional,
 
   // ─── Command Builder ───────────────────────────────────────────────
 

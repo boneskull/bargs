@@ -46,6 +46,9 @@ export { BargsError, HelpError, ValidationError } from './errors.js';
 // Re-export help generators
 export { generateCommandHelp, generateHelp } from './help.js';
 
+// Re-export opt types
+export type { CommandBuilder } from './opt.js';
+
 // Re-export OSC utilities for terminal hyperlinks
 export { link, linkifyUrls, supportsHyperlinks } from './osc.js';
 
@@ -83,10 +86,12 @@ export type {
   EnumPositional,
   Handler,
   HandlerFn,
+  InferCommandResult,
   InferOption,
   InferOptions,
   InferPositional,
   InferPositionals,
+  InferredCommands,
   InferTransformedPositionals,
   InferTransformedValues,
   NumberOption,

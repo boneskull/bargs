@@ -27,8 +27,9 @@ describe('InferPositionals tuple inference', () => {
 
     type Result = InferPositionals<typeof _schema>;
     // Tuple structure is preserved (length 1, indexed access works)
-    type _Check1 = AssertAssignable<Result, readonly [string | undefined]>;
-    type _Check2 = AssertAssignable<readonly [string | undefined], Result>;
+    // required: true means the value is non-optional
+    type _Check1 = AssertAssignable<Result, readonly [string]>;
+    type _Check2 = AssertAssignable<readonly [string], Result>;
   });
 
   test('multiple positionals produce ordered tuple', () => {
@@ -39,14 +40,9 @@ describe('InferPositionals tuple inference', () => {
 
     type Result = InferPositionals<typeof _schema>;
     // Should be a 2-element tuple in order
-    type _Check1 = AssertAssignable<
-      Result,
-      readonly [string | undefined, number | undefined]
-    >;
-    type _Check2 = AssertAssignable<
-      readonly [string | undefined, number | undefined],
-      Result
-    >;
+    // required: true means values are non-optional
+    type _Check1 = AssertAssignable<Result, readonly [string, number]>;
+    type _Check2 = AssertAssignable<readonly [string, number], Result>;
   });
 
   test('variadic positional produces array element in tuple', () => {
@@ -66,14 +62,9 @@ describe('InferPositionals tuple inference', () => {
 
     type Result = InferPositionals<typeof _schema>;
     // Tuple preserves order: string positional then variadic
-    type _Check1 = AssertAssignable<
-      Result,
-      readonly [string | undefined, string[]]
-    >;
-    type _Check2 = AssertAssignable<
-      readonly [string | undefined, string[]],
-      Result
-    >;
+    // required: true means the string is non-optional
+    type _Check1 = AssertAssignable<Result, readonly [string, string[]]>;
+    type _Check2 = AssertAssignable<readonly [string, string[]], Result>;
   });
 });
 

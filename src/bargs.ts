@@ -11,6 +11,7 @@
  */
 
 import type {
+  AnyCommandConfig,
   BargsConfig,
   BargsConfigWithCommands,
   BargsOptions,
@@ -183,7 +184,7 @@ export function bargs<
  */
 export function bargs<
   const TOptions extends OptionsSchema,
-  const TCommands extends Record<string, CommandConfigInput>,
+  const TCommands extends Record<string, AnyCommandConfig>,
 >(
   config: BargsConfigWithCommands<TOptions, TCommands>,
   options?: BargsOptions,
@@ -279,12 +280,18 @@ export async function bargsAsync<
  */
 export async function bargsAsync<
   const TOptions extends OptionsSchema,
-  const TCommands extends Record<string, CommandConfigInput>,
+  const TCommands extends Record<string, AnyCommandConfig>,
+  const TTransforms extends TransformsConfig<any, any, any, any> | undefined =
+    undefined,
 >(
-  config: BargsConfigWithCommands<TOptions, TCommands>,
+  config: BargsConfigWithCommands<TOptions, TCommands, TTransforms>,
   options?: BargsOptions,
 ): Promise<
-  BargsResult<InferOptions<TOptions>, readonly unknown[], string | undefined>
+  BargsResult<
+    InferTransformedValues<InferOptions<TOptions>, TTransforms>,
+    readonly unknown[],
+    string | undefined
+  >
 >;
 
 /**
@@ -296,8 +303,7 @@ export async function bargsAsync(
     OptionsSchema,
     PositionalsSchema,
     Record<string, CommandConfigInput> | undefined,
-    | TransformsConfig<unknown, unknown, readonly unknown[], readonly unknown[]>
-    | undefined
+    TransformsConfig<any, any, any, any> | undefined
   >,
   options?: BargsOptions,
 ): Promise<BargsResult<unknown, readonly unknown[], string | undefined>> {
@@ -323,7 +329,14 @@ export async function bargsAsync(
       });
 
       // Run transforms if present (type-erased in implementation)
-      const transforms = config.transforms;
+      const transforms = config.transforms as
+        | TransformsConfig<
+            unknown,
+            unknown,
+            readonly unknown[],
+            readonly unknown[]
+          >
+        | undefined;
       const transformed = transforms
         ? await runTransforms(transforms, parsed.values, parsed.positionals)
         : { positionals: parsed.positionals, values: parsed.values };
