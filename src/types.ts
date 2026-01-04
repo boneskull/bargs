@@ -75,18 +75,6 @@ export interface BargsConfig<
    * string to disable.
    */
   epilog?: false | string;
-  /**
-   * Handler receives the final transformed values and positionals. When
-   * transforms are defined, types flow through the transform pipeline. Handler
-   * arrays are no longer supported - use a single handler function.
-   */
-  handler?: Handler<
-    BargsResult<
-      InferTransformedValues<InferOptions<TOptions>, TTransforms>,
-      InferTransformedPositionals<InferPositionals<TPositionals>, TTransforms>,
-      undefined
-    >
-  >;
   name: string;
   options?: TOptions;
   positionals?: TPositionals;
@@ -113,7 +101,7 @@ export type BargsConfigWithCommands<
     undefined,
 > = Omit<
   BargsConfig<TOptions, PositionalsSchema, TCommands, TTransforms>,
-  'commands' | 'handler' | 'positionals'
+  'commands' | 'positionals'
 > & {
   commands: CommandsInput<TOptions, TTransforms, TCommands>;
   defaultHandler?:
@@ -190,16 +178,20 @@ export interface BooleanOption extends OptionBase {
  * Command configuration.
  *
  * The handler receives typed global options merged with command-specific
- * options, properly transformed. Use `bargs.command<TGlobalOptions>()` to pass
- * global options type for full type inference.
+ * options, properly transformed. Use `bargs.command<TGlobalOptions,
+ * TGlobalTransforms>()` to pass both global options and transforms types for
+ * full type inference.
  *
  * @typeParam TGlobalOptions - Global options schema (from parent config)
+ * @typeParam TGlobalTransforms - Global transforms config (from parent config)
  * @typeParam TOptions - Command-specific options schema
  * @typeParam TPositionals - Command positionals schema
  * @typeParam TTransforms - Command-level transforms config
  */
 export interface CommandConfig<
   TGlobalOptions extends OptionsSchema = OptionsSchema,
+  TGlobalTransforms extends TransformsConfig<any, any, any, any> | undefined =
+    undefined,
   TOptions extends OptionsSchema = OptionsSchema,
   TPositionals extends PositionalsSchema = PositionalsSchema,
   TTransforms extends TransformsConfig<any, any, any, any> | undefined =
@@ -208,8 +200,13 @@ export interface CommandConfig<
   description: string;
   handler: Handler<
     BargsResult<
+      // Apply command transforms to (global-transformed values + command options)
       InferTransformedValues<
-        InferOptions<TGlobalOptions> & InferOptions<TOptions>,
+        InferOptions<TOptions> &
+          InferTransformedValues<
+            InferOptions<TGlobalOptions>,
+            TGlobalTransforms
+          >,
         TTransforms
       >,
       InferTransformedPositionals<InferPositionals<TPositionals>, TTransforms>,
@@ -219,7 +216,18 @@ export interface CommandConfig<
   options?: TOptions;
   positionals?: TPositionals;
   /** Command-level transforms run after top-level transforms */
-  transforms?: TTransforms;
+  transforms?: 0 extends 1 & TTransforms // Check if TTransforms is `any`
+    ? TransformsConfig<any, any, any, any> // If any, accept any transforms
+    : [TTransforms] extends [undefined]
+      ? TransformsInput<
+          InferOptions<TOptions> &
+            InferTransformedValues<
+              InferOptions<TGlobalOptions>,
+              TGlobalTransforms
+            >,
+          InferPositionals<TPositionals>
+        >
+      : TTransforms;
 }
 
 /**
@@ -423,6 +431,7 @@ export type InferredCommands<
 > = {
   [K in keyof TCommands]: TCommands[K] extends CommandConfig<
     infer _TGlobalOpts,
+    infer _TGlobalTrans,
     infer _TOpts,
     infer _TPos,
     infer _TTrans
@@ -639,6 +648,7 @@ type CommandsInput<
 > = {
   [K in keyof TCommands]: TCommands[K] extends CommandConfig<
     infer _TGlobalOpts,
+    infer _TGlobalTrans,
     infer _TOpts,
     infer _TPos,
     infer _TTrans

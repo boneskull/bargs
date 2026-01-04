@@ -45,21 +45,44 @@ export interface CommandBuilder {
   >(
     config: CommandConfig<
       Record<string, never>,
+      undefined,
       TOptions,
       TPositionals,
       TTransforms
     >,
-  ): CommandConfig<Record<string, never>, TOptions, TPositionals, TTransforms>;
+  ): CommandConfig<
+    Record<string, never>,
+    undefined,
+    TOptions,
+    TPositionals,
+    TTransforms
+  >;
 
-  // Curried usage: bargs.command<typeof globalOpts>()({ ... })
-  <TGlobalOptions extends OptionsSchema>(): <
+  // Curried usage: bargs.command<typeof globalOpts, typeof globalTransforms>()({ ... })
+  <
+    TGlobalOptions extends OptionsSchema,
+    TGlobalTransforms extends TransformsConfig<any, any, any, any> | undefined =
+      undefined,
+  >(): <
     const TOptions extends OptionsSchema = OptionsSchema,
     const TPositionals extends PositionalsSchema = PositionalsSchema,
     const TTransforms extends TransformsConfig<any, any, any, any> | undefined =
       undefined,
   >(
-    config: CommandConfig<TGlobalOptions, TOptions, TPositionals, TTransforms>,
-  ) => CommandConfig<TGlobalOptions, TOptions, TPositionals, TTransforms>;
+    config: CommandConfig<
+      TGlobalOptions,
+      TGlobalTransforms,
+      TOptions,
+      TPositionals,
+      TTransforms
+    >,
+  ) => CommandConfig<
+    TGlobalOptions,
+    TGlobalTransforms,
+    TOptions,
+    TPositionals,
+    TTransforms
+  >;
 }
 
 /**
@@ -68,6 +91,9 @@ export interface CommandBuilder {
  */
 const commandBuilder = <
   const TGlobalOptions extends OptionsSchema = Record<string, never>,
+  const TGlobalTransforms extends
+    | TransformsConfig<any, any, any, any>
+    | undefined = undefined,
   const TOptions extends OptionsSchema = OptionsSchema,
   const TPositionals extends PositionalsSchema = PositionalsSchema,
   const TTransforms extends TransformsConfig<any, any, any, any> | undefined =
@@ -75,6 +101,7 @@ const commandBuilder = <
 >(
   configOrNothing?: CommandConfig<
     TGlobalOptions,
+    TGlobalTransforms,
     TOptions,
     TPositionals,
     TTransforms
@@ -89,12 +116,25 @@ const commandBuilder = <
     >(
       config: CommandConfig<
         TGlobalOptions,
+        TGlobalTransforms,
         TOptions2,
         TPositionals2,
         TTransforms2
       >,
-    ) => CommandConfig<TGlobalOptions, TOptions2, TPositionals2, TTransforms2>)
-  | CommandConfig<TGlobalOptions, TOptions, TPositionals, TTransforms> => {
+    ) => CommandConfig<
+      TGlobalOptions,
+      TGlobalTransforms,
+      TOptions2,
+      TPositionals2,
+      TTransforms2
+    >)
+  | CommandConfig<
+      TGlobalOptions,
+      TGlobalTransforms,
+      TOptions,
+      TPositionals,
+      TTransforms
+    > => {
   if (configOrNothing === undefined) {
     // Curried usage: return function that accepts config
     return <
@@ -106,6 +146,7 @@ const commandBuilder = <
     >(
       config: CommandConfig<
         TGlobalOptions,
+        TGlobalTransforms,
         TOptions2,
         TPositionals2,
         TTransforms2
@@ -205,10 +246,12 @@ export const opt = {
   /**
    * Define a command with proper type inference.
    *
-   * Two usage patterns:
+   * Three usage patterns:
    *
    * 1. Simple usage (no global options): `bargs.command({ ... })`
    * 2. With global options: `bargs.command<typeof globalOptions>()({ ... })`
+   * 3. With global options AND transforms: `bargs.command<typeof globalOptions,
+   *    typeof globalTransforms>()({ ... })`
    *
    * @example
    *
@@ -230,6 +273,19 @@ export const opt = {
    *   handler: ({ values }) => {
    *     // values.verbose is properly typed as boolean | undefined
    *     console.log(`Hello, ${values.name}!`);
+   *   },
+   * });
+   *
+   * // With global options AND global transforms typed
+   * const globalTransforms = {
+   *   values: (v) => ({ ...v, timestamp: Date.now() }),
+   * } as const;
+   *
+   * const timedCmd = bargs.command<typeof globalOptions, typeof globalTransforms>()({
+   *   description: 'Time-aware command',
+   *   handler: ({ values }) => {
+   *     // values.timestamp is properly typed from global transforms
+   *     console.log(`Ran at ${values.timestamp}`);
    *   },
    * });
    * ```

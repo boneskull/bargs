@@ -18,13 +18,8 @@ import { opt } from '../src/opt.js';
 describe('transforms (sync)', () => {
   describe('values transforms', () => {
     it('transforms values before handler receives them', () => {
-      let handlerResult: { values: { name: string; uppercased: string } };
-
-      bargs({
+      const handlerResult = bargs({
         args: ['--name', 'alice'],
-        handler: (result: any) => {
-          handlerResult = result;
-        },
         name: 'test-cli',
         options: {
           name: opt.string({ default: 'world' }),
@@ -37,7 +32,7 @@ describe('transforms (sync)', () => {
         },
       } as BargsConfig<any, any, any, any>);
 
-      expect(handlerResult!.values, 'to deeply equal', {
+      expect(handlerResult.values, 'to deeply equal', {
         name: 'alice',
         uppercased: 'ALICE',
       });
@@ -67,13 +62,8 @@ describe('transforms (sync)', () => {
 
   describe('positionals transforms', () => {
     it('transforms positionals before handler receives them', () => {
-      let handlerResult: { positionals: readonly [string, number] };
-
-      bargs({
+      const handlerResult = bargs({
         args: ['hello', '42'],
-        handler: (result: any) => {
-          handlerResult = result;
-        },
         name: 'test-cli',
         positionals: opt.positionals(
           opt.stringPos({ required: true }),
@@ -85,7 +75,7 @@ describe('transforms (sync)', () => {
         },
       } as BargsConfig<any, any, any, any>);
 
-      expect(handlerResult!.positionals, 'to deeply equal', ['hello', 42]);
+      expect(handlerResult.positionals, 'to deeply equal', ['hello', 42]);
     });
 
     it('returns transformed positionals from bargs()', () => {
@@ -323,13 +313,8 @@ describe('command transforms', () => {
 describe('transforms (async)', () => {
   describe('async values transforms', () => {
     it('awaits async values transform', async () => {
-      let handlerResult: { values: { fetched: string; name: string } };
-
-      await bargsAsync({
+      const handlerResult = await bargsAsync({
         args: ['--name', 'alice'],
-        handler: (result: any) => {
-          handlerResult = result;
-        },
         name: 'test-cli',
         options: {
           name: opt.string({ default: 'world' }),
@@ -345,7 +330,7 @@ describe('transforms (async)', () => {
         },
       } as BargsConfig<any, any, any, any>);
 
-      expect(handlerResult!.values, 'to deeply equal', {
+      expect(handlerResult.values, 'to deeply equal', {
         fetched: 'fetched-alice',
         name: 'alice',
       });

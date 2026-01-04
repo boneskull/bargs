@@ -32,8 +32,6 @@ import {
   parseCommandsAsync,
   parseCommandsSync,
   parseSimple,
-  runHandler,
-  runSyncHandler,
   runSyncTransforms,
   runTransforms,
 } from './parser.js';
@@ -242,11 +240,6 @@ export function bargs(
         values: transformed.values,
       } as BargsResult<unknown, readonly unknown[], undefined>;
 
-      // Call handler if provided (sync)
-      if (config.handler) {
-        runSyncHandler(config.handler as (r: typeof result) => void, result);
-      }
-
       return result;
     }
   } catch (error) {
@@ -346,14 +339,6 @@ export async function bargsAsync(
         positionals: transformed.positionals,
         values: transformed.values,
       } as BargsResult<unknown, readonly unknown[], undefined>;
-
-      // Call handler if provided (async)
-      if (config.handler) {
-        await runHandler(
-          config.handler as (r: typeof result) => Promise<void> | void,
-          result,
-        );
-      }
 
       return result;
     }

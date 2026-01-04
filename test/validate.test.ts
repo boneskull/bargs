@@ -826,36 +826,6 @@ describe('validateConfig', () => {
     });
   });
 
-  describe('simple CLI handler validation', () => {
-    it('accepts function handler', () => {
-      expect(
-        () =>
-          validateConfig({
-            handler: () => {},
-            name: 'my-cli',
-          }),
-        'not to throw',
-      );
-    });
-
-    it('rejects non-function handler', () => {
-      expect(
-        () =>
-          validateConfig({
-            handler: 'not-a-function' as any,
-            name: 'my-cli',
-          }),
-        'to throw a',
-        Error,
-        'satisfying',
-        {
-          message: /must be a function/,
-          path: 'config.handler',
-        },
-      );
-    });
-  });
-
   describe('command-based CLI validation', () => {
     it('validates commands is required and non-empty', () => {
       expect(
@@ -1111,7 +1081,6 @@ describe('validateConfig', () => {
         () =>
           validateConfig({
             description: 'A simple CLI',
-            handler: () => {},
             name: 'my-cli',
             options: {
               count: opt.number({ default: 1 }),

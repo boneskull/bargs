@@ -21,25 +21,6 @@ describe('bargs (sync)', () => {
     expect(result.values, 'to deeply equal', { name: 'Alice' });
   });
 
-  it('calls handler for simple CLI', () => {
-    let handlerResult: { values: { name: string } };
-
-    bargs({
-      args: ['--name', 'Bob'],
-      handler: (result) => {
-        handlerResult = result;
-      },
-      name: 'test-cli',
-      options: {
-        name: opt.string({ default: 'world' }),
-      },
-    });
-
-    expect(handlerResult!.values, 'to deeply equal', {
-      name: 'Bob',
-    });
-  });
-
   it('parses command-based CLI', () => {
     let handlerResult: { command: string; values: { name: string } };
 
@@ -105,27 +86,6 @@ describe('bargs (sync)', () => {
     expect(result.positionals, 'to deeply equal', ['hello']);
   });
 
-  it('throws when sync handler returns a thenable', () => {
-    expect(
-      () => {
-        bargs({
-          args: ['--name', 'Test'],
-          handler: async () => {
-            // Async handler returns a thenable
-          },
-          name: 'test-cli',
-          options: {
-            name: opt.string({ default: 'world' }),
-          },
-        });
-      },
-      'to throw a',
-      BargsError,
-      'satisfying',
-      { message: /thenable/ },
-    );
-  });
-
   it('throws when command sync handler returns a thenable', () => {
     expect(
       () => {
@@ -150,13 +110,8 @@ describe('bargs (sync)', () => {
   });
 
   it('allows user to override --help with custom option', () => {
-    let customHelpCalled = false;
-
     const result = bargs({
       args: ['--help'],
-      handler: () => {
-        customHelpCalled = true;
-      },
       name: 'test-cli',
       options: {
         help: opt.boolean({ description: 'My custom help' }),
@@ -165,7 +120,6 @@ describe('bargs (sync)', () => {
 
     // Should parse --help as a regular boolean option, not trigger built-in help
     expect(result.values.help, 'to be', true);
-    expect(customHelpCalled, 'to be', true);
   });
 
   it('allows user to override -h alias with custom option', () => {
@@ -208,30 +162,6 @@ describe('bargsAsync', () => {
       'to resolve with value satisfying',
       { values: { name: 'Alice' } },
     );
-  });
-
-  it('calls async handler for simple CLI', async () => {
-    let handlerResult: { values: { name: string } };
-
-    await expectAsync(
-      bargsAsync({
-        args: ['--name', 'Bob'],
-        handler: async (result) => {
-          // Simulate async work
-          await Promise.resolve();
-          handlerResult = result;
-        },
-        name: 'test-cli',
-        options: {
-          name: opt.string({ default: 'world' }),
-        },
-      }),
-      'to resolve',
-    );
-
-    expect(handlerResult!.values, 'to deeply equal', {
-      name: 'Bob',
-    });
   });
 });
 
