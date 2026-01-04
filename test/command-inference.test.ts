@@ -18,14 +18,23 @@ describe('command handler type inference', () => {
           description: 'test command',
           handler: ({ values }) => {
             capturedValues = values;
-            const g: string = values.global;
-            const l: string = values.local;
+            type IsAny<T> = 0 extends 1 & T ? true : false;
+            type AssertFalse<_T extends false> = true;
+
+            // Compile-time guard: inline commands should not leak `any` into handler types.
+            const _globalIsNotAny: AssertFalse<IsAny<typeof values.global>> =
+              true;
+            const _localIsNotAny: AssertFalse<IsAny<typeof values.local>> =
+              true;
+
+            const g = values.global;
+            const l = values.local;
             expect(typeof g, 'to equal', 'string');
             expect(typeof l, 'to equal', 'string');
           },
-          options: {
+          options: bargs.options({
             local: bargs.string({ default: 'l' }),
-          },
+          }),
         },
       },
       name: 'test',
@@ -57,7 +66,10 @@ describe('command handler type inference', () => {
               'to be true',
             );
           },
-          positionals: [bargs.stringPos({ required: true }), bargs.stringPos()],
+          positionals: bargs.positionals(
+            bargs.stringPos({ required: true }),
+            bargs.stringPos(),
+          ),
         },
       },
       name: 'test',

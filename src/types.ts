@@ -42,6 +42,15 @@ export interface AnyCommandConfig {
 }
 
 /**
+ * Command config shape used for type constraints/inference.
+ *
+ * Intentionally omits `handler` so inline command handlers are not
+ * context-typed as `(result: any) => …` before `CommandsInput` can apply the
+ * computed handler signature.
+ */
+export type AnyCommandConfigInput = Omit<AnyCommandConfig, 'handler'>;
+
+/**
  * Array option definition (--flag value --flag value2).
  */
 export interface ArrayOption extends OptionBase {
@@ -62,7 +71,8 @@ export interface ArrayOption extends OptionBase {
 export interface BargsConfig<
   TOptions extends OptionsSchema = OptionsSchema,
   TPositionals extends PositionalsSchema = PositionalsSchema,
-  TCommands extends Record<string, AnyCommandConfig> | undefined = undefined,
+  TCommands extends Record<string, AnyCommandConfigInput> | undefined =
+    undefined,
   TTransforms extends TransformsConfig<any, any, any, any> | undefined =
     undefined,
 > {
@@ -93,9 +103,9 @@ export interface BargsConfig<
 
 export type BargsConfigWithCommands<
   TOptions extends OptionsSchema = OptionsSchema,
-  TCommands extends Record<string, AnyCommandConfig> = Record<
+  TCommands extends Record<string, AnyCommandConfigInput> = Record<
     string,
-    AnyCommandConfig
+    AnyCommandConfigInput
   >,
   TTransforms extends TransformsConfig<any, any, any, any> | undefined =
     undefined,
@@ -103,7 +113,7 @@ export type BargsConfigWithCommands<
   BargsConfig<TOptions, PositionalsSchema, TCommands, TTransforms>,
   'commands' | 'positionals'
 > & {
-  commands: CommandsInput<TOptions, TTransforms, TCommands>;
+  commands: CommandsInput<TOptions, TTransforms, TCommands> & TCommands;
   defaultHandler?:
     | CommandNames<TCommands>
     | Handler<
@@ -123,9 +133,9 @@ export type BargsConfigWithCommands<
  */
 export type BargsConfigWithCommandsInternal<
   TOptions extends OptionsSchema = OptionsSchema,
-  TCommands extends Record<string, AnyCommandConfig> = Record<
+  TCommands extends Record<string, AnyCommandConfigInput> = Record<
     string,
-    AnyCommandConfig
+    AnyCommandConfigInput
   >,
   TTransforms extends TransformsConfig<any, any, any, any> | undefined =
     undefined,
@@ -400,7 +410,9 @@ export type InferPositionals<T extends PositionalsSchema> = T extends readonly [
     ? Only extends PositionalDef
       ? readonly [InferPositional<Only>]
       : readonly []
-    : readonly [];
+    : T extends readonly []
+      ? readonly []
+      : readonly InferPositional<T[number]>[];
 
 /**
  * Compute proper handler types for each command in a commands record.
@@ -427,7 +439,7 @@ export type InferPositionals<T extends PositionalsSchema> = T extends readonly [
 export type InferredCommands<
   TGlobalOptions extends OptionsSchema,
   TGlobalTransforms extends TransformsConfig<any, any, any, any> | undefined,
-  TCommands extends Record<string, AnyCommandConfig>,
+  TCommands extends Record<string, AnyCommandConfigInput>,
 > = {
   [K in keyof TCommands]: TCommands[K] extends CommandConfig<
     infer _TGlobalOpts,
@@ -445,9 +457,20 @@ export type InferredCommands<
           InferCommandResult<
             TGlobalOptions,
             TGlobalTransforms,
-            TCommands[K]['options'],
-            TCommands[K]['positionals'],
-            TCommands[K]['transforms']
+            NonNullable<TCommands[K]['options']> extends OptionsSchema
+              ? NonNullable<TCommands[K]['options']>
+              : undefined,
+            NonNullable<TCommands[K]['positionals']> extends PositionalsSchema
+              ? NonNullable<TCommands[K]['positionals']>
+              : undefined,
+            NonNullable<TCommands[K]['transforms']> extends TransformsConfig<
+              any,
+              any,
+              any,
+              any
+            >
+              ? NonNullable<TCommands[K]['transforms']>
+              : undefined
           >
         >;
         options?: TCommands[K]['options'];
@@ -620,7 +643,8 @@ interface CommandInput<
  * Helper type to extract command names from a commands record for
  * defaultHandler typing.
  */
-type CommandNames<T> = T extends Record<infer K, AnyCommandConfig> ? K : never;
+type CommandNames<T> =
+  T extends Record<infer K, AnyCommandConfigInput> ? K : never;
 
 /**
  * Bargs config with commands (requires commands, allows defaultHandler).
@@ -644,7 +668,7 @@ type CommandNames<T> = T extends Record<infer K, AnyCommandConfig> ? K : never;
 type CommandsInput<
   TGlobalOptions extends OptionsSchema,
   TGlobalTransforms extends TransformsConfig<any, any, any, any> | undefined,
-  TCommands extends Record<string, AnyCommandConfig>,
+  TCommands extends Record<string, AnyCommandConfigInput>,
 > = {
   [K in keyof TCommands]: TCommands[K] extends CommandConfig<
     infer _TGlobalOpts,
@@ -659,14 +683,19 @@ type CommandsInput<
       CommandInput<
         TGlobalOptions,
         TGlobalTransforms,
-        TCommands[K]['options'] extends OptionsSchema
-          ? TCommands[K]['options']
+        NonNullable<TCommands[K]['options']> extends OptionsSchema
+          ? NonNullable<TCommands[K]['options']>
           : Record<string, never>,
-        TCommands[K]['positionals'] extends PositionalsSchema
-          ? TCommands[K]['positionals']
+        NonNullable<TCommands[K]['positionals']> extends PositionalsSchema
+          ? NonNullable<TCommands[K]['positionals']>
           : [],
-        TCommands[K]['transforms'] extends TransformsConfig<any, any, any, any>
-          ? TCommands[K]['transforms']
+        NonNullable<TCommands[K]['transforms']> extends TransformsConfig<
+          any,
+          any,
+          any,
+          any
+        >
+          ? NonNullable<TCommands[K]['transforms']>
           : undefined
       >;
 };

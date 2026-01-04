@@ -11,7 +11,7 @@
  */
 
 import type {
-  AnyCommandConfig,
+  AnyCommandConfigInput,
   BargsConfig,
   BargsConfigWithCommands,
   BargsOptions,
@@ -182,7 +182,7 @@ export function bargs<
  */
 export function bargs<
   const TOptions extends OptionsSchema,
-  const TCommands extends Record<string, AnyCommandConfig>,
+  const TCommands extends Record<string, AnyCommandConfigInput>,
 >(
   config: BargsConfigWithCommands<TOptions, TCommands>,
   options?: BargsOptions,
@@ -273,7 +273,7 @@ export async function bargsAsync<
  */
 export async function bargsAsync<
   const TOptions extends OptionsSchema,
-  const TCommands extends Record<string, AnyCommandConfig>,
+  const TCommands extends Record<string, AnyCommandConfigInput>,
   const TTransforms extends TransformsConfig<any, any, any, any> | undefined =
     undefined,
 >(
