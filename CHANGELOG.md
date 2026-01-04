@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.0.0](https://github.com/boneskull/bargs/compare/bargs-v1.0.0...bargs-v2.0.0) (2026-01-04)
+
+
+### ⚠ BREAKING CHANGES
+
+* **types:** transforms must appear before handler in config object for TypeScript to infer transformed types in handler parameters
+
+### Bug Fixes
+
+* **types:** improve type inference for transforms and command handlers ([4516aa6](https://github.com/boneskull/bargs/commit/4516aa6e5878770d362e5e90cdca1483b4186f0d))
+
 ## [1.0.0](https://github.com/boneskull/bargs/compare/bargs-v0.1.1...bargs-v1.0.0) (2026-01-02)
 
 
