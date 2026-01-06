@@ -37,6 +37,22 @@ export interface BooleanOption extends OptionBase {
 }
 
 /**
+ * Transform all keys of an object type from kebab-case to camelCase.
+ *
+ * Used with `camelCaseValues` to provide type-safe camelCase option keys.
+ *
+ * @example
+ *
+ * ```typescript
+ * type Original = { 'output-dir': string; 'dry-run': boolean };
+ * type Camel = CamelCaseKeys<Original>; // { outputDir: string; dryRun: boolean }
+ * ```
+ */
+export type CamelCaseKeys<T> = {
+  [K in keyof T as KebabToCamel<K & string>]: T[K];
+};
+
+/**
  * CLI builder for fluent configuration.
  */
 export interface CliBuilder<
@@ -211,6 +227,10 @@ export interface EnumArrayOption<T extends string = string> extends OptionBase {
   type: 'array';
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// POSITIONAL DEFINITIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+
 /**
  * Enum option definition with string choices.
  */
@@ -219,10 +239,6 @@ export interface EnumOption<T extends string = string> extends OptionBase {
   default?: T;
   type: 'enum';
 }
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// POSITIONAL DEFINITIONS
-// ═══════════════════════════════════════════════════════════════════════════════
 
 /**
  * Enum positional definition with string choices.
@@ -278,6 +294,10 @@ export type InferOption<T extends OptionDef> = T extends BooleanOption
             : T extends CountOption
               ? number
               : never;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CAMELCASE UTILITIES
+// ═══════════════════════════════════════════════════════════════════════════════
 
 /**
  * Infer values type from an options schema.
@@ -346,10 +366,6 @@ export type InferTransformedPositionals<
     : TPositionalsIn
   : TPositionalsIn;
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// TYPE INFERENCE
-// ═══════════════════════════════════════════════════════════════════════════════
-
 /**
  * Infer the output values type from a transforms config.
  */
@@ -357,6 +373,24 @@ export type InferTransformedValues<TValuesIn, TTransforms> =
   TTransforms extends { values: ValuesTransformFn<any, infer TOut> }
     ? TOut
     : TValuesIn;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TYPE INFERENCE
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Convert a kebab-case string type to camelCase.
+ *
+ * @example
+ *
+ * ```typescript
+ * type Result = KebabToCamel<'output-dir'>; // 'outputDir'
+ * type Nested = KebabToCamel<'my-long-option'>; // 'myLongOption'
+ * ```
+ */
+export type KebabToCamel<S extends string> = S extends `${infer T}-${infer U}`
+  ? `${T}${Capitalize<KebabToCamel<U>>}`
+  : S;
 
 /**
  * Number option definition.

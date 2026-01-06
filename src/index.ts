@@ -24,7 +24,7 @@
  */
 
 // Main API
-export { bargs, handle, map, merge } from './bargs.js';
+export { bargs, camelCaseValues, handle, map, merge } from './bargs.js';
 export type { TransformFn } from './bargs.js';
 
 // Errors
@@ -67,6 +67,8 @@ export type {
   // Option definitions
   ArrayOption,
   BooleanOption,
+  // CamelCase utilities
+  CamelCaseKeys,
   // Parser combinator types
   CliBuilder,
   CliResult,
@@ -86,6 +88,7 @@ export type {
   InferPositionals,
   InferTransformedPositionals,
   InferTransformedValues,
+  KebabToCamel,
   NumberOption,
   NumberPositional,
   OptionDef,

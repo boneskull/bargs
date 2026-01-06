@@ -4,7 +4,7 @@
 import { expect } from 'bupkis';
 import { describe, it } from 'node:test';
 
-import { handle, map, merge } from '../src/bargs.js';
+import { camelCaseValues, handle, map, merge } from '../src/bargs.js';
 import { opt, pos } from '../src/opt.js';
 
 describe('merge()', () => {
@@ -220,5 +220,62 @@ describe('combined usage', () => {
       { name: 'input', required: true },
       { name: 'output' },
     ]);
+  });
+});
+
+describe('camelCaseValues()', () => {
+  it('converts kebab-case keys to camelCase', () => {
+    const result = camelCaseValues({
+      positionals: [] as const,
+      values: {
+        'dry-run': true,
+        'output-dir': '/tmp',
+        verbose: false,
+      },
+    });
+
+    expect(result.values, 'to satisfy', {
+      dryRun: true,
+      outputDir: '/tmp',
+      verbose: false,
+    });
+    // Original keys should NOT exist
+    expect(result.values, 'not to have key', 'output-dir');
+    expect(result.values, 'not to have key', 'dry-run');
+  });
+
+  it('handles nested kebab-case', () => {
+    const result = camelCaseValues({
+      positionals: [] as const,
+      values: { 'my-long-option-name': 'value' },
+    });
+
+    expect(result.values, 'to satisfy', { myLongOptionName: 'value' });
+  });
+
+  it('preserves positionals unchanged', () => {
+    const result = camelCaseValues({
+      positionals: ['file1', 'file2'] as const,
+      values: { 'output-dir': '/tmp' },
+    });
+
+    expect(result.positionals, 'to satisfy', ['file1', 'file2']);
+  });
+
+  it('works with map() for type-safe transforms', () => {
+    const parser = map(
+      opt.options({
+        'dry-run': opt.boolean(),
+        'output-dir': opt.string({ default: '/tmp' }),
+      }),
+      camelCaseValues,
+    );
+
+    expect(parser.__brand, 'to be', 'Parser');
+    expect(parser.__optionsSchema, 'to satisfy', {
+      'dry-run': { type: 'boolean' },
+      'output-dir': { type: 'string' },
+    });
+    // Note: schema keeps original keys, transform happens at runtime
   });
 });

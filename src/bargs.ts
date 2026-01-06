@@ -8,6 +8,7 @@
  */
 
 import type {
+  CamelCaseKeys,
   CliBuilder,
   Command,
   CreateOptions,
@@ -155,30 +156,59 @@ export function map<
   parserOrFn: Parser<V1, P1> | TransformFn<V1, P1, V2, P2>,
   maybeFn?: TransformFn<V1, P1, V2, P2>,
 ): ((parser: Parser<V1, P1>) => Parser<V2, P2>) | Parser<V2, P2> {
+  // Helper to compose transforms (chains existing + new)
+  const composeTransform = (
+    parser: Parser<V1, P1>,
+    fn: TransformFn<V1, P1, V2, P2>,
+  ): TransformFn<unknown, readonly unknown[], V2, P2> => {
+    const existing = (
+      parser as {
+        __transform?: (
+          r: ParseResult<unknown, readonly unknown[]>,
+        ) => ParseResult<V1, P1> | Promise<ParseResult<V1, P1>>;
+      }
+    ).__transform;
+
+    if (!existing) {
+      return fn as TransformFn<unknown, readonly unknown[], V2, P2>;
+    }
+
+    // Chain: existing transform first, then new transform
+    return (r: ParseResult<unknown, readonly unknown[]>) => {
+      const r1 = existing(r);
+      if (r1 instanceof Promise) {
+        return r1.then(fn);
+      }
+      return fn(r1);
+    };
+  };
+
   // Direct form: map(parser, fn) returns Parser
   // Check for Parser first since CallableParser is also a function
   if (isParser(parserOrFn)) {
     const parser = parserOrFn;
     const fn = maybeFn!;
+    const composedTransform = composeTransform(parser, fn);
     return {
       ...parser,
       __brand: 'Parser',
       __positionals: [] as unknown as P2,
-      __transform: fn,
+      __transform: composedTransform,
       __values: {} as V2,
-    } as Parser<V2, P2> & { __transform: typeof fn };
+    } as Parser<V2, P2> & { __transform: typeof composedTransform };
   }
 
   // Curried form: map(fn) returns (parser) => Parser
   const fn = parserOrFn;
   return (parser: Parser<V1, P1>): Parser<V2, P2> => {
+    const composedTransform = composeTransform(parser, fn);
     return {
       ...parser,
       __brand: 'Parser',
       __positionals: [] as unknown as P2,
-      __transform: fn,
+      __transform: composedTransform,
       __values: {} as V2,
-    } as Parser<V2, P2> & { __transform: typeof fn };
+    } as Parser<V2, P2> & { __transform: typeof composedTransform };
   };
 }
 /**
@@ -307,6 +337,48 @@ export function merge(
 
   return result;
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CAMEL CASE HELPER
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Convert kebab-case string to camelCase.
+ */
+const kebabToCamel = (s: string): string =>
+  s.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
+
+/**
+ * Transform for use with `map()` that converts kebab-case option keys to
+ * camelCase.
+ *
+ * @example
+ *
+ * ```typescript
+ * import { bargs, opt, map, camelCaseValues } from '@boneskull/bargs';
+ *
+ * const { values } = await bargs
+ *   .create('my-cli')
+ *   .globals(
+ *     map(opt.options({ 'output-dir': opt.string() }), camelCaseValues),
+ *   )
+ *   .parseAsync();
+ *
+ * console.log(values.outputDir); // camelCased!
+ * ```
+ */
+export const camelCaseValues = <V, P extends readonly unknown[]>(
+  result: ParseResult<V, P>,
+): ParseResult<CamelCaseKeys<V>, P> => ({
+  ...result,
+  values: Object.fromEntries(
+    Object.entries(result.values as Record<string, unknown>).map(([k, v]) => [
+      kebabToCamel(k),
+      v,
+    ]),
+  ) as CamelCaseKeys<V>,
+});
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // CLI BUILDER
 // ═══════════════════════════════════════════════════════════════════════════════

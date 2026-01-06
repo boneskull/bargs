@@ -5,6 +5,7 @@
  * Demonstrates how to use map() transforms:
  *
  * - Global transforms via map() applied to globals parser
+ * - Using camelCaseValues to convert kebab-case to camelCase
  * - Command-specific transforms via map() in command parsers
  * - Computed/derived values flowing through handlers
  * - Full type inference with the (Parser, handler) API
@@ -15,7 +16,7 @@
  */
 import { existsSync, readFileSync } from 'node:fs';
 
-import { bargs, map, opt, pos } from '../src/index.js';
+import { bargs, camelCaseValues, map, opt, pos } from '../src/index.js';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // CONFIG TYPE
@@ -31,15 +32,18 @@ interface Config {
 // GLOBAL OPTIONS WITH TRANSFORM
 // ═══════════════════════════════════════════════════════════════════════════════
 
-// Global options with transform that loads config from file
+// Global options using kebab-case (CLI-friendly)
 const baseGlobals = opt.options({
   config: opt.string(),
-  outputDir: opt.string(),
+  'output-dir': opt.string(), // CLI: --output-dir
   verbose: opt.boolean({ default: false }),
 });
 
-// Apply transform to add computed properties using map(parser, fn) form
-const globals = map(baseGlobals, ({ positionals, values }) => {
+// First, convert kebab-case to camelCase for ergonomic property access
+const camelGlobals = map(baseGlobals, camelCaseValues);
+
+// Then apply additional transforms for computed properties
+const globals = map(camelGlobals, ({ positionals, values }) => {
   let fileConfig: Config = {};
 
   // Load config from JSON file if specified
@@ -49,6 +53,7 @@ const globals = map(baseGlobals, ({ positionals, values }) => {
   }
 
   // Return enriched values with file config merged in
+  // Note: values.outputDir is now camelCase thanks to camelCaseValues!
   return {
     positionals,
     values: {
