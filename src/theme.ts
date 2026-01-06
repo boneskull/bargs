@@ -207,7 +207,7 @@ export const themes = {
 /**
  * Default theme export for convenience.
  */
-export const defaultTheme: ResolvedTheme = themes.default;
+export const defaultTheme = themes.default;
 
 /**
  * Resolve a theme input to a fully resolved Theme with all colors defined.
