@@ -4,6 +4,7 @@
 import { expect } from 'bupkis';
 import { describe, it } from 'node:test';
 
+import { HelpError } from '../src/errors.js';
 import { opt } from '../src/opt.js';
 import { parseSimple } from '../src/parser.js';
 import { validatePositionalsSchema } from '../src/validate.js';
@@ -29,6 +30,120 @@ describe('parseSimple', () => {
     });
 
     expect(result.values, 'to deeply equal', { verbose: true });
+  });
+
+  describe('boolean negation (--no-<flag>)', () => {
+    it('sets flag to false with --no-<flag>', () => {
+      const result = parseSimple({
+        args: ['--no-verbose'],
+        options: {
+          verbose: opt.boolean(),
+        },
+      });
+
+      expect(result.values, 'to deeply equal', { verbose: false });
+    });
+
+    it('--no-<flag> overrides default: true', () => {
+      const result = parseSimple({
+        args: ['--no-verbose'],
+        options: {
+          verbose: opt.boolean({ default: true }),
+        },
+      });
+
+      expect(result.values, 'to deeply equal', { verbose: false });
+    });
+
+    it('--<flag> sets flag to true', () => {
+      const result = parseSimple({
+        args: ['--verbose'],
+        options: {
+          verbose: opt.boolean(),
+        },
+      });
+
+      expect(result.values, 'to deeply equal', { verbose: true });
+    });
+
+    it('throws HelpError when both --<flag> and --no-<flag> are specified', () => {
+      expect(
+        () =>
+          parseSimple({
+            args: ['--verbose', '--no-verbose'],
+            options: {
+              verbose: opt.boolean(),
+            },
+          }),
+        'to throw a',
+        HelpError,
+      );
+    });
+
+    it('error message mentions conflicting options', () => {
+      expect(
+        () =>
+          parseSimple({
+            args: ['--no-verbose', '--verbose'],
+            options: {
+              verbose: opt.boolean(),
+            },
+          }),
+        'to throw',
+        /Conflicting options.*--verbose.*--no-verbose/,
+      );
+    });
+
+    it('negated keys never appear in result values', () => {
+      const result = parseSimple({
+        args: ['--no-verbose'],
+        options: {
+          verbose: opt.boolean(),
+        },
+      });
+
+      expect(Object.keys(result.values), 'not to contain', 'no-verbose');
+      expect(result.values, 'to have keys', ['verbose']);
+    });
+
+    it('works with multiple boolean options', () => {
+      const result = parseSimple({
+        args: ['--verbose', '--no-quiet', '--no-debug'],
+        options: {
+          debug: opt.boolean({ default: true }),
+          quiet: opt.boolean(),
+          verbose: opt.boolean(),
+        },
+      });
+
+      expect(result.values, 'to deeply equal', {
+        debug: false,
+        quiet: false,
+        verbose: true,
+      });
+    });
+
+    it('applies default when neither flag nor negation provided', () => {
+      const result = parseSimple({
+        args: [],
+        options: {
+          verbose: opt.boolean({ default: true }),
+        },
+      });
+
+      expect(result.values, 'to deeply equal', { verbose: true });
+    });
+
+    it('returns undefined when no flag, no negation, and no default', () => {
+      const result = parseSimple({
+        args: [],
+        options: {
+          verbose: opt.boolean(),
+        },
+      });
+
+      expect(result.values.verbose, 'to be', undefined);
+    });
   });
 
   it('parses number options', () => {

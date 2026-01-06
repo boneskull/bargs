@@ -20,8 +20,13 @@ import type {
   PositionalsSchema,
 } from './types.js';
 
+import { HelpError } from './errors.js';
+
 /**
  * Build parseArgs options config from our options schema.
+ *
+ * For boolean options, also adds `no-<name>` variants to support explicit
+ * negation (e.g., `--no-verbose` sets `verbose` to `false`).
  */
 const buildParseArgsConfig = (
   schema: OptionsSchema,
@@ -55,6 +60,11 @@ const buildParseArgsConfig = (
     }
 
     config[name] = opt;
+
+    // For boolean options, add negated form (--no-<name>)
+    if (def.type === 'boolean') {
+      config[`no-${name}`] = { type: 'boolean' };
+    }
   }
 
   return config;
@@ -184,6 +194,45 @@ const coercePositionals = (
 };
 
 /**
+ * Process negated boolean options (--no-<name>).
+ *
+ * - If `--no-<name>` is true and `--<name>` is not set, sets `<name>` to false
+ * - If both `--<name>` and `--no-<name>` are set, throws an error
+ * - Removes all `no-<name>` keys from the result
+ */
+const processNegatedBooleans = (
+  values: Record<string, unknown>,
+  schema: OptionsSchema,
+): Record<string, unknown> => {
+  const result = { ...values };
+
+  for (const [name, def] of Object.entries(schema)) {
+    if (def.type !== 'boolean') {
+      continue;
+    }
+
+    const negatedKey = `no-${name}`;
+    const hasPositive = result[name] === true;
+    const hasNegative = result[negatedKey] === true;
+
+    if (hasPositive && hasNegative) {
+      throw new HelpError(
+        `Conflicting options: --${name} and --${negatedKey} cannot both be specified`,
+      );
+    }
+
+    if (hasNegative && !hasPositive) {
+      result[name] = false;
+    }
+
+    // Always remove the negated key from result
+    delete result[negatedKey];
+  }
+
+  return result;
+};
+
+/**
  * Options for parseSimple.
  */
 interface ParseSimpleOptions<
@@ -221,8 +270,14 @@ export const parseSimple = <
     strict: true,
   });
 
+  // Process negated boolean options (--no-<flag>)
+  const processedValues = processNegatedBooleans(
+    values as Record<string, unknown>,
+    optionsSchema,
+  );
+
   // Coerce and apply defaults
-  const coercedValues = coerceValues(values, optionsSchema);
+  const coercedValues = coerceValues(processedValues, optionsSchema);
   const coercedPositionals = coercePositionals(positionals, positionalsSchema);
 
   return {

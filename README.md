@@ -336,6 +336,32 @@ opt.count(); // -vvv → 3
 | `hidden`      | `boolean`  | Hide from `--help` output                        |
 | `required`    | `boolean`  | Mark as required (makes the option non-nullable) |
 
+### Boolean Negation (`--no-<flag>`)
+
+All boolean options automatically support a negated form `--no-<flag>` to explicitly set the option to `false`:
+
+```shell
+$ my-cli --verbose      # verbose: true
+$ my-cli --no-verbose   # verbose: false
+$ my-cli                # verbose: undefined (or default)
+```
+
+If both `--flag` and `--no-flag` are specified, bargs throws an error:
+
+```shell
+$ my-cli --verbose --no-verbose
+Error: Conflicting options: --verbose and --no-verbose cannot both be specified
+```
+
+In help output, booleans with `default: true` display as `--no-<flag>` (since that's how users would turn them off):
+
+```typescript
+opt.options({
+  colors: opt.boolean({ default: true, description: 'Use colors' }),
+});
+// Help output shows: --no-colors  Use colors  [boolean] default: true
+```
+
 ### `opt.options(schema)`
 
 Create a parser from an options schema:
