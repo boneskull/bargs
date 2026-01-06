@@ -1,74 +1,58 @@
-// test/opt.test.ts
+/**
+ * Tests for option and positional builders.
+ */
 import { expect } from 'bupkis';
 import { describe, it } from 'node:test';
 
-import { opt } from '../src/opt.js';
+import { opt, pos } from '../src/opt.js';
 
 describe('opt.options', () => {
-  it('merges multiple option schemas', () => {
-    const a = opt.options({ foo: opt.string() });
-    const b = opt.options({ bar: opt.boolean() });
-    const merged = opt.options(a, b);
+  it('creates a Parser from options schema', () => {
+    const parser = opt.options({
+      bar: opt.boolean(),
+      foo: opt.string(),
+    });
 
-    expect(merged, 'to satisfy', {
+    expect(parser.__brand, 'to be', 'Parser');
+    expect(parser.__optionsSchema, 'to satisfy', {
       bar: { type: 'boolean' },
       foo: { type: 'string' },
     });
   });
 
-  it('later schema wins on name conflict', () => {
-    const a = opt.options({ name: opt.string({ default: 'a' }) });
-    const b = opt.options({ name: opt.string({ default: 'b' }) });
-    const merged = opt.options(a, b);
-
-    expect(merged.name.default, 'to be', 'b');
-  });
-
   it('throws on alias conflict', () => {
-    const a = opt.options({ verbose: opt.boolean({ aliases: ['v'] }) });
-    const b = opt.options({ version: opt.string({ aliases: ['v'] }) });
-
     expect(
-      () => opt.options(a, b),
+      () =>
+        opt.options({
+          verbose: opt.boolean({ aliases: ['v'] }),
+          version: opt.string({ aliases: ['v'] }),
+        }),
       'to throw',
       /Alias conflict.*-v.*--verbose.*--version/,
     );
   });
-
-  it('allows same alias on same option name (override)', () => {
-    const a = opt.options({
-      verbose: opt.boolean({ aliases: ['v'], default: false }),
-    });
-    const b = opt.options({
-      verbose: opt.boolean({ aliases: ['v'], default: true }),
-    });
-
-    // Should not throw - same option name can keep its alias
-    const merged = opt.options(a, b);
-    // Note: When merging options with same key but different literal defaults,
-    // TypeScript intersects { default: false } & { default: true } = never.
-    // Runtime is correct - later schema wins. Cast to check runtime value.
-    expect((merged.verbose as { default?: boolean }).default, 'to be', true);
-  });
 });
 
-describe('opt.positionals', () => {
-  it('creates a positionals schema with single positional', () => {
-    const positionals = opt.positionals(
-      opt.stringPos({ description: 'Input file', required: true }),
+describe('pos.positionals', () => {
+  it('creates a Parser from positional definitions', () => {
+    const parser = pos.positionals(
+      pos.string({ name: 'input', required: true }),
     );
 
-    expect(positionals, 'to satisfy', [{ required: true, type: 'string' }]);
+    expect(parser.__brand, 'to be', 'Parser');
+    expect(parser.__positionalsSchema, 'to satisfy', [
+      { name: 'input', required: true, type: 'string' },
+    ]);
   });
 
-  it('creates a positionals schema with multiple positionals', () => {
-    const positionals = opt.positionals(
-      opt.stringPos({ description: 'Source', required: true }),
-      opt.stringPos({ description: 'Destination' }),
-      opt.numberPos({ default: 0 }),
+  it('creates a Parser with multiple positionals', () => {
+    const parser = pos.positionals(
+      pos.string({ name: 'source', required: true }),
+      pos.string({ name: 'dest' }),
+      pos.number({ default: 0, name: 'count' }),
     );
 
-    expect(positionals, 'to satisfy', [
+    expect(parser.__positionalsSchema, 'to satisfy', [
       { type: 'string' },
       { type: 'string' },
       { default: 0, type: 'number' },
@@ -76,13 +60,13 @@ describe('opt.positionals', () => {
   });
 
   it('preserves positional order', () => {
-    const positionals = opt.positionals(
-      opt.stringPos({ description: 'first' }),
-      opt.numberPos({ description: 'second' }),
-      opt.variadic('string', { description: 'rest' }),
+    const parser = pos.positionals(
+      pos.string({ description: 'first' }),
+      pos.number({ description: 'second' }),
+      pos.variadic('string', { description: 'rest' }),
     );
 
-    expect(positionals, 'to satisfy', [
+    expect(parser.__positionalsSchema, 'to satisfy', [
       { description: 'first' },
       { description: 'second' },
       { description: 'rest' },
@@ -147,11 +131,13 @@ describe('opt builders', () => {
 
     expect(option, 'to satisfy', { aliases: ['v'], type: 'count' });
   });
+});
 
+describe('pos builders', () => {
   it('creates string positionals', () => {
-    const pos = opt.stringPos({ description: 'Input file', required: true });
+    const p = pos.string({ description: 'Input file', required: true });
 
-    expect(pos, 'to satisfy', {
+    expect(p, 'to satisfy', {
       description: 'Input file',
       required: true,
       type: 'string',
@@ -159,32 +145,66 @@ describe('opt builders', () => {
   });
 
   it('creates number positionals', () => {
-    const pos = opt.numberPos({ default: 0 });
+    const p = pos.number({ default: 0 });
 
-    expect(pos, 'to satisfy', { default: 0, type: 'number' });
+    expect(p, 'to satisfy', { default: 0, type: 'number' });
+  });
+
+  it('creates enum positionals', () => {
+    const p = pos.enum(['a', 'b', 'c'] as const, { name: 'choice' });
+
+    expect(p, 'to satisfy', {
+      choices: ['a', 'b', 'c'],
+      name: 'choice',
+      type: 'enum',
+    });
   });
 
   it('creates variadic positionals', () => {
-    const pos = opt.variadic('string', { description: 'Rest args' });
+    const p = pos.variadic('string', { description: 'Rest args' });
 
-    expect(pos, 'to satisfy', {
+    expect(p, 'to satisfy', {
       description: 'Rest args',
       items: 'string',
       type: 'variadic',
     });
   });
+});
 
-  it('creates commands', () => {
-    const cmd = opt.command({
-      description: 'Test command',
-      handler: () => {},
-      options: { verbose: opt.boolean() },
+describe('legacy opt positional builders', () => {
+  it('opt.stringPos creates string positionals', () => {
+    const p = opt.stringPos({ description: 'Input file', required: true });
+
+    expect(p, 'to satisfy', {
+      description: 'Input file',
+      required: true,
+      type: 'string',
     });
+  });
 
-    expect(cmd, 'to satisfy', {
-      description: 'Test command',
-      handler: expect.it('to be a', 'function'),
-      options: { verbose: { type: 'boolean' } },
+  it('opt.numberPos creates number positionals', () => {
+    const p = opt.numberPos({ default: 0 });
+
+    expect(p, 'to satisfy', { default: 0, type: 'number' });
+  });
+
+  it('opt.enumPos creates enum positionals', () => {
+    const p = opt.enumPos(['a', 'b', 'c'] as const, { name: 'choice' });
+
+    expect(p, 'to satisfy', {
+      choices: ['a', 'b', 'c'],
+      name: 'choice',
+      type: 'enum',
+    });
+  });
+
+  it('opt.variadic creates variadic positionals', () => {
+    const p = opt.variadic('string', { description: 'Rest args' });
+
+    expect(p, 'to satisfy', {
+      description: 'Rest args',
+      items: 'string',
+      type: 'variadic',
     });
   });
 });

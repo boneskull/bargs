@@ -1,12 +1,10 @@
 /**
- * Builder functions for defining CLI options, positionals, and commands.
+ * Builder functions for defining CLI options and positionals.
  *
  * Provides ergonomic helpers with full TypeScript type inference for
  * constructing option schemas (`opt.string()`, `opt.boolean()`, `opt.enum()`,
- * etc.), positional schemas (`opt.stringPos()`, `opt.numberPos()`,
- * `opt.variadic()`), and command definitions (`opt.command()`). Includes
- * composition utilities for merging schemas (`opt.options()`,
- * `opt.positionals()`).
+ * etc.) and positional schemas (`opt.stringPos()`, `opt.numberPos()`,
+ * `opt.variadic()`).
  *
  * @packageDocumentation
  */
@@ -14,152 +12,26 @@
 import type {
   ArrayOption,
   BooleanOption,
-  CommandConfig,
   CountOption,
   EnumOption,
   EnumPositional,
+  InferOptions,
+  InferPositionals,
   NumberOption,
   NumberPositional,
   OptionsSchema,
+  Parser,
   PositionalDef,
   PositionalsSchema,
   StringOption,
   StringPositional,
-  TransformsConfig,
   VariadicPositional,
 } from './types.js';
 
 import { BargsError } from './errors.js';
 
 /**
- * Command builder interface that supports both direct config and curried global
- * options patterns.
- */
-export interface CommandBuilder {
-  // Direct usage: bargs.command({ ... })
-  <
-    const TOptions extends OptionsSchema = OptionsSchema,
-    const TPositionals extends PositionalsSchema = PositionalsSchema,
-    const TTransforms extends TransformsConfig<any, any, any, any> | undefined =
-      undefined,
-  >(
-    config: CommandConfig<
-      Record<string, never>,
-      undefined,
-      TOptions,
-      TPositionals,
-      TTransforms
-    >,
-  ): CommandConfig<
-    Record<string, never>,
-    undefined,
-    TOptions,
-    TPositionals,
-    TTransforms
-  >;
-
-  // Curried usage: bargs.command<typeof globalOpts, typeof globalTransforms>()({ ... })
-  <
-    TGlobalOptions extends OptionsSchema,
-    TGlobalTransforms extends TransformsConfig<any, any, any, any> | undefined =
-      undefined,
-  >(): <
-    const TOptions extends OptionsSchema = OptionsSchema,
-    const TPositionals extends PositionalsSchema = PositionalsSchema,
-    const TTransforms extends TransformsConfig<any, any, any, any> | undefined =
-      undefined,
-  >(
-    config: CommandConfig<
-      TGlobalOptions,
-      TGlobalTransforms,
-      TOptions,
-      TPositionals,
-      TTransforms
-    >,
-  ) => CommandConfig<
-    TGlobalOptions,
-    TGlobalTransforms,
-    TOptions,
-    TPositionals,
-    TTransforms
-  >;
-}
-
-/**
- * Implementation of command builder that detects whether it's called with
- * config (direct) or without args (curried for global options).
- */
-const commandBuilder = <
-  const TGlobalOptions extends OptionsSchema = Record<string, never>,
-  const TGlobalTransforms extends
-    | TransformsConfig<any, any, any, any>
-    | undefined = undefined,
-  const TOptions extends OptionsSchema = OptionsSchema,
-  const TPositionals extends PositionalsSchema = PositionalsSchema,
-  const TTransforms extends TransformsConfig<any, any, any, any> | undefined =
-    undefined,
->(
-  configOrNothing?: CommandConfig<
-    TGlobalOptions,
-    TGlobalTransforms,
-    TOptions,
-    TPositionals,
-    TTransforms
-  >,
-):
-  | (<
-      const TOptions2 extends OptionsSchema,
-      const TPositionals2 extends PositionalsSchema,
-      const TTransforms2 extends
-        | TransformsConfig<any, any, any, any>
-        | undefined,
-    >(
-      config: CommandConfig<
-        TGlobalOptions,
-        TGlobalTransforms,
-        TOptions2,
-        TPositionals2,
-        TTransforms2
-      >,
-    ) => CommandConfig<
-      TGlobalOptions,
-      TGlobalTransforms,
-      TOptions2,
-      TPositionals2,
-      TTransforms2
-    >)
-  | CommandConfig<
-      TGlobalOptions,
-      TGlobalTransforms,
-      TOptions,
-      TPositionals,
-      TTransforms
-    > => {
-  if (configOrNothing === undefined) {
-    // Curried usage: return function that accepts config
-    return <
-      const TOptions2 extends OptionsSchema,
-      const TPositionals2 extends PositionalsSchema,
-      const TTransforms2 extends
-        | TransformsConfig<any, any, any, any>
-        | undefined,
-    >(
-      config: CommandConfig<
-        TGlobalOptions,
-        TGlobalTransforms,
-        TOptions2,
-        TPositionals2,
-        TTransforms2
-      >,
-    ) => config;
-  }
-  // Direct usage: return config as-is
-  return configOrNothing;
-};
-
-/**
- * Validate that no alias conflicts exist in a merged options schema. Throws
- * BargsError if the same alias is used by multiple options.
+ * Validate that no alias conflicts exist in a merged options schema.
  */
 const validateAliasConflicts = (schema: OptionsSchema): void => {
   const aliasToOption = new Map<string, string>();
@@ -182,35 +54,81 @@ const validateAliasConflicts = (schema: OptionsSchema): void => {
 };
 
 /**
- * Compose multiple option schemas into one.
+ * A Parser that can also be called as a function to merge with another parser.
+ * This allows `opt.options()` to work both as:
+ *
+ * - First arg in pipe: used directly as a Parser
+ * - Later arg in pipe: called as function to merge with incoming Parser
  */
-const optionsImpl = (...schemas: OptionsSchema[]): OptionsSchema => {
-  const merged = Object.assign({}, ...schemas) as OptionsSchema;
-  validateAliasConflicts(merged);
-  return merged;
+type CallableOptionsParser<V> = (<V2, P2 extends readonly unknown[]>(
+  parser: Parser<V2, P2>,
+) => Parser<V & V2, P2>) &
+  Parser<V, readonly []>;
+
+/**
+ * Create a Parser from an options schema that can also merge with existing
+ * parsers.
+ *
+ * Supports two usage patterns in pipe():
+ *
+ * 1. As first arg: `pipe(opt.options(...), ...)` - used as Parser directly
+ * 2. As later arg: `pipe(pos.positionals(...), opt.options(...), ...)` - called to
+ *    merge
+ */
+const optionsImpl = <T extends OptionsSchema>(
+  schema: T,
+): CallableOptionsParser<InferOptions<T>> => {
+  validateAliasConflicts(schema);
+
+  // Create the merge function
+  const merger = <V2, P2 extends readonly unknown[]>(
+    parser: Parser<V2, P2>,
+  ): Parser<InferOptions<T> & V2, P2> => {
+    const mergedSchema = { ...parser.__optionsSchema, ...schema };
+    validateAliasConflicts(mergedSchema);
+
+    // Preserve transforms from the incoming parser
+    const transformed = parser as Parser<V2, P2> & {
+      __transform?: (r: unknown) => unknown;
+    };
+    const result = {
+      ...parser,
+      __brand: 'Parser' as const,
+      __optionsSchema: mergedSchema,
+      __values: {} as InferOptions<T> & V2,
+    };
+    if (transformed.__transform) {
+      (result as Record<string, unknown>).__transform = transformed.__transform;
+    }
+    return result as Parser<InferOptions<T> & V2, P2>;
+  };
+
+  // Add Parser properties to the function
+  const parserProps: Parser<InferOptions<T>, readonly []> = {
+    __brand: 'Parser',
+    __optionsSchema: schema,
+    __positionals: [] as const,
+    __positionalsSchema: [],
+    __values: {} as InferOptions<T>,
+  };
+
+  return Object.assign(merger, parserProps) as CallableOptionsParser<
+    InferOptions<T>
+  >;
 };
 
 /**
- * Create a positionals schema from positional definitions.
- */
-const positionalsImpl = <T extends PositionalsSchema>(...positionals: T): T =>
-  positionals;
-
-/**
  * Namespaced option builders.
- *
- * Provides ergonomic helpers for defining CLI options, positionals, and
- * commands with full TypeScript type inference.
  *
  * @example
  *
  * ```typescript
  * import { opt } from 'bargs';
  *
- * const options = opt.options({
+ * const parser = opt.options({
  *   verbose: opt.boolean({ aliases: ['v'] }),
  *   name: opt.string({ default: 'world' }),
- *   level: opt.enum(['low', 'medium', 'high'] as const),
+ *   level: opt.enum(['low', 'medium', 'high']),
  * });
  * ```
  */
@@ -230,8 +148,7 @@ export const opt = {
   }),
 
   /**
-   * Define a boolean option. Props type is preserved to enable default
-   * inference.
+   * Define a boolean option.
    */
   boolean: <
     P extends Omit<BooleanOption, 'type'> = Omit<BooleanOption, 'type'>,
@@ -244,55 +161,6 @@ export const opt = {
     }) as BooleanOption & P,
 
   /**
-   * Define a command with proper type inference.
-   *
-   * Three usage patterns:
-   *
-   * 1. Simple usage (no global options): `bargs.command({ ... })`
-   * 2. With global options: `bargs.command<typeof globalOptions>()({ ... })`
-   * 3. With global options AND transforms: `bargs.command<typeof globalOptions,
-   *    typeof globalTransforms>()({ ... })`
-   *
-   * @example
-   *
-   * ```typescript
-   * // Simple usage - no global options typed
-   * const simpleCmd = bargs.command({
-   *   description: 'Simple command',
-   *   handler: ({ values }) => { ... },
-   * });
-   *
-   * // With global options typed
-   * const globalOptions = {
-   *   verbose: bargs.boolean({ aliases: ['v'] }),
-   * } as const;
-   *
-   * const greetCmd = bargs.command<typeof globalOptions>()({
-   *   description: 'Greet someone',
-   *   options: { name: bargs.string({ default: 'world' }) },
-   *   handler: ({ values }) => {
-   *     // values.verbose is properly typed as boolean | undefined
-   *     console.log(`Hello, ${values.name}!`);
-   *   },
-   * });
-   *
-   * // With global options AND global transforms typed
-   * const globalTransforms = {
-   *   values: (v) => ({ ...v, timestamp: Date.now() }),
-   * } as const;
-   *
-   * const timedCmd = bargs.command<typeof globalOptions, typeof globalTransforms>()({
-   *   description: 'Time-aware command',
-   *   handler: ({ values }) => {
-   *     // values.timestamp is properly typed from global transforms
-   *     console.log(`Ran at ${values.timestamp}`);
-   *   },
-   * });
-   * ```
-   */
-  command: commandBuilder as CommandBuilder,
-
-  /**
    * Define a count option (--verbose --verbose = 2).
    */
   count: (props: Omit<CountOption, 'type'> = {}): CountOption => ({
@@ -301,9 +169,7 @@ export const opt = {
   }),
 
   /**
-   * Define an enum option with string choices. The choices array is inferred as
-   * a tuple of literal types automatically. Props type is preserved to enable
-   * default inference.
+   * Define an enum option with string choices.
    */
   enum: <
     const T extends readonly string[],
@@ -322,8 +188,7 @@ export const opt = {
     }) as EnumOption<T[number]> & P,
 
   /**
-   * Define an enum positional argument with string choices. The choices array
-   * is inferred as a tuple of literal types automatically.
+   * Define an enum positional argument with string choices.
    */
   enumPos: <
     const T extends readonly string[],
@@ -342,8 +207,7 @@ export const opt = {
     }) as EnumPositional<T[number]> & P,
 
   /**
-   * Define a number option. Props type is preserved to enable default
-   * inference.
+   * Define a number option.
    */
   number: <P extends Omit<NumberOption, 'type'> = Omit<NumberOption, 'type'>>(
     props: P = {} as P,
@@ -353,11 +217,8 @@ export const opt = {
       ...props,
     }) as NumberOption & P,
 
-  // ─── Positional Builders ───────────────────────────────────────────
-
   /**
-   * Define a number positional argument. Props type is preserved to enable
-   * required inference.
+   * Define a number positional argument.
    */
   numberPos: <
     P extends Omit<NumberPositional, 'type'> = Omit<NumberPositional, 'type'>,
@@ -370,85 +231,22 @@ export const opt = {
     }) as NumberPositional & P,
 
   /**
-   * Compose multiple option schemas into one. Later schemas override earlier
-   * ones for duplicate option names. Validates that no alias conflicts exist.
+   * Create a Parser from an options schema.
    *
    * @example
    *
    * ```typescript
-   * // Single schema (identity, enables reuse)
-   * const loggingOpts = opt.options({
+   * const parser = opt.options({
    *   verbose: opt.boolean({ aliases: ['v'] }),
-   *   quiet: opt.boolean({ aliases: ['q'] }),
+   *   name: opt.string({ default: 'world' }),
    * });
-   *
-   * // Merge multiple schemas
-   * const allOpts = opt.options(loggingOpts, ioOpts, {
-   *   format: opt.enum(['json', 'yaml'] as const),
-   * });
-   * ```
-   *
-   * @throws BargsError if multiple options use the same alias
-   */
-  options: optionsImpl as {
-    <A extends OptionsSchema>(a: A): A;
-    <A extends OptionsSchema, B extends OptionsSchema>(a: A, b: B): A & B;
-    <A extends OptionsSchema, B extends OptionsSchema, C extends OptionsSchema>(
-      a: A,
-      b: B,
-      c: C,
-    ): A & B & C;
-    <
-      A extends OptionsSchema,
-      B extends OptionsSchema,
-      C extends OptionsSchema,
-      D extends OptionsSchema,
-    >(
-      a: A,
-      b: B,
-      c: C,
-      d: D,
-    ): A & B & C & D;
-    (...schemas: OptionsSchema[]): OptionsSchema;
-  },
-
-  /**
-   * Create a positionals schema with proper tuple type inference.
-   *
-   * @example
-   *
-   * ```typescript
-   * const positionals = opt.positionals(
-   *   opt.stringPos({ description: 'Input file', required: true }),
-   *   opt.stringPos({ description: 'Output file' }),
-   * );
+   * // Type: Parser<{ verbose: boolean | undefined, name: string }, []>
    * ```
    */
-  positionals: positionalsImpl as {
-    <A extends PositionalDef>(a: A): [A];
-    <A extends PositionalDef, B extends PositionalDef>(a: A, b: B): [A, B];
-    <A extends PositionalDef, B extends PositionalDef, C extends PositionalDef>(
-      a: A,
-      b: B,
-      c: C,
-    ): [A, B, C];
-    <
-      A extends PositionalDef,
-      B extends PositionalDef,
-      C extends PositionalDef,
-      D extends PositionalDef,
-    >(
-      a: A,
-      b: B,
-      c: C,
-      d: D,
-    ): [A, B, C, D];
-    (...positionals: PositionalDef[]): PositionalsSchema;
-  },
+  options: optionsImpl,
 
   /**
-   * Define a string option. Props type is preserved to enable default
-   * inference.
+   * Define a string option.
    */
   string: <P extends Omit<StringOption, 'type'> = Omit<StringOption, 'type'>>(
     props: P = {} as P,
@@ -458,11 +256,8 @@ export const opt = {
       ...props,
     }) as P & StringOption,
 
-  // ─── Composition ───────────────────────────────────────────────────
-
   /**
-   * Define a string positional argument. Props type is preserved to enable
-   * required inference.
+   * Define a string positional argument.
    */
   stringPos: <
     P extends Omit<StringPositional, 'type'> = Omit<StringPositional, 'type'>,
@@ -474,7 +269,192 @@ export const opt = {
       ...props,
     }) as P & StringPositional,
 
-  // ─── Command Builder ───────────────────────────────────────────────
+  /**
+   * Define a variadic positional (rest args).
+   */
+  variadic: (
+    items: 'number' | 'string',
+    props: Omit<VariadicPositional, 'items' | 'type'> = {},
+  ): VariadicPositional => ({
+    items,
+    type: 'variadic',
+    ...props,
+  }),
+};
+
+/**
+ * A Parser that can also be called as a function to merge with another parser.
+ * This allows `pos.positionals()` to work both as:
+ *
+ * - First arg in pipe: used directly as a Parser
+ * - Later arg in pipe: called as function to merge with incoming Parser
+ *
+ * For positionals, we DON'T intersect values - we just pass through V2.
+ */
+type CallablePositionalsParser<P extends readonly unknown[]> = (<
+  V2,
+  P2 extends readonly unknown[],
+>(
+  parser: Parser<V2, P2>,
+) => Parser<V2, readonly [...P2, ...P]>) &
+  Parser<EmptyObject, P>;
+
+/**
+ * Empty object type that works better with intersections than Record<string,
+ * never>. {} & T = T, but Record<string, never> & T can be problematic.
+ */
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+type EmptyObject = {};
+
+/**
+ * Create a Parser from positional definitions that can also merge with existing
+ * parsers.
+ *
+ * Supports two usage patterns in pipe():
+ *
+ * 1. As first arg: `pipe(pos.positionals(...), ...)` - used as Parser directly
+ * 2. As later arg: `pipe(opt.options(...), pos.positionals(...), ...)` - called to
+ *    merge
+ */
+const positionalsImpl = <T extends PositionalsSchema>(
+  ...positionals: T
+): CallablePositionalsParser<InferPositionals<T>> => {
+  // Create the merge function - just passes through V2, no intersection needed
+  const merger = <V2, P2 extends readonly unknown[]>(
+    parser: Parser<V2, P2>,
+  ): Parser<V2, readonly [...P2, ...InferPositionals<T>]> => {
+    // Preserve transforms from the incoming parser
+    const transformed = parser as Parser<V2, P2> & {
+      __transform?: (r: unknown) => unknown;
+    };
+    const result = {
+      ...parser,
+      __brand: 'Parser' as const,
+      __positionals: [] as unknown as readonly [...P2, ...InferPositionals<T>],
+      __positionalsSchema: [...parser.__positionalsSchema, ...positionals],
+    };
+    if (transformed.__transform) {
+      (result as Record<string, unknown>).__transform = transformed.__transform;
+    }
+    return result as Parser<V2, readonly [...P2, ...InferPositionals<T>]>;
+  };
+
+  // Add Parser properties to the function
+  // Use empty object {} instead of Record<string, never> for better intersection behavior
+  const parserProps: Parser<EmptyObject, InferPositionals<T>> = {
+    __brand: 'Parser',
+    __optionsSchema: {},
+    __positionals: [] as unknown as InferPositionals<T>,
+    __positionalsSchema: positionals,
+    __values: {} as EmptyObject,
+  };
+
+  return Object.assign(merger, parserProps) as CallablePositionalsParser<
+    InferPositionals<T>
+  >;
+};
+
+/**
+ * Namespaced positional builders.
+ *
+ * @example
+ *
+ * ```typescript
+ * import { pos } from 'bargs';
+ *
+ * const parser = pos.positionals(
+ *   pos.string({ name: 'input', required: true }),
+ *   pos.string({ name: 'output' }),
+ * );
+ * ```
+ */
+export const pos = {
+  /**
+   * Define an enum positional argument with string choices.
+   */
+  enum: <
+    const T extends readonly string[],
+    P extends Omit<EnumPositional<T[number]>, 'choices' | 'type'> = Omit<
+      EnumPositional<T[number]>,
+      'choices' | 'type'
+    >,
+  >(
+    choices: T,
+    props: P = {} as P,
+  ): EnumPositional<T[number]> & P =>
+    ({
+      choices,
+      type: 'enum',
+      ...props,
+    }) as EnumPositional<T[number]> & P,
+
+  /**
+   * Define a number positional argument.
+   */
+  number: <
+    P extends Omit<NumberPositional, 'type'> = Omit<NumberPositional, 'type'>,
+  >(
+    props: P = {} as P,
+  ): NumberPositional & P =>
+    ({
+      type: 'number',
+      ...props,
+    }) as NumberPositional & P,
+
+  /**
+   * Create a Parser from positional definitions.
+   *
+   * @example
+   *
+   * ```typescript
+   * const parser = pos.positionals(
+   *   pos.string({ name: 'input', required: true }),
+   *   pos.string({ name: 'output' }),
+   * );
+   * // Type: Parser<{}, readonly [string, string | undefined]>
+   * ```
+   */
+  positionals: positionalsImpl as unknown as {
+    <A extends PositionalDef>(
+      a: A,
+    ): CallablePositionalsParser<readonly [InferPositionals<readonly [A]>[0]]>;
+    <A extends PositionalDef, B extends PositionalDef>(
+      a: A,
+      b: B,
+    ): CallablePositionalsParser<InferPositionals<readonly [A, B]>>;
+    <A extends PositionalDef, B extends PositionalDef, C extends PositionalDef>(
+      a: A,
+      b: B,
+      c: C,
+    ): CallablePositionalsParser<InferPositionals<readonly [A, B, C]>>;
+    <
+      A extends PositionalDef,
+      B extends PositionalDef,
+      C extends PositionalDef,
+      D extends PositionalDef,
+    >(
+      a: A,
+      b: B,
+      c: C,
+      d: D,
+    ): CallablePositionalsParser<InferPositionals<readonly [A, B, C, D]>>;
+    (
+      ...positionals: PositionalDef[]
+    ): CallablePositionalsParser<readonly unknown[]>;
+  },
+
+  /**
+   * Define a string positional argument.
+   */
+  string: <
+    P extends Omit<StringPositional, 'type'> = Omit<StringPositional, 'type'>,
+  >(
+    props: P = {} as P,
+  ): P & StringPositional =>
+    ({
+      type: 'string',
+      ...props,
+    }) as P & StringPositional,
 
   /**
    * Define a variadic positional (rest args).

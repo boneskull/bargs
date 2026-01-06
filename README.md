@@ -2,7 +2,7 @@
   <a href="/"><img src="./assets/logo.png" width="512px" align="center" alt="bargs: a barg parser"/></a>
   <h1 align="center"><span class="bargs">⁓ bargs ⁓<span></h1>
   <p align="center">
-    <em>“Ex argumentis, veritas”</em>
+    <em>"Ex argumentis, veritas"</em>
     <br/>
     <small>by <a href="https://github.com/boneskull" title="@boneskull on GitHub">@boneskull</a></small>
   </p>
@@ -16,310 +16,249 @@ npm install @boneskull/bargs
 
 ## Why bargs?
 
-Most argument parsers make you choose: either a simple API with weak types, or a complex and overengineered DSL. **bargs** uses _function helpers_ that instead provide a well-typed and composable API.
+Most argument parsers make you choose: either a simple API with weak types, or a complex and overengineered DSL. **bargs** provides a combinator-style API for building type-safe CLIs—composable schema definitions with full type inference.
+
+## Quick Start
+
+A CLI with an optional command and a couple options:
+
+```typescript
+import { bargs, opt, pos } from '@boneskull/bargs';
+
+await bargs
+  .create('greet', { version: '1.0.0' })
+  .globals(
+    opt.options({
+      name: opt.string({ default: 'world' }),
+      loud: opt.boolean({ aliases: ['l'] }),
+    }),
+  )
+  .command(
+    'say',
+    pos.positionals(pos.string({ name: 'message', required: true })),
+    ({ positionals, values }) => {
+      const [message] = positionals;
+      const greeting = `${message}, ${values.name}!`;
+      console.log(values.loud ? greeting.toUpperCase() : greeting);
+    },
+    'Say a greeting',
+  )
+  .defaultCommand('say')
+  .parseAsync();
+```
+
+```shell
+$ greet Hello --name Alice --loud
+HELLO, ALICE!
+```
+
+## Usage
 
 ### Type-Safe by Construction
 
-Each helper returns a fully-typed option definition:
+Each helper returns a fully-typed definition:
 
 ```typescript
-const verbose = bargs.boolean({ aliases: ['v'] });
+import { opt, pos } from '@boneskull/bargs';
+
+const verbose = opt.boolean({ aliases: ['v'] });
 // Type: BooleanOption & { aliases: ['v'] }
 
-const level = bargs.enum(['low', 'medium', 'high'], { default: 'medium' });
+const level = opt.enum(['low', 'medium', 'high'], { default: 'medium' });
 // Type: EnumOption<'low' | 'medium' | 'high'> & { default: 'medium' }
+
+const file = pos.string({ name: 'file', required: true });
+// Type: StringPositional & { name: 'file', required: true }
 ```
 
-When you pass these to `bargs()`, the result is always well-typed; options with defaults or `required: true` are non-nullable.
+When you build a CLI with these, the result types flow through automatically—options with defaults or `required: true` are non-nullable.
 
 ### Composable
 
-Since helpers are just functions returning objects, composition is trivial:
+Options and positionals can be merged using callable parsers:
 
 ```typescript
-// Shared options across commands
-const verboseOpt = { verbose: bargs.boolean({ aliases: ['v'] }) };
-const outputOpt = {
-  output: bargs.string({ aliases: ['o'], default: 'stdout' }),
-};
+import { opt, pos } from '@boneskull/bargs';
 
-// Merge with spread
-const result = bargs({
-  name: 'tool',
-  options: {
-    ...verboseOpt,
-    ...outputOpt,
-    format: bargs.enum(['json', 'text']),
-  },
+// Create separate parsers
+const options = opt.options({
+  verbose: opt.boolean({ aliases: ['v'] }),
+  output: opt.string({ aliases: ['o'], default: 'stdout' }),
 });
+
+const positionals = pos.positionals(
+  pos.string({ name: 'input', required: true }),
+);
+
+// Merge them: positionals(options) combines both
+const parser = positionals(options);
+// Type: Parser<{ verbose: boolean | undefined, output: string }, [string]>
 ```
 
-Or use `bargs.options()` and `bargs.positionals()`:
+### Simple CLI
+
+For a CLI without subcommands, use `.globals()` with merged options and positionals, then handle the result yourself:
 
 ```typescript
-// Throws if aliases collide
-const sharedOpts = bargs.options(verboseOpt, outputOpt);
+import { bargs, opt, pos } from '@boneskull/bargs';
 
-// Combine positionals with type inference
-const sharedPos = bargs.positionals(
-  bargs.stringPos({ name: 'input', required: true }),
-  bargs.stringPos({ name: 'output' }),
+// Merge options and positionals into one parser
+const parser = pos.positionals(pos.variadic('string', { name: 'text' }))(
+  opt.options({
+    uppercase: opt.boolean({ aliases: ['u'], default: false }),
+  }),
 );
-```
 
-> [!TIP]
-> Helper functions are provided for convenience and composability, but you can also just use raw object literals. See the ["tasks" example](./examples/tasks.ts) to see how.
+const { values, positionals } = await bargs
+  .create('echo', {
+    description: 'Echo text to stdout',
+    version: '1.0.0',
+  })
+  .globals(parser)
+  .parseAsync();
+
+const [words] = positionals;
+const text = words.join(' ');
+console.log(values.uppercase ? text.toUpperCase() : text);
+```
 
 ### Zero (0) Dependencies
 
 Only Node.js v22+.
 
-## Quick Start
+### Command-Based CLI
+
+For a CLI with multiple subcommands:
 
 ```typescript
-import { bargs } from '@boneskull/bargs';
+import { bargs, opt, pos } from '@boneskull/bargs';
 
-const result = bargs({
-  name: 'greet',
-  options: {
-    name: bargs.string({ default: 'world' }),
-    loud: bargs.boolean({ aliases: ['l'] }),
-  },
-});
-
-const greeting = `Hello, ${result.values.name}!`;
-console.log(result.values.loud ? greeting.toUpperCase() : greeting);
+await bargs
+  .create('tasks', {
+    description: 'A task manager',
+    version: '1.0.0',
+  })
+  .globals(
+    opt.options({
+      verbose: opt.boolean({ aliases: ['v'], default: false }),
+    }),
+  )
+  .command(
+    'add',
+    pos.positionals(pos.string({ name: 'text', required: true })),
+    ({ positionals, values }) => {
+      const [text] = positionals;
+      console.log(`Adding task: ${text}`);
+      if (values.verbose) console.log('Verbose mode enabled');
+    },
+    'Add a task',
+  )
+  .command(
+    'list',
+    opt.options({
+      all: opt.boolean({ default: false }),
+    }),
+    ({ values }) => {
+      console.log(values.all ? 'All tasks' : 'Pending tasks');
+    },
+    'List tasks',
+  )
+  .defaultCommand('list')
+  .parseAsync();
 ```
 
 ```shell
-$ greet --name Alice --loud
-HELLO, ALICE!
+$ tasks add "Buy groceries" --verbose
+Adding task: Buy groceries
+Verbose mode enabled
+
+$ tasks list --all
+All tasks
 ```
 
-## Sync vs Async
+## API
 
-**`bargs()`** runs synchronously. If a handler returns a `Promise`, it will break and you will be sorry.
+### `bargs.create(name, options?)`
+
+Create a CLI builder.
+
+| Option        | Type                | Description                                 |
+| ------------- | ------------------- | ------------------------------------------- |
+| `description` | `string`            | Description shown in help                   |
+| `version`     | `string`            | Enables `--version` flag                    |
+| `epilog`      | `string` or `false` | Footer text in help (see [Epilog](#epilog)) |
+| `theme`       | `Theme`             | Help color theme (see [Theming](#theming))  |
+
+### `.globals(parser)`
+
+Set global options and transforms that apply to all commands.
 
 ```typescript
-// Sync - no await needed
-const result = bargs({
-  name: 'my-cli',
-  options: { verbose: bargs.boolean() },
-  handler: ({ values }) => {
-    console.log('Verbose:', values.verbose);
-  },
-});
+bargs.create('my-cli').globals(opt.options({ verbose: opt.boolean() }));
+// ...
 ```
 
-Instead, use **`bargsAsync()`**:
+### `.command(name, parser, handler, description?)`
+
+Register a command. The handler receives merged global + command types.
 
 ```typescript
-import { bargsAsync } from '@boneskull/bargs';
-
-// Async - handlers can return Promises
-const result = await bargsAsync({
-  name: 'my-cli',
-  options: { url: bargs.string({ required: true }) },
-  handler: async ({ values }) => {
-    const response = await fetch(values.url);
-    console.log(await response.text());
+.command(
+  'build',
+  opt.options({ watch: opt.boolean() }),
+  ({ values }) => {
+    // values has both global options AND { watch: boolean }
+    console.log(values.verbose, values.watch);
   },
-});
+  'Build the project',
+)
 ```
 
-## Commands
+### `.defaultCommand(name)` or `.defaultCommand(parser, handler)`
 
-Define subcommands with `bargs.command()`:
+Set the command that runs when no command is specified.
 
 ```typescript
-bargs({
-  name: 'db',
-  commands: {
-    migrate: bargs.command({
-      description: 'Run database migrations',
-      options: { dry: bargs.boolean({ aliases: ['n'] }) },
-      handler: ({ values }) => {
-        console.log(values.dry ? 'Dry run...' : 'Migrating...');
-      },
-    }),
-    seed: bargs.command({
-      description: 'Seed the database',
-      positionals: [bargs.stringPos({ required: true })],
-      handler: ({ positionals }) => {
-        const [file] = positionals;
-        console.log(`Seeding from ${file}...`);
-      },
-    }),
-  },
-});
+// Reference an existing command by name
+.defaultCommand('list')
+
+// Or define an inline default
+.defaultCommand(
+  pos.positionals(pos.string({ name: 'file' })),
+  ({ positionals }) => console.log(positionals[0]),
+)
 ```
 
-```shell
-$ db migrate --dry
-Dry run...
+### `.parse(args?)` / `.parseAsync(args?)`
 
-$ db seed data.sql
-Seeding from data.sql...
-```
+Parse arguments and execute handlers.
 
-### Default Handler
-
-For command-based CLIs, use `defaultHandler` to handle the case when no command is provided:
+- **`.parse()`** - Synchronous. Throws if any transform or handler returns a Promise.
+- **`.parseAsync()`** - Asynchronous. Supports async transforms and handlers.
 
 ```typescript
-bargs({
-  name: 'git',
-  commands: {
-    /* ... */
-  },
-  // Run 'status' when no command given
-  defaultHandler: 'status',
-});
+// Async (supports async transforms/handlers)
+const result = await bargs.create('my-cli').globals(...).parseAsync();
+console.log(result.values, result.positionals, result.command);
 
-// Or provide a custom handler
-bargs({
-  name: 'git',
-  commands: {
-    /* ... */
-  },
-  defaultHandler: ({ values }) => {
-    console.log('Run "git --help" for usage');
-  },
-});
-```
-
-## Transforms
-
-Transforms let you modify parsed values and positionals before they reach your handler. This is useful for:
-
-- Loading and merging configuration files
-- Adding computed/derived values
-- Validating or normalizing inputs
-- Async operations like file system checks
-
-```typescript
-const result = await bargsAsync({
-  name: 'my-cli',
-  options: {
-    config: bargsAsync.string({ aliases: ['c'] }),
-    verbose: bargsAsync.boolean({ default: false }),
-  },
-  positionals: [bargsAsync.variadic('string', { name: 'files' })],
-  transforms: {
-    // Transform option values
-    values: (values) => {
-      // Load config file if specified
-      const fileConfig = values.config
-        ? JSON.parse(readFileSync(values.config, 'utf8'))
-        : {};
-
-      return {
-        ...fileConfig,
-        ...values,
-        // Add computed values
-        timestamp: new Date().toISOString(),
-      };
-    },
-    // Transform positionals
-    positionals: (positionals) => {
-      const [files] = positionals;
-      // Filter to only existing files
-      return [files.filter((f) => existsSync(f))];
-    },
-  },
-  handler: ({ values, positionals }) => {
-    // values.timestamp is available here
-    // positionals contains only valid files
-  },
-});
-```
-
-### Transform Properties
-
-Transforms are akin to yargs' "middleware". They execute after parsing but before the handler (if present). Transforms should also be used in place of yargs' "coerce" option.
-
-| Property      | Type                                      | Description                       |
-| ------------- | ----------------------------------------- | --------------------------------- |
-| `values`      | `(values) => TransformedValues`           | Transform parsed option values    |
-| `positionals` | `(positionals) => TransformedPositionals` | Transform parsed positional tuple |
-
-Both transforms can be sync or async. The return type of each transform becomes the type available in your handler.
-
-### Type Inference
-
-Transforms are fully type-safe. TypeScript infers the transformed types:
-
-```typescript
-bargs({
-  name: 'example',
-  options: { count: bargs.number() },
-  transforms: {
-    values: (values) => ({
-      ...values,
-      doubled: (values.count ?? 0) * 2, // Add computed property
-    }),
-  },
-  handler: ({ values }) => {
-    console.log(values.doubled); // number - fully typed!
-  },
-});
-```
-
-## Configuration
-
-### Config Properties
-
-| Property      | Type                  | Description                                                  |
-| ------------- | --------------------- | ------------------------------------------------------------ |
-| `name`        | `string`              | CLI name (required)                                          |
-| `description` | `string`              | Description shown in help                                    |
-| `version`     | `string`              | Enables `--version` flag                                     |
-| `options`     | `OptionsSchema`       | Named options (`--flag`)                                     |
-| `positionals` | `PositionalsSchema`   | Positional arguments                                         |
-| `commands`    | `Record<string, ...>` | Subcommands                                                  |
-| `transforms`  | `TransformsConfig`    | Transform values/positionals (see [Transforms](#transforms)) |
-| `handler`     | `Handler`             | Handler function for simple CLIs                             |
-| `epilog`      | `string \| false`     | Footer text in help (see [Epilog](#epilog))                  |
-| `args`        | `string[]`            | Custom args (defaults to `process.argv.slice(2)`)            |
-
-```typescript
-bargs({
-  name: 'my-cli',
-  description: 'Does amazing things',
-  version: '1.2.3', // enables --version
-  args: ['--verbose', 'file.txt'], // useful for testing
-  options: {
-    /* ... */
-  },
-});
-```
-
-### Runtime Options
-
-The second argument to `bargs()` or `bargsAsync()` accepts runtime options:
-
-| Property | Type         | Description                                    |
-| -------- | ------------ | ---------------------------------------------- |
-| `theme`  | `ThemeInput` | `--help` Color theme (see [Theming](#theming)) |
-
-```typescript
-bargs(config, { theme: 'ocean' });
+// Sync (no async transforms/handlers)
+const result = bargs.create('my-cli').globals(...).parse();
 ```
 
 ## Option Helpers
 
 ```typescript
-bargs.string({ default: 'value' }); // --name value
-bargs.number({ default: 42 }); // --count 42
-bargs.boolean({ aliases: ['v'] }); // --verbose, -v
-bargs.enum(['a', 'b', 'c']); // --level a
-bargs.array('string'); // --file x --file y
-bargs.count(); // -vvv → 3
+import { opt } from '@boneskull/bargs';
+
+opt.string({ default: 'value' }); // --name value
+opt.number({ default: 42 }); // --count 42
+opt.boolean({ aliases: ['v'] }); // --verbose, -v
+opt.enum(['a', 'b', 'c']); // --level a
+opt.array('string'); // --file x --file y
+opt.count(); // -vvv → 3
 ```
 
 ### Option Properties
-
-All option helpers accept these properties:
 
 | Property      | Type       | Description                                      |
 | ------------- | ---------- | ------------------------------------------------ |
@@ -330,27 +269,27 @@ All option helpers accept these properties:
 | `hidden`      | `boolean`  | Hide from `--help` output                        |
 | `required`    | `boolean`  | Mark as required (makes the option non-nullable) |
 
-Example:
+### `opt.options(schema)`
+
+Create a parser from an options schema:
 
 ```typescript
-bargs.string({
-  aliases: ['o'],
-  default: 'output.txt',
-  description: 'Output file path',
-  group: 'Output Options',
+const parser = opt.options({
+  verbose: opt.boolean({ aliases: ['v'] }),
+  output: opt.string({ default: 'out.txt' }),
 });
-
-// Hidden options won't appear in help
-bargs.boolean({ hidden: true });
+// Type: Parser<{ verbose: boolean | undefined, output: string }, []>
 ```
 
 ## Positional Helpers
 
 ```typescript
-bargs.stringPos({ required: true }); // <file>
-bargs.numberPos({ default: 8080 }); // [port]
-bargs.enumPos(['dev', 'prod']); // [env]
-bargs.variadic('string'); // [files...]
+import { pos } from '@boneskull/bargs';
+
+pos.string({ required: true }); // <file>
+pos.number({ default: 8080 }); // [port]
+pos.enum(['dev', 'prod']); // [env]
+pos.variadic('string'); // [files...]
 ```
 
 ### Positional Properties
@@ -362,41 +301,103 @@ bargs.variadic('string'); // [files...]
 | `name`        | `string`  | Display name in help (defaults to `arg0`, `arg1`, ...) |
 | `required`    | `boolean` | Mark as required (shown as `<name>` vs `[name]`)       |
 
-Example:
+### `pos.positionals(...defs)`
+
+Create a parser from positional definitions:
 
 ```typescript
-bargs.stringPos({
-  name: 'file',
-  description: 'Input file to process',
-  required: true,
-});
-```
-
-Positionals are defined as an array and accessed by index:
-
-```typescript
-const result = bargs({
-  name: 'cp',
-  positionals: [
-    bargs.stringPos({ required: true }), // source
-    bargs.stringPos({ required: true }), // destination
-  ],
-});
-
-const [source, dest] = result.positionals;
-console.log(`Copying ${source} to ${dest}`);
+const parser = pos.positionals(
+  pos.string({ name: 'source', required: true }),
+  pos.string({ name: 'dest', required: true }),
+);
+// Type: Parser<{}, [string, string]>
 ```
 
 Use `variadic` for rest arguments (must be last):
 
 ```typescript
-const result = bargs({
-  name: 'cat',
-  positionals: [bargs.variadic('string')],
+const parser = pos.positionals(pos.variadic('string', { name: 'files' }));
+// Type: Parser<{}, [string[]]>
+```
+
+## Merging Parsers
+
+Options and positionals parsers can be merged by calling one with the other:
+
+```typescript
+const options = opt.options({
+  priority: opt.enum(['low', 'medium', 'high'] as const, { default: 'medium' }),
 });
 
-const [files] = result.positionals; // string[]
-files.forEach((file) => console.log(readFileSync(file, 'utf8')));
+const positionals = pos.positionals(
+  pos.string({ name: 'task', required: true }),
+);
+
+// Merge: call positionals with options
+const combined = positionals(options);
+// Type: Parser<{ priority: 'low' | 'medium' | 'high' }, [string]>
+```
+
+This works in either direction—`options(positionals)` or `positionals(options)`.
+
+## Transforms
+
+Use `map()` to transform parsed values before they reach your handler:
+
+```typescript
+import { bargs, map, opt } from '@boneskull/bargs';
+
+const globals = map(
+  opt.options({
+    config: opt.string(),
+    verbose: opt.boolean({ default: false }),
+  }),
+  ({ values, positionals }) => ({
+    positionals,
+    values: {
+      ...values,
+      // Add computed properties
+      timestamp: new Date().toISOString(),
+      configLoaded: !!values.config,
+    },
+  }),
+);
+
+await bargs
+  .create('my-cli')
+  .globals(globals)
+  .command(
+    'info',
+    opt.options({}),
+    ({ values }) => {
+      // values.timestamp and values.configLoaded are available
+      console.log(values.timestamp);
+    },
+    'Show info',
+  )
+  .parseAsync();
+```
+
+Transforms are fully type-safe—the return type becomes the type available in handlers.
+
+### Async Transforms
+
+Transforms can be async:
+
+```typescript
+const globals = map(
+  opt.options({ url: opt.string({ required: true }) }),
+  async ({ values, positionals }) => {
+    const response = await fetch(values.url);
+    return {
+      positionals,
+      values: {
+        ...values,
+        data: await response.json(),
+      },
+    };
+  },
+);
 ```
 
 ## Epilog
@@ -405,16 +406,12 @@ By default, **bargs** displays your package's homepage and repository URLs (from
 
 ```typescript
 // Custom epilog
-bargs({
-  name: 'my-cli',
+bargs.create('my-cli', {
   epilog: 'For more info, visit https://example.com',
 });
 
 // Disable epilog entirely
-bargs({
-  name: 'my-cli',
-  epilog: false,
-});
+bargs.create('my-cli', { epilog: false });
 ```
 
 ## Theming
@@ -423,38 +420,23 @@ Customize help output colors with built-in themes or your own:
 
 ```typescript
 // Use a built-in theme: 'default', 'mono', 'ocean', 'warm'
-bargs(
-  {
-    name: 'my-cli',
-    options: { verbose: bargs.boolean() },
-  },
-  { theme: 'ocean' },
-);
+bargs.create('my-cli', { theme: 'ocean' });
 
 // Disable colors entirely
-bargs(config, { theme: 'mono' });
+bargs.create('my-cli', { theme: 'mono' });
 ```
 
-The `ansi` export provides common ANSI escape codes for styled terminal output: text styles (`bold`, `dim`, `italic`, `underline`, etc.), foreground colors, background colors, and their `bright*` variants. Use this to create your own themes (instead of hardcoding ANSI escape codes).
+The `ansi` export provides common ANSI escape codes for styled terminal output:
 
 ```typescript
 import { ansi } from '@boneskull/bargs';
 
-bargs(someConfig, {
+bargs.create('my-cli', {
   theme: {
     command: ansi.bold,
-    defaultText: ansi.dim,
-    defaultValue: ansi.white,
-    description: ansi.white,
-    epilog: ansi.dim,
-    example: ansi.white + ansi.dim,
     flag: ansi.brightCyan,
     positional: ansi.magenta,
-    scriptName: ansi.bold,
-    sectionHeader: ansi.brightMagenta,
-    type: ansi.magenta,
-    url: ansi.cyan,
-    usage: ansi.cyan,
+    // ...
   },
 });
 ```
@@ -495,7 +477,7 @@ import {
 } from '@boneskull/bargs';
 
 try {
-  bargs(config);
+  await bargs.create('my-cli').parseAsync();
 } catch (error) {
   if (error instanceof ValidationError) {
     // Config validation failed (e.g., invalid schema)
@@ -512,11 +494,12 @@ try {
 
 ### Programmatic Help
 
-Generate help text without calling `bargs()`:
+Generate help text programmatically:
 
 ```typescript
 import { generateHelp, generateCommandHelp } from '@boneskull/bargs';
 
+// These require the internal config structure—see source for details
 const helpText = generateHelp(config);
 const commandHelp = generateCommandHelp(config, 'migrate');
 ```
@@ -558,10 +541,16 @@ console.log(styler.flag('--verbose'));
 
 // Strip ANSI codes for plain text output
 const plain = stripAnsi('\x1b[32m--verbose\x1b[0m'); // '--verbose'
-
-// Override some colors in a built-in theme
-const customTheme = { ...themes.ocean, colors: { flag: ansi.green } };
 ```
+
+### Low-Level Utilities
+
+The `pipe()` and `handle()` functions are exported for advanced use cases, but they're rarely needed with the standard API:
+
+- **`pipe(a, b, c)`** - General function composition. Mostly superseded by direct parser merging (`positionals(options)`) and `map(parser, fn)`.
+- **`handle(parser, fn)`** - Creates a `Command` from a parser and handler. Mostly superseded by `.command(name, parser, handler)`.
+
+These exist for edge cases where you need to compose functions outside the fluent builder, but the main API covers most use cases with better type inference.
 
 ## Motivation
 

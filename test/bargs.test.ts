@@ -1,286 +1,406 @@
-// test/bargs.test.ts
+/**
+ * Tests for the main bargs API.
+ */
 import { expect, expectAsync } from 'bupkis';
 import { describe, it } from 'node:test';
 
-import type { Theme } from '../src/theme.js';
+import type { StringOption } from '../src/types.js';
 
-import { bargs, bargsAsync } from '../src/bargs.js';
-import { BargsError } from '../src/errors.js';
-import { opt } from '../src/opt.js';
+import { bargs, handle, map, pipe } from '../src/bargs.js';
+import { opt, pos } from '../src/opt.js';
 
-describe('bargs (sync)', () => {
-  it('parses simple CLI and returns result', () => {
-    const result = bargs({
-      args: ['--name', 'Alice'],
-      name: 'test-cli',
-      options: {
+describe('bargs.create()', () => {
+  it('creates a CLI builder', () => {
+    const cli = bargs.create('test-cli');
+
+    expect(cli.globals, 'to be a', 'function');
+    expect(cli.command, 'to be a', 'function');
+    expect(cli.defaultCommand, 'to be a', 'function');
+    expect(cli.parse, 'to be a', 'function');
+    expect(cli.parseAsync, 'to be a', 'function');
+  });
+
+  it('accepts name and options', () => {
+    const cli = bargs.create('test-cli', {
+      description: 'A test CLI',
+      version: '1.0.0',
+    });
+
+    expect(cli, 'to be defined');
+  });
+});
+
+describe('.globals()', () => {
+  it('accepts a parser for global options', () => {
+    const cli = bargs
+      .create('test-cli')
+      .globals(opt.options({ verbose: opt.boolean() }));
+
+    expect(cli.command, 'to be a', 'function');
+  });
+
+  it('returns a new builder (immutable)', () => {
+    const cli1 = bargs.create('test-cli');
+    const cli2 = cli1.globals(opt.options({ verbose: opt.boolean() }));
+
+    // Should be different objects
+    expect(cli1, 'not to be', cli2);
+  });
+});
+
+describe('.command()', () => {
+  it('registers a command', () => {
+    const cli = bargs.create('test-cli').command(
+      'greet',
+      pipe(
+        opt.options({ name: opt.string({ default: 'world' }) }),
+        handle(() => {}),
+      ),
+    );
+
+    expect(cli, 'to be defined');
+  });
+
+  it('accepts description as third argument', () => {
+    const cli = bargs.create('test-cli').command(
+      'greet',
+      pipe(
+        opt.options({}),
+        handle(() => {}),
+      ),
+      'Greet someone',
+    );
+
+    expect(cli, 'to be defined');
+  });
+
+  it('is chainable', () => {
+    const cli = bargs
+      .create('test-cli')
+      .command(
+        'cmd1',
+        handle(opt.options({}), () => {}),
+      )
+      .command(
+        'cmd2',
+        handle(opt.options({}), () => {}),
+      );
+
+    expect(cli, 'to be defined');
+  });
+});
+
+describe('.defaultCommand()', () => {
+  it('sets the default command', () => {
+    const cli = bargs
+      .create('test-cli')
+      .command(
+        'greet',
+        handle(opt.options({}), () => {}),
+      )
+      .defaultCommand('greet');
+
+    expect(cli, 'to be defined');
+  });
+});
+
+describe('.parseAsync()', () => {
+  it('parses arguments with global options', async () => {
+    const cli = bargs.create('test-cli').globals(
+      opt.options({
         name: opt.string({ default: 'world' }),
-      },
-    });
-
-    expect(result.values, 'to deeply equal', { name: 'Alice' });
-  });
-
-  it('parses command-based CLI', () => {
-    let handlerResult: { command: string; values: { name: string } };
-
-    bargs({
-      args: ['greet', '--name', 'Charlie'],
-      commands: {
-        greet: opt.command({
-          description: 'Greet someone',
-          handler: (result) => {
-            handlerResult = result;
-          },
-          options: {
-            name: opt.string({ default: 'world' }),
-          },
-        }),
-      },
-      name: 'test-cli',
-    });
-
-    expect(handlerResult!, 'to satisfy', {
-      command: 'greet',
-      values: {
-        name: 'Charlie',
-      },
-    });
-  });
-
-  it('returns result with command undefined for simple CLI', () => {
-    const result = bargs({
-      args: [],
-      name: 'test-cli',
-      options: {
-        verbose: opt.boolean(),
-      },
-    });
-
-    expect(result.command, 'to be', undefined);
-  });
-
-  it('applies defaults when no args provided', () => {
-    const result = bargs({
-      args: [],
-      name: 'test-cli',
-      options: {
-        count: opt.number({ default: 42 }),
-        name: opt.string({ default: 'default-name' }),
-      },
-    });
-
-    expect(result.values, 'to deeply equal', {
-      count: 42,
-      name: 'default-name',
-    });
-  });
-
-  it('parses positionals for simple CLI', () => {
-    const result = bargs({
-      args: ['hello'],
-      name: 'test-cli',
-      positionals: [opt.stringPos({ required: true })],
-    });
-
-    expect(result.positionals, 'to deeply equal', ['hello']);
-  });
-
-  it('throws when command sync handler returns a thenable', () => {
-    expect(
-      () => {
-        bargs({
-          args: ['greet'],
-          commands: {
-            greet: opt.command({
-              description: 'Greet',
-              handler: async () => {
-                // Async handler
-              },
-            }),
-          },
-          name: 'test-cli',
-        });
-      },
-      'to throw a',
-      BargsError,
-      'satisfying',
-      { message: /thenable/ },
+        verbose: opt.boolean({ default: false }),
+      }),
     );
-  });
 
-  it('allows user to override --help with custom option', () => {
-    const result = bargs({
-      args: ['--help'],
-      name: 'test-cli',
-      options: {
-        help: opt.boolean({ description: 'My custom help' }),
-      },
-    });
+    const result = await cli.parseAsync(['--verbose', '--name', 'Alice']);
 
-    // Should parse --help as a regular boolean option, not trigger built-in help
-    expect(result.values.help, 'to be', true);
-  });
-
-  it('allows user to override -h alias with custom option', () => {
-    const result = bargs({
-      args: ['-h'],
-      name: 'test-cli',
-      options: {
-        verbose: opt.boolean({ aliases: ['h'] }), // Using 'h' for verbose
-      },
-    });
-
-    // Should parse -h as verbose, not trigger built-in help
     expect(result.values.verbose, 'to be', true);
+    expect(result.values.name, 'to be', 'Alice');
   });
 
-  it('allows user to override --version with custom option', () => {
-    const result = bargs({
-      args: ['--version'],
-      name: 'test-cli',
-      options: {
-        version: opt.boolean({ description: 'My custom version flag' }),
-      },
-    });
-
-    // Should parse --version as a regular boolean option
-    expect(result.values.version, 'to be', true);
-  });
-});
-
-describe('bargsAsync', () => {
-  it('parses simple CLI and returns result', async () => {
-    await expectAsync(
-      bargsAsync({
-        args: ['--name', 'Alice'],
-        name: 'test-cli',
-        options: {
-          name: opt.string({ default: 'world' }),
-        },
+  it('applies defaults when no args provided', async () => {
+    const cli = bargs.create('test-cli').globals(
+      opt.options({
+        name: opt.string({ default: 'world' }),
+        verbose: opt.boolean({ default: false }),
       }),
-      'to resolve with value satisfying',
-      { values: { name: 'Alice' } },
     );
-  });
-});
 
-describe('bargs with options (second parameter)', () => {
-  it('accepts theme by name in options', () => {
-    const result = bargs(
-      {
-        args: ['--foo', 'bar'],
-        name: 'test',
-        options: { foo: { type: 'string' } },
-      },
-      { theme: 'mono' },
-    );
-    expect(result.values.foo, 'to be', 'bar');
+    const result = await cli.parseAsync([]);
+
+    expect(result.values.verbose, 'to be', false);
+    expect(result.values.name, 'to be', 'world');
   });
 
-  it('accepts custom theme object in options', () => {
-    const customTheme: Theme = {
-      colors: {
-        command: '',
-        defaultValue: '',
-        description: '',
-        example: '',
-        flag: '',
-        positional: '',
-        scriptName: '\x1b[35m',
-        sectionHeader: '',
-        type: '',
-        usage: '',
-      },
-    };
-    const result = bargs(
-      {
-        args: ['--foo', 'bar'],
-        name: 'test',
-        options: { foo: { type: 'string' } },
-      },
-      { theme: customTheme },
+  it('runs command handler', async () => {
+    let handlerCalled = false;
+    let handlerResult: unknown;
+
+    const cli = bargs.create('test-cli').command(
+      'greet',
+      pipe(
+        opt.options({ name: opt.string({ default: 'world' }) }),
+        handle(({ values }) => {
+          handlerCalled = true;
+          handlerResult = values;
+        }),
+      ),
+      'Greet someone',
     );
-    expect(result.values.foo, 'to be', 'bar');
+
+    await cli.parseAsync(['greet', '--name', 'Alice']);
+
+    expect(handlerCalled, 'to be', true);
+    expect(handlerResult, 'to satisfy', { name: 'Alice' });
   });
 
-  it('works without options parameter', () => {
-    const result = bargs({
-      args: ['--foo', 'bar'],
-      name: 'test',
-      options: { foo: { type: 'string' } },
+  it('merges global and command options', async () => {
+    let handlerResult: unknown;
+
+    const cli = bargs
+      .create('test-cli')
+      .globals(opt.options({ verbose: opt.boolean({ default: false }) }))
+      .command(
+        'greet',
+        pipe(
+          opt.options({ name: opt.string({ default: 'world' }) }),
+          handle(({ values }) => {
+            handlerResult = values;
+          }),
+        ),
+      );
+
+    await cli.parseAsync(['greet', '--verbose', '--name', 'Bob']);
+
+    expect(handlerResult, 'to satisfy', {
+      name: 'Bob',
+      verbose: true,
     });
-    expect(result.values.foo, 'to be', 'bar');
+  });
+
+  it('uses default command when no command specified', async () => {
+    let handlerCalled = false;
+
+    const cli = bargs
+      .create('test-cli')
+      .command(
+        'greet',
+        handle(opt.options({}), () => {
+          handlerCalled = true;
+        }),
+      )
+      .defaultCommand('greet');
+
+    await cli.parseAsync([]);
+
+    expect(handlerCalled, 'to be', true);
+  });
+
+  it('throws on unknown command', async () => {
+    const cli = bargs.create('test-cli').command(
+      'greet',
+      handle(opt.options({}), () => {}),
+    );
+
+    await expectAsync(
+      cli.parseAsync(['unknown']),
+      'to reject with error satisfying',
+      /Unknown command/,
+    );
+  });
+
+  it('returns parsed result with command name', async () => {
+    const cli = bargs.create('test-cli').command(
+      'greet',
+      pipe(
+        opt.options({ name: opt.string({ default: 'world' }) }),
+        handle(() => {}),
+      ),
+    );
+
+    const result = await cli.parseAsync(['greet', '--name', 'Test']);
+
+    expect(result.command, 'to be', 'greet');
+    expect(result.values, 'to satisfy', { name: 'Test' });
   });
 });
 
-describe('bargsAsync with options (second parameter)', () => {
-  it('accepts theme by name in options', async () => {
-    await expectAsync(
-      bargsAsync(
-        {
-          args: ['--foo', 'bar'],
-          name: 'test',
-          options: { foo: { type: 'string' } },
-        },
-        { theme: 'mono' },
-      ),
-      'to resolve with value satisfying',
-      {
-        values: {
-          foo: 'bar',
-        },
-      },
-    );
+describe('transforms via map()', () => {
+  it('applies global transforms', async () => {
+    let handlerResult: unknown;
+
+    const cli = bargs
+      .create('test-cli')
+      .globals(
+        pipe(
+          opt.options({ name: opt.string({ default: 'world' }) }),
+          map(({ values }) => ({
+            positionals: [] as const,
+            values: { ...values, greeting: `Hello, ${values.name}!` },
+          })),
+        ),
+      )
+      .command(
+        'greet',
+        handle(opt.options({}), ({ values }) => {
+          handlerResult = values;
+        }),
+      );
+
+    await cli.parseAsync(['greet', '--name', 'Alice']);
+
+    expect(handlerResult, 'to satisfy', {
+      greeting: 'Hello, Alice!',
+      name: 'Alice',
+    });
   });
 
-  it('accepts custom theme object in options', async () => {
-    const customTheme: Theme = {
-      colors: {
-        command: '',
-        defaultValue: '',
-        description: '',
-        example: '',
-        flag: '',
-        positional: '',
-        scriptName: '\x1b[35m',
-        sectionHeader: '',
-        type: '',
-        usage: '',
-      },
+  it('applies async transforms', async () => {
+    let handlerResult: unknown;
+
+    // Note: For async transforms, we work around the type system limitations
+    // by defining the transform separately with explicit typing
+    const asyncTransform = (
+      parser: ReturnType<
+        typeof opt.options<{ name: StringOption & { default: string } }>
+      >,
+    ) => {
+      const transform = async (result: {
+        positionals: readonly [];
+        values: { name: string };
+      }) => {
+        // Simulate async operation
+        await new Promise((resolve) => setTimeout(resolve, 1));
+        return {
+          positionals: result.positionals,
+          values: { ...result.values, timestamp: Date.now() },
+        };
+      };
+      return { ...parser, __brand: 'Parser' as const, __transform: transform };
     };
 
-    await expectAsync(
-      bargsAsync(
-        {
-          args: ['--foo', 'bar'],
-          name: 'test',
-          options: { foo: { type: 'string' } },
-        },
-        { theme: customTheme },
-      ),
-      'to resolve with value satisfying',
-      {
-        values: {
-          foo: 'bar',
-        },
-      },
+    const cli = bargs
+      .create('test-cli')
+      .globals(
+        asyncTransform(
+          opt.options({ name: opt.string({ default: 'world' }) }),
+        ) as unknown as ReturnType<typeof opt.options>,
+      )
+      .command(
+        'greet',
+        handle(opt.options({}), ({ values }) => {
+          handlerResult = values;
+        }),
+      );
+
+    await cli.parseAsync(['greet']);
+
+    expect(handlerResult, 'to satisfy', {
+      name: 'world',
+      timestamp: expect.it('to be a', 'number'),
+    });
+  });
+});
+
+describe('.parse() (sync)', () => {
+  it('parses synchronously when no async transforms/handlers', () => {
+    const cli = bargs.create('test-cli').globals(
+      opt.options({
+        name: opt.string({ default: 'world' }),
+      }),
     );
+
+    const result = cli.parse(['--name', 'Alice']);
+
+    expect(result.values.name, 'to be', 'Alice');
   });
 
-  it('works without options parameter', async () => {
-    await expectAsync(
-      bargsAsync({
-        args: ['--foo', 'bar'],
-        name: 'test',
-        options: { foo: { type: 'string' } },
-      }),
-      'to resolve with value satisfying',
-      {
-        values: {
-          foo: 'bar',
-        },
+  it('throws on async transform', () => {
+    const asyncParser = map(
+      opt.options({ name: opt.string({ default: 'world' }) }),
+      async ({ values }) => {
+        await Promise.resolve();
+        return { positionals: [] as const, values };
       },
     );
+
+    const cli = bargs.create('test-cli').globals(asyncParser);
+
+    expect(() => cli.parse([]), 'to throw', /Async.*transform.*Use parseAsync/);
+  });
+
+  it('throws on async handler', () => {
+    const cli = bargs.create('test-cli').command(
+      'greet',
+      handle(opt.options({}), async () => {
+        await Promise.resolve();
+      }),
+    );
+
+    expect(
+      () => cli.parse(['greet']),
+      'to throw',
+      /Async.*handler.*Use parseAsync/,
+    );
+  });
+});
+
+describe('positionals', () => {
+  it('parses positional arguments', async () => {
+    let handlerResult: unknown;
+
+    const cli = bargs.create('test-cli').command(
+      'echo',
+      pipe(
+        pos.positionals(pos.string({ name: 'message', required: true })),
+        handle(({ positionals }) => {
+          handlerResult = positionals;
+        }),
+      ),
+    );
+
+    await cli.parseAsync(['echo', 'Hello, world!']);
+
+    expect(handlerResult, 'to satisfy', ['Hello, world!']);
+  });
+
+  it('handles multiple positionals', async () => {
+    let handlerResult: unknown;
+
+    const cli = bargs.create('test-cli').command(
+      'copy',
+      pipe(
+        pos.positionals(
+          pos.string({ name: 'source', required: true }),
+          pos.string({ name: 'dest', required: true }),
+        ),
+        handle(({ positionals }) => {
+          handlerResult = positionals;
+        }),
+      ),
+    );
+
+    await cli.parseAsync(['copy', 'src.txt', 'dst.txt']);
+
+    expect(handlerResult, 'to satisfy', ['src.txt', 'dst.txt']);
+  });
+
+  it('handles variadic positionals', async () => {
+    let handlerResult: unknown;
+
+    const cli = bargs.create('test-cli').command(
+      'concat',
+      pipe(
+        pos.positionals(pos.variadic('string', { name: 'files' })),
+        handle(({ positionals }) => {
+          handlerResult = positionals;
+        }),
+      ),
+    );
+
+    await cli.parseAsync(['concat', 'a.txt', 'b.txt', 'c.txt']);
+
+    expect(handlerResult, 'to satisfy', [['a.txt', 'b.txt', 'c.txt']]);
   });
 });

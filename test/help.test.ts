@@ -1,4 +1,6 @@
-// test/help.test.ts
+/**
+ * Tests for help text generation.
+ */
 import { expect } from 'bupkis';
 import { describe, it } from 'node:test';
 
@@ -99,14 +101,8 @@ describe('generateHelp', () => {
     const help = stripAnsi(
       generateHelp({
         commands: {
-          build: opt.command({
-            description: 'Build the thing',
-            handler: () => {},
-          }),
-          run: opt.command({
-            description: 'Run the thing',
-            handler: () => {},
-          }),
+          build: { description: 'Build the thing' },
+          run: { description: 'Run the thing' },
         },
         name: 'my-cli',
       }),
@@ -195,13 +191,12 @@ describe('generateCommandHelp', () => {
       generateCommandHelp(
         {
           commands: {
-            greet: opt.command({
+            greet: {
               description: 'Greet someone',
-              handler: () => {},
               options: {
                 name: opt.string({ description: 'Name to greet' }),
               },
-            }),
+            },
           },
           name: 'my-cli',
           options: {
@@ -223,10 +218,7 @@ describe('generateCommandHelp', () => {
     const help = generateCommandHelp(
       {
         commands: {
-          greet: opt.command({
-            description: 'Greet someone',
-            handler: () => {},
-          }),
+          greet: { description: 'Greet someone' },
         },
         name: 'my-cli',
       },
@@ -241,14 +233,13 @@ describe('generateCommandHelp', () => {
       generateCommandHelp(
         {
           commands: {
-            copy: opt.command({
+            copy: {
               description: 'Copy files',
-              handler: () => {},
               positionals: [
                 opt.stringPos({ name: 'source', required: true }),
                 opt.stringPos({ name: 'dest', required: true }),
               ],
-            }),
+            },
           },
           name: 'my-cli',
         },
@@ -463,10 +454,7 @@ describe('generateCommandHelp epilog', () => {
       generateCommandHelp(
         {
           commands: {
-            greet: opt.command({
-              description: 'Greet someone',
-              handler: () => {},
-            }),
+            greet: { description: 'Greet someone' },
           },
           epilog: 'Run with --verbose for more info',
           name: 'my-cli',
@@ -483,10 +471,7 @@ describe('generateCommandHelp epilog', () => {
       generateCommandHelp(
         {
           commands: {
-            greet: opt.command({
-              description: 'Greet someone',
-              handler: () => {},
-            }),
+            greet: { description: 'Greet someone' },
           },
           epilog: false,
           name: 'my-cli',

@@ -1,348 +1,757 @@
 /**
- * Core bargs parsing functions for both sync and async CLI execution.
+ * Core bargs API using parser combinator pattern.
  *
- * Provides `bargs()` (synchronous) and `bargsAsync()` (asynchronous) entry
- * points that handle configuration validation, built-in `--help` and
- * `--version` flags, argument parsing, and handler invocation. Supports both
- * simple CLIs with options/positionals and command-based CLIs with
- * subcommands.
+ * Provides `bargs.create()` for building CLIs with a fluent API, plus
+ * combinator functions like `pipe()`, `map()`, and `handle()`.
  *
  * @packageDocumentation
  */
 
 import type {
-  AnyCommandConfigInput,
-  BargsConfig,
-  BargsConfigWithCommands,
-  BargsOptions,
-  BargsResult,
-  CommandConfigInput,
-  InferOptions,
-  InferPositionals,
-  InferTransformedPositionals,
-  InferTransformedValues,
-  OptionsSchema,
-  PositionalsSchema,
-  TransformsConfig,
+  CliBuilder,
+  Command,
+  CreateOptions,
+  HandlerFn,
+  Parser,
+  ParseResult,
 } from './types.js';
 
-import { HelpError } from './errors.js';
+import { BargsError, HelpError } from './errors.js';
 import { generateCommandHelp, generateHelp } from './help.js';
-import {
-  parseCommandsAsync,
-  parseCommandsSync,
-  parseSimple,
-  runSyncTransforms,
-  runTransforms,
-} from './parser.js';
+import { parseSimple } from './parser.js';
 import { defaultTheme, getTheme, type Theme } from './theme.js';
-import { validateConfig } from './validate.js';
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PIPE COMBINATOR
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Type for commands that may have transforms
+type CommandWithTransform<V, P extends readonly unknown[]> = Command<V, P> & {
+  __transform?: (
+    r: ParseResult<unknown, readonly unknown[]>,
+  ) => ParseResult<V, P>;
+};
+interface InternalCliState {
+  commands: Map<
+    string,
+    { cmd: Command<unknown, readonly unknown[]>; description?: string }
+  >;
+  defaultCommandName?: string;
+  globalParser?: Parser<unknown, readonly unknown[]>;
+  name: string;
+  options: CreateOptions;
+  theme: Theme;
+}
+// Type for parsers that may have transforms
+type ParserWithTransform<V, P extends readonly unknown[]> = Parser<V, P> & {
+  __transform?: (
+    r: ParseResult<unknown, readonly unknown[]>,
+  ) => ParseResult<V, P>;
+};
+/**
+ * Transform fn type - can be sync or async.
+ */
+type TransformFn<
+  V1,
+  P1 extends readonly unknown[],
+  V2,
+  P2 extends readonly unknown[],
+> = (
+  result: ParseResult<V1, P1>,
+) => ParseResult<V2, P2> | Promise<ParseResult<V2, P2>>;
+/**
+ * Create a command with a handler (terminal in the pipeline).
+ */
+export function handle<V, P extends readonly unknown[]>(
+  fn: HandlerFn<V, P>,
+): (parser: Parser<V, P>) => Command<V, P>;
+export function handle<V, P extends readonly unknown[]>(
+  parser: Parser<V, P>,
+  fn: HandlerFn<V, P>,
+): Command<V, P>;
+export function handle<V, P extends readonly unknown[]>(
+  parserOrFn: HandlerFn<V, P> | Parser<V, P>,
+  maybeFn?: HandlerFn<V, P>,
+): ((parser: Parser<V, P>) => Command<V, P>) | Command<V, P> {
+  // Direct form: handle(parser, fn) returns Command
+  // Check for Parser first since CallableParser is also a function
+  if (isParser(parserOrFn)) {
+    const parser = parserOrFn;
+    const parserWithTransform = parser as ParserWithTransform<V, P>;
+    const fn = maybeFn!;
+    const cmd: CommandWithTransform<V, P> = {
+      __brand: 'Command',
+      __optionsSchema: parser.__optionsSchema,
+      __positionalsSchema: parser.__positionalsSchema,
+      handler: fn,
+    };
+    // Preserve transforms from the parser
+    if (parserWithTransform.__transform) {
+      cmd.__transform = parserWithTransform.__transform;
+    }
+    return cmd;
+  }
+
+  // Curried form: handle(fn) returns (parser) => Command
+  const fn = parserOrFn;
+  return (parser: Parser<V, P>): Command<V, P> => {
+    const parserWithTransform = parser as ParserWithTransform<V, P>;
+    const cmd: CommandWithTransform<V, P> = {
+      __brand: 'Command',
+      __optionsSchema: parser.__optionsSchema,
+      __positionalsSchema: parser.__positionalsSchema,
+      handler: fn,
+    };
+    // Preserve transforms from the parser
+    if (parserWithTransform.__transform) {
+      cmd.__transform = parserWithTransform.__transform;
+    }
+    return cmd;
+  };
+}
 
 /**
- * Check if config has commands.
+ * Transform parse result in the pipeline.
  */
-const hasCommands = (
-  config: BargsConfig<
-    OptionsSchema,
-    PositionalsSchema,
-    Record<string, CommandConfigInput> | undefined
-  >,
-): config is BargsConfigWithCommands<
-  OptionsSchema,
-  Record<string, CommandConfigInput>
-> => config.commands !== undefined && Object.keys(config.commands).length > 0;
+export function map<
+  V1,
+  P1 extends readonly unknown[],
+  V2,
+  P2 extends readonly unknown[],
+>(fn: TransformFn<V1, P1, V2, P2>): (parser: Parser<V1, P1>) => Parser<V2, P2>;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MAP COMBINATOR
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export function map<
+  V1,
+  P1 extends readonly unknown[],
+  V2,
+  P2 extends readonly unknown[],
+>(parser: Parser<V1, P1>, fn: TransformFn<V1, P1, V2, P2>): Parser<V2, P2>;
+
+export function map<
+  V1,
+  P1 extends readonly unknown[],
+  V2,
+  P2 extends readonly unknown[],
+>(
+  parserOrFn: Parser<V1, P1> | TransformFn<V1, P1, V2, P2>,
+  maybeFn?: TransformFn<V1, P1, V2, P2>,
+): ((parser: Parser<V1, P1>) => Parser<V2, P2>) | Parser<V2, P2> {
+  // Direct form: map(parser, fn) returns Parser
+  // Check for Parser first since CallableParser is also a function
+  if (isParser(parserOrFn)) {
+    const parser = parserOrFn;
+    const fn = maybeFn!;
+    return {
+      ...parser,
+      __brand: 'Parser',
+      __positionals: [] as unknown as P2,
+      __transform: fn,
+      __values: {} as V2,
+    } as Parser<V2, P2> & { __transform: typeof fn };
+  }
+
+  // Curried form: map(fn) returns (parser) => Parser
+  const fn = parserOrFn;
+  return (parser: Parser<V1, P1>): Parser<V2, P2> => {
+    return {
+      ...parser,
+      __brand: 'Parser',
+      __positionals: [] as unknown as P2,
+      __transform: fn,
+      __values: {} as V2,
+    } as Parser<V2, P2> & { __transform: typeof fn };
+  };
+}
+/**
+ * Compose functions left-to-right.
+ */
+export function pipe<A, B>(a: A, ab: (a: A) => B): B;
+export function pipe<A, B, C>(a: A, ab: (a: A) => B, bc: (b: B) => C): C;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// HANDLE COMBINATOR (TERMINAL)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export function pipe<A, B, C, D>(
+  a: A,
+  ab: (a: A) => B,
+  bc: (b: B) => C,
+  cd: (c: C) => D,
+): D;
+
+export function pipe<A, B, C, D, E>(
+  a: A,
+  ab: (a: A) => B,
+  bc: (b: B) => C,
+  cd: (c: C) => D,
+  de: (d: D) => E,
+): E;
+
+export function pipe<A, B, C, D, E, F>(
+  a: A,
+  ab: (a: A) => B,
+  bc: (b: B) => C,
+  cd: (c: C) => D,
+  de: (d: D) => E,
+  ef: (e: E) => F,
+): F;
+export function pipe<A, B, C, D, E, F, G>(
+  a: A,
+  ab: (a: A) => B,
+  bc: (b: B) => C,
+  cd: (c: C) => D,
+  de: (d: D) => E,
+  ef: (e: E) => F,
+  fg: (f: F) => G,
+): G;
+export function pipe(
+  initial: unknown,
+  ...fns: Array<(arg: unknown) => unknown>
+): unknown {
+  return fns.reduce((acc, fn) => fn(acc), initial);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CLI BUILDER
+// ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * Check if user defined their own help option (by name or alias).
+ * Create a new CLI.
+ *
+ * @example
+ *
+ * ```typescript
+ * const cli = bargs
+ *   .create('my-app', { version: '1.0.0' })
+ *   .globals(
+ *     pipe(
+ *       opt.options({ verbose: opt.boolean() }),
+ *       map(({ values }) => ({
+ *         values: { ...values, ts: Date.now() },
+ *         positionals: [] as const,
+ *       })),
+ *     ),
+ *   )
+ *   .command(
+ *     'greet',
+ *     pipe(
+ *       pos.positionals(pos.string({ name: 'name', required: true })),
+ *       handle(({ positionals }) =>
+ *         console.log(`Hello, ${positionals[0]}!`),
+ *       ),
+ *     ),
+ *   )
+ *   .run();
+ * ```
  */
-const hasUserDefinedHelp = (options?: OptionsSchema): boolean => {
-  if (!options) {
-    return false;
-  }
-  if ('help' in options) {
-    return true;
-  }
-  // Check if any option has 'h' as an alias
-  return Object.values(options).some((opt) => opt.aliases?.includes('h'));
+const create = (
+  name: string,
+  options: CreateOptions = {},
+): CliBuilder<Record<string, never>, readonly []> => {
+  const theme = options.theme ? getTheme(options.theme) : defaultTheme;
+
+  return createCliBuilder<Record<string, never>, readonly []>({
+    commands: new Map(),
+    name,
+    options,
+    theme,
+  });
 };
 
 /**
- * Check if user defined their own version option (by name or alias).
+ * Check if something is a Command (has __brand: 'Command').
  */
-const hasUserDefinedVersion = (options?: OptionsSchema): boolean => {
-  if (!options) {
+const isCommand = (x: unknown): x is Command<unknown, readonly unknown[]> => {
+  if (x === null || x === undefined) {
     return false;
   }
-  if ('version' in options) {
-    return true;
-  }
-  // Check if any option has 'V' as an alias
-  return Object.values(options).some((opt) => opt.aliases?.includes('V'));
+  const obj = x as Record<string, unknown>;
+  return '__brand' in obj && obj.__brand === 'Command';
 };
 
 /**
- * Handle help and version flags. Returns true if we should exit.
+ * Create a CLI builder.
  */
-const handleBuiltinFlags = (
-  config: BargsConfig<
-    OptionsSchema,
-    PositionalsSchema,
-    Record<string, CommandConfigInput> | undefined
-  >,
-  args: string[],
-  theme: Theme = defaultTheme,
-): boolean => {
-  // Handle --help (unless user defined their own help option)
-  const userDefinedHelp = hasUserDefinedHelp(config.options);
-  if (!userDefinedHelp && (args.includes('--help') || args.includes('-h'))) {
-    if (hasCommands(config)) {
-      // Check for command-specific help: cmd --help
-      const helpIndex = args.findIndex((a) => a === '--help' || a === '-h');
-      const commandIndex = args.findIndex((a) => !a.startsWith('-'));
+const createCliBuilder = <V, P extends readonly unknown[]>(
+  state: InternalCliState,
+): CliBuilder<V, P> => {
+  return {
+    // Overloaded command(): accepts either (name, Command, desc?) or (name, Parser, handler, desc?)
+    command<CV, CP extends readonly unknown[]>(
+      name: string,
+      cmdOrParser: Command<CV, CP> | Parser<CV, CP>,
+      handlerOrDesc?: HandlerFn<CV & V, CP> | string,
+      maybeDesc?: string,
+    ): CliBuilder<V, P> {
+      let cmd: Command<unknown, readonly unknown[]>;
+      let description: string | undefined;
 
-      if (commandIndex >= 0 && commandIndex < helpIndex) {
-        const commandName = args[commandIndex]!;
-        console.log(generateCommandHelp(config, commandName, theme));
+      if (isCommand(cmdOrParser)) {
+        // Form 1: command(name, Command, description?)
+        cmd = cmdOrParser;
+        description = handlerOrDesc as string | undefined;
+      } else if (isParser(cmdOrParser)) {
+        // Form 2: command(name, Parser, handler, description?)
+        const parser = cmdOrParser;
+        const handler = handlerOrDesc as HandlerFn<CV & V, CP>;
+        description = maybeDesc;
+
+        // Create Command from Parser + handler
+        const parserWithTransform = parser as ParserWithTransform<CV, CP>;
+        const newCmd: CommandWithTransform<CV & V, CP> = {
+          __brand: 'Command',
+          __optionsSchema: parser.__optionsSchema,
+          __positionalsSchema: parser.__positionalsSchema,
+          handler,
+        };
+        // Preserve transforms from the parser
+        if (parserWithTransform.__transform) {
+          newCmd.__transform = parserWithTransform.__transform as (
+            r: ParseResult<unknown, readonly unknown[]>,
+          ) => ParseResult<CV & V, CP>;
+        }
+        cmd = newCmd as Command<unknown, readonly unknown[]>;
       } else {
-        console.log(generateHelp(config, theme));
+        throw new Error(
+          'command() requires a Command or Parser as second argument',
+        );
       }
-    } else {
-      console.log(
-        generateHelp(
-          config as BargsConfig<OptionsSchema, PositionalsSchema, undefined>,
-          theme,
-        ),
-      );
-    }
-    process.exit(0);
-  }
 
-  // Handle --version (unless user defined their own version option)
-  const userDefinedVersion = hasUserDefinedVersion(config.options);
-  if (!userDefinedVersion && args.includes('--version') && config.version) {
-    console.log(config.version);
-    process.exit(0);
-  }
+      state.commands.set(name, { cmd, description });
+      return this;
+    },
 
-  return false;
+    // Overloaded defaultCommand(): accepts name, Command, or (Parser, handler)
+    defaultCommand<CV, CP extends readonly unknown[]>(
+      nameOrCmdOrParser: Command<CV, CP> | Parser<CV, CP> | string,
+      maybeHandler?: HandlerFn<CV & V, CP>,
+    ): CliBuilder<V, P> {
+      // Form 1: defaultCommand(name) - just set the name
+      if (typeof nameOrCmdOrParser === 'string') {
+        return createCliBuilder<V, P>({
+          ...state,
+          defaultCommandName: nameOrCmdOrParser,
+        });
+      }
+
+      // Generate a unique name for the default command
+      const defaultName = '__default__';
+
+      if (isCommand(nameOrCmdOrParser)) {
+        // Form 2: defaultCommand(Command)
+        state.commands.set(defaultName, {
+          cmd: nameOrCmdOrParser,
+          description: undefined,
+        });
+      } else if (isParser(nameOrCmdOrParser)) {
+        // Form 3: defaultCommand(Parser, handler)
+        const parser = nameOrCmdOrParser;
+        const handler = maybeHandler!;
+
+        const parserWithTransform = parser as ParserWithTransform<CV, CP>;
+        const newCmd: CommandWithTransform<CV & V, CP> = {
+          __brand: 'Command',
+          __optionsSchema: parser.__optionsSchema,
+          __positionalsSchema: parser.__positionalsSchema,
+          handler,
+        };
+        // Preserve transforms from the parser
+        if (parserWithTransform.__transform) {
+          newCmd.__transform = parserWithTransform.__transform as (
+            r: ParseResult<unknown, readonly unknown[]>,
+          ) => ParseResult<CV & V, CP>;
+        }
+        state.commands.set(defaultName, {
+          cmd: newCmd as Command<unknown, readonly unknown[]>,
+          description: undefined,
+        });
+      } else {
+        throw new Error('defaultCommand() requires a name, Command, or Parser');
+      }
+
+      return createCliBuilder<V, P>({
+        ...state,
+        defaultCommandName: defaultName,
+      });
+    },
+
+    globals<V2, P2 extends readonly unknown[]>(
+      parser: Parser<V2, P2>,
+    ): CliBuilder<V2, P2> {
+      return createCliBuilder<V2, P2>({
+        ...state,
+        globalParser: parser as Parser<unknown, readonly unknown[]>,
+      });
+    },
+
+    parse(
+      args: string[] = process.argv.slice(2),
+    ): ParseResult<V, P> & { command?: string } {
+      const result = parseCore(state, args, false);
+      if (result instanceof Promise) {
+        throw new BargsError(
+          'Async transform or handler detected. Use parseAsync() instead of parse().',
+        );
+      }
+      return result as ParseResult<V, P> & { command?: string };
+    },
+
+    async parseAsync(
+      args: string[] = process.argv.slice(2),
+    ): Promise<ParseResult<V, P> & { command?: string }> {
+      return parseCore(state, args, true) as Promise<
+        ParseResult<V, P> & { command?: string }
+      >;
+    },
+  };
 };
 
 /**
- * Handle HelpError by printing message and help text.
+ * Core parse logic shared between parse() and parseAsync().
  */
-const handleHelpError = (
-  error: unknown,
-  config: BargsConfig<
-    OptionsSchema,
-    PositionalsSchema,
-    Record<string, CommandConfigInput> | undefined
-  >,
-  theme: Theme = defaultTheme,
-): never => {
-  if (error instanceof HelpError) {
-    console.error(error.message);
-    if (hasCommands(config)) {
-      console.log(generateHelp(config, theme));
-    } else {
-      console.log(
-        generateHelp(
-          config as BargsConfig<OptionsSchema, PositionalsSchema, undefined>,
-          theme,
-        ),
-      );
+const parseCore = (
+  state: InternalCliState,
+  args: string[],
+  allowAsync: boolean,
+):
+  | (ParseResult<unknown, readonly unknown[]> & { command?: string })
+  | Promise<
+      ParseResult<unknown, readonly unknown[]> & { command?: string }
+    > => {
+  const { commands, options, theme } = state;
+
+  // Handle --help
+  if (args.includes('--help') || args.includes('-h')) {
+    // Check for command-specific help
+    const helpIndex = args.findIndex((a) => a === '--help' || a === '-h');
+    const commandIndex = args.findIndex((a) => !a.startsWith('-'));
+
+    if (commandIndex >= 0 && commandIndex < helpIndex && commands.size > 0) {
+      const commandName = args[commandIndex]!;
+      if (commands.has(commandName)) {
+        console.log(generateCommandHelpNew(state, commandName, theme));
+        process.exit(0);
+      }
     }
-    process.exit(1);
+
+    console.log(generateHelpNew(state, theme));
+    process.exit(0);
   }
-  throw error;
+
+  // Handle --version
+  if (args.includes('--version') && options.version) {
+    console.log(options.version);
+    process.exit(0);
+  }
+
+  // If we have commands, dispatch to the appropriate one
+  if (commands.size > 0) {
+    return runWithCommands(state, args, allowAsync);
+  }
+
+  // Simple CLI (no commands)
+  return runSimple(state, args, allowAsync);
 };
 
-// ─── Sync API ───────────────────────────────────────────────────────────────
-
 /**
- * Main bargs entry point for simple CLIs (no commands) - sync version. Throws
- * if any handler or transform returns a thenable.
+ * Generate command-specific help.
  */
-export function bargs<
-  const TOptions extends OptionsSchema,
-  const TPositionals extends PositionalsSchema,
-  const TTransforms extends TransformsConfig<any, any, any, any> | undefined =
-    undefined,
->(
-  config: BargsConfig<TOptions, TPositionals, undefined, TTransforms>,
-  options?: BargsOptions,
-): BargsResult<
-  InferTransformedValues<InferOptions<TOptions>, TTransforms>,
-  InferTransformedPositionals<InferPositionals<TPositionals>, TTransforms>,
-  undefined
->;
-
-/**
- * Main bargs entry point for command-based CLIs - sync version. Throws if any
- * handler returns a thenable.
- */
-export function bargs<
-  const TOptions extends OptionsSchema,
-  const TCommands extends Record<string, AnyCommandConfigInput>,
->(
-  config: BargsConfigWithCommands<TOptions, TCommands>,
-  options?: BargsOptions,
-): BargsResult<InferOptions<TOptions>, readonly unknown[], string | undefined>;
-
-/**
- * Main bargs entry point (sync implementation). Throws BargsError if any
- * handler returns a thenable.
- */
-export function bargs(
-  config: BargsConfig<
-    OptionsSchema,
-    PositionalsSchema,
-    Record<string, CommandConfigInput> | undefined
-  >,
-  options?: BargsOptions,
-): BargsResult<unknown, readonly unknown[], string | undefined> {
-  // Validate config upfront (throws ValidationError if invalid)
-  validateConfig(config);
-
-  const args = config.args ?? process.argv.slice(2);
-  const theme: Theme = options?.theme
-    ? getTheme(options.theme)
-    : getTheme('default');
-
-  try {
-    handleBuiltinFlags(config, args, theme);
-
-    // Parse
-    if (hasCommands(config)) {
-      return parseCommandsSync({ ...config, args });
-    } else {
-      const parsed = parseSimple({
-        args,
-        options: config.options,
-        positionals: config.positionals,
-      });
-
-      // Run transforms if present (type-erased in implementation)
-      const transforms = config.transforms as
-        | TransformsConfig<
-            unknown,
-            unknown,
-            readonly unknown[],
-            readonly unknown[]
-          >
-        | undefined;
-      const transformed = transforms
-        ? runSyncTransforms(transforms, parsed.values, parsed.positionals)
-        : { positionals: parsed.positionals, values: parsed.values };
-
-      const result = {
-        command: undefined,
-        positionals: transformed.positionals,
-        values: transformed.values,
-      } as BargsResult<unknown, readonly unknown[], undefined>;
-
-      return result;
-    }
-  } catch (error) {
-    return handleHelpError(error, config, theme);
+const generateCommandHelpNew = (
+  state: InternalCliState,
+  commandName: string,
+  theme: Theme,
+): string => {
+  const commandEntry = state.commands.get(commandName);
+  if (!commandEntry) {
+    return `Unknown command: ${commandName}`;
   }
-}
 
-// ─── Async API ──────────────────────────────────────────────────────────────
-
-/**
- * Main bargs entry point for simple CLIs (no commands) - async version.
- */
-export async function bargsAsync<
-  const TOptions extends OptionsSchema,
-  const TPositionals extends PositionalsSchema,
-  const TTransforms extends TransformsConfig<any, any, any, any> | undefined =
-    undefined,
->(
-  config: BargsConfig<TOptions, TPositionals, undefined, TTransforms>,
-  options?: BargsOptions,
-): Promise<
-  BargsResult<
-    InferTransformedValues<InferOptions<TOptions>, TTransforms>,
-    InferTransformedPositionals<InferPositionals<TPositionals>, TTransforms>,
-    undefined
-  >
->;
+  // TODO: Implement proper command help generation
+  const config = {
+    commands: {
+      [commandName]: {
+        description: commandEntry.description ?? '',
+        options: commandEntry.cmd.__optionsSchema,
+        positionals: commandEntry.cmd.__positionalsSchema,
+      },
+    },
+    name: state.name,
+  };
+  return generateCommandHelp(
+    config as Parameters<typeof generateCommandHelp>[0],
+    commandName,
+    theme,
+  );
+};
 
 /**
- * Main bargs entry point for command-based CLIs - async version.
+ * Generate help for the new CLI structure.
  */
-export async function bargsAsync<
-  const TOptions extends OptionsSchema,
-  const TCommands extends Record<string, AnyCommandConfigInput>,
-  const TTransforms extends TransformsConfig<any, any, any, any> | undefined =
-    undefined,
->(
-  config: BargsConfigWithCommands<TOptions, TCommands, TTransforms>,
-  options?: BargsOptions,
-): Promise<
-  BargsResult<
-    InferTransformedValues<InferOptions<TOptions>, TTransforms>,
-    readonly unknown[],
-    string | undefined
-  >
->;
+const generateHelpNew = (state: InternalCliState, theme: Theme): string => {
+  // TODO: Implement proper help generation for new structure
+  // For now, delegate to existing help generator with minimal config
+  const config = {
+    commands: Object.fromEntries(
+      Array.from(state.commands.entries()).map(([name, { description }]) => [
+        name,
+        { description: description ?? '' },
+      ]),
+    ),
+    description: state.options.description,
+    name: state.name,
+    options: state.globalParser?.__optionsSchema,
+    version: state.options.version,
+  };
+  return generateHelp(config as Parameters<typeof generateHelp>[0], theme);
+};
 
 /**
- * Main bargs entry point (async implementation). Awaits all handlers,
- * supporting async handlers.
+ * Check if something is a Parser (has __brand: 'Parser'). Parsers can be either
+ * objects or functions (CallableParser).
  */
-export async function bargsAsync(
-  config: BargsConfig<
-    OptionsSchema,
-    PositionalsSchema,
-    Record<string, CommandConfigInput> | undefined,
-    TransformsConfig<any, any, any, any> | undefined
-  >,
-  options?: BargsOptions,
-): Promise<BargsResult<unknown, readonly unknown[], string | undefined>> {
-  // Validate config upfront (throws ValidationError if invalid)
-  validateConfig(config);
-
-  const args = config.args ?? process.argv.slice(2);
-  const theme: Theme = options?.theme
-    ? getTheme(options.theme)
-    : getTheme('default');
-
-  try {
-    handleBuiltinFlags(config, args, theme);
-
-    // Parse
-    if (hasCommands(config)) {
-      return await parseCommandsAsync({ ...config, args });
-    } else {
-      const parsed = parseSimple({
-        args,
-        options: config.options,
-        positionals: config.positionals,
-      });
-
-      // Run transforms if present (type-erased in implementation)
-      const transforms = config.transforms as
-        | TransformsConfig<
-            unknown,
-            unknown,
-            readonly unknown[],
-            readonly unknown[]
-          >
-        | undefined;
-      const transformed = transforms
-        ? await runTransforms(transforms, parsed.values, parsed.positionals)
-        : { positionals: parsed.positionals, values: parsed.values };
-
-      const result = {
-        command: undefined,
-        positionals: transformed.positionals,
-        values: transformed.values,
-      } as BargsResult<unknown, readonly unknown[], undefined>;
-
-      return result;
-    }
-  } catch (error) {
-    return handleHelpError(error, config, theme);
+const isParser = (x: unknown): x is Parser<unknown, readonly unknown[]> => {
+  if (x === null || x === undefined) {
+    return false;
   }
-}
+  // Handle both plain objects and functions with Parser properties
+  const obj = x as Record<string, unknown>;
+  return '__brand' in obj && obj.__brand === 'Parser';
+};
+
+/**
+ * Run a simple CLI (no commands).
+ */
+const runSimple = (
+  state: InternalCliState,
+  args: string[],
+  allowAsync: boolean,
+):
+  | (ParseResult<unknown, readonly unknown[]> & { command?: string })
+  | Promise<
+      ParseResult<unknown, readonly unknown[]> & { command?: string }
+    > => {
+  const { globalParser } = state;
+
+  const optionsSchema = globalParser?.__optionsSchema ?? {};
+  const positionalsSchema = globalParser?.__positionalsSchema ?? [];
+
+  const parsed = parseSimple({
+    args,
+    options: optionsSchema,
+    positionals: positionalsSchema,
+  });
+
+  let result: ParseResult<unknown, readonly unknown[]> = {
+    positionals: parsed.positionals,
+    values: parsed.values,
+  };
+
+  // Apply transforms if any
+  const transform = (
+    globalParser as {
+      __transform?: (
+        r: ParseResult<unknown, readonly unknown[]>,
+      ) =>
+        | ParseResult<unknown, readonly unknown[]>
+        | Promise<ParseResult<unknown, readonly unknown[]>>;
+    }
+  )?.__transform;
+
+  if (transform) {
+    const transformed = transform(result);
+    if (transformed instanceof Promise) {
+      if (!allowAsync) {
+        throw new BargsError(
+          'Async transform detected. Use parseAsync() instead of parse().',
+        );
+      }
+      return transformed.then(
+        (
+          r,
+        ): ParseResult<unknown, readonly unknown[]> & { command?: string } => ({
+          ...r,
+          command: undefined,
+        }),
+      );
+    }
+    result = transformed;
+  }
+
+  return { ...result, command: undefined };
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PUBLIC API
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Run a CLI with commands.
+ */
+const runWithCommands = (
+  state: InternalCliState,
+  args: string[],
+  allowAsync: boolean,
+):
+  | (ParseResult<unknown, readonly unknown[]> & { command?: string })
+  | Promise<
+      ParseResult<unknown, readonly unknown[]> & { command?: string }
+    > => {
+  const { commands, defaultCommandName, globalParser } = state;
+
+  // Find command name (first non-flag argument)
+  const commandIndex = args.findIndex((arg) => !arg.startsWith('-'));
+  const potentialCommandName =
+    commandIndex >= 0 ? args[commandIndex] : undefined;
+
+  // Check if it's a known command
+  let commandName: string | undefined;
+  let remainingArgs: string[];
+
+  if (potentialCommandName && commands.has(potentialCommandName)) {
+    // It's a known command - remove it from args
+    commandName = potentialCommandName;
+    remainingArgs = [
+      ...args.slice(0, commandIndex),
+      ...args.slice(commandIndex + 1),
+    ];
+  } else if (defaultCommandName) {
+    // Not a known command, but we have a default - use all args as positionals/options
+    commandName = defaultCommandName;
+    remainingArgs = args;
+  } else if (potentialCommandName) {
+    // Not a known command and no default
+    throw new HelpError(`Unknown command: ${potentialCommandName}`);
+  } else {
+    // No command and no default
+    throw new HelpError('No command specified.');
+  }
+
+  const commandEntry = commands.get(commandName);
+  if (!commandEntry) {
+    throw new HelpError(`Unknown command: ${commandName}`);
+  }
+
+  const { cmd } = commandEntry;
+
+  // Merge global and command options schemas
+  const globalOptionsSchema = globalParser?.__optionsSchema ?? {};
+  const commandOptionsSchema = cmd.__optionsSchema;
+  const mergedOptionsSchema = {
+    ...globalOptionsSchema,
+    ...commandOptionsSchema,
+  };
+  const commandPositionalsSchema = cmd.__positionalsSchema;
+
+  // Parse with merged schema
+  const parsed = parseSimple({
+    args: remainingArgs,
+    options: mergedOptionsSchema,
+    positionals: commandPositionalsSchema,
+  });
+
+  let result: ParseResult<unknown, readonly unknown[]> = {
+    positionals: parsed.positionals,
+    values: parsed.values,
+  };
+
+  // Helper to check for async and throw if not allowed
+  const checkAsync = (value: unknown, context: string): void => {
+    if (value instanceof Promise && !allowAsync) {
+      throw new BargsError(
+        `Async ${context} detected. Use parseAsync() instead of parse().`,
+      );
+    }
+  };
+
+  // Get transforms
+  const globalTransform = (
+    globalParser as {
+      __transform?: (
+        r: ParseResult<unknown, readonly unknown[]>,
+      ) =>
+        | ParseResult<unknown, readonly unknown[]>
+        | Promise<ParseResult<unknown, readonly unknown[]>>;
+    }
+  )?.__transform;
+
+  const commandTransform = (
+    cmd as {
+      __transform?: (
+        r: ParseResult<unknown, readonly unknown[]>,
+      ) =>
+        | ParseResult<unknown, readonly unknown[]>
+        | Promise<ParseResult<unknown, readonly unknown[]>>;
+    }
+  )?.__transform;
+
+  // Apply transforms and run handler
+  const applyTransformsAndHandle = ():
+    | (ParseResult<unknown, readonly unknown[]> & { command?: string })
+    | Promise<
+        ParseResult<unknown, readonly unknown[]> & { command?: string }
+      > => {
+    // Apply global transforms first
+    if (globalTransform) {
+      const transformed = globalTransform(result);
+      checkAsync(transformed, 'global transform');
+      if (transformed instanceof Promise) {
+        return transformed.then(
+          (r: ParseResult<unknown, readonly unknown[]>) => {
+            result = r;
+            return continueWithCommandTransform();
+          },
+        );
+      }
+      result = transformed;
+    }
+    return continueWithCommandTransform();
+  };
+
+  const continueWithCommandTransform = ():
+    | (ParseResult<unknown, readonly unknown[]> & { command?: string })
+    | Promise<
+        ParseResult<unknown, readonly unknown[]> & { command?: string }
+      > => {
+    // Apply command transforms
+    if (commandTransform) {
+      const transformed = commandTransform(result);
+      checkAsync(transformed, 'command transform');
+      if (transformed instanceof Promise) {
+        return transformed.then(
+          (r: ParseResult<unknown, readonly unknown[]>) => {
+            result = r;
+            return runHandler();
+          },
+        );
+      }
+      result = transformed;
+    }
+    return runHandler();
+  };
+
+  const runHandler = ():
+    | (ParseResult<unknown, readonly unknown[]> & { command?: string })
+    | Promise<
+        ParseResult<unknown, readonly unknown[]> & { command?: string }
+      > => {
+    const handlerResult = cmd.handler(result);
+    checkAsync(handlerResult, 'handler');
+    if (handlerResult instanceof Promise) {
+      return handlerResult.then(() => ({ ...result, command: commandName }));
+    }
+    return { ...result, command: commandName };
+  };
+
+  return applyTransformsAndHandle();
+};
+
+/**
+ * Main bargs namespace.
+ */
+export const bargs = {
+  create,
+};

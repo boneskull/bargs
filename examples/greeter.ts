@@ -1,6 +1,6 @@
 #!/usr/bin/env npx tsx
 /**
- * Simple CLI example (no commands)
+ * Simple CLI example
  *
  * A greeter that demonstrates:
  *
@@ -8,73 +8,75 @@
  * - String options with defaults (--greeting)
  * - Positional arguments (name)
  * - Aliases (-s, -v, -g)
- * - Themed help output (using 'ocean' theme)
  *
  * Usage: npx tsx examples/greeter.ts World npx tsx examples/greeter.ts World
  * --shout npx tsx examples/greeter.ts World -g "Hey there" npx tsx
  * examples/greeter.ts --help
  */
-import { bargs, bargsAsync } from '../src/index.js';
+import { bargs, opt, pos } from '../src/index.js';
 
-const optionsDef = bargs.options({
-  greeting: bargs.string({
+// Define global options
+const globalOptions = opt.options({
+  greeting: opt.string({
     aliases: ['g'],
     default: 'Hello',
     description: 'The greeting to use',
   }),
-  shout: bargs.boolean({
+  shout: opt.boolean({
     aliases: ['s'],
     default: false,
     description: 'SHOUT THE GREETING',
   }),
-  verbose: bargs.boolean({
+  verbose: opt.boolean({
     aliases: ['v'],
     default: false,
     description: 'Show extra output',
   }),
 });
 
-const positionalsDef = bargs.positionals(
-  bargs.stringPos({
+// Define the positionals for the greet command
+const greetPositionals = pos.positionals(
+  pos.string({
     description: 'Name to greet',
     name: 'name',
     required: true,
   }),
 );
 
-const main = async () => {
-  // Pass theme option to customize help output colors
-  // Available themes: 'default', 'mono', 'ocean', 'warm'
-  // You can also pass a custom Theme object
-  const result = await bargsAsync(
-    {
-      description: 'A friendly greeter CLI',
-      name: 'greeter',
-      options: optionsDef,
-      positionals: positionalsDef,
-      version: '1.0.0',
+// Build and run the CLI
+// Using the (Parser, handler) form for full type inference of merged globals
+await bargs
+  .create('greeter', {
+    description: 'A friendly greeter CLI',
+    version: '1.0.0',
+  })
+  .globals(globalOptions)
+  // The (Parser, handler, description) form gives us merged global + command types!
+  .command(
+    'greet',
+    greetPositionals,
+    ({ positionals, values }) => {
+      const [name] = positionals;
+      // values has full type: { greeting: string, shout: boolean, verbose: boolean }
+      // NO type assertions needed!
+
+      let message = `${values.greeting}, ${name}!`;
+      if (values.shout) {
+        message = message.toUpperCase();
+      }
+
+      if (values.verbose) {
+        console.log('Configuration:', {
+          greeting: values.greeting,
+          name,
+          shout: values.shout,
+        });
+      }
+
+      console.log(message);
     },
-    { theme: 'ocean' },
-  );
-
-  // Destructure the result
-  const { positionals, values } = result;
-  const [name] = positionals;
-  const { greeting, shout, verbose } = values;
-
-  // Build the message
-  let message = `${greeting}, ${name}!`;
-
-  if (shout) {
-    message = message.toUpperCase();
-  }
-
-  // Output
-  if (verbose) {
-    console.log('Configuration:', { greeting, name, shout });
-  }
-
-  console.log(message);
-};
-
-void main();
+    'Greet someone by name',
+  )
+  // Make 'greet' the default so users don't need to type it
+  .defaultCommand('greet')
+  .parseAsync();

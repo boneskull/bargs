@@ -1,58 +1,48 @@
 /**
  * Main entry point for the bargs CLI argument parser.
  *
- * This module exports the primary `bargs` and `bargsAsync` functions with
- * attached option builder methods (e.g., `bargs.string()`, `bargs.boolean()`),
- * allowing both function-call and builder-namespace usage patterns. It also
- * re-exports all public types, error classes, help generators, theme utilities,
- * and OSC hyperlink functions.
+ * Provides a parser combinator-inspired API for building type-safe CLIs.
  *
  * @example
  *
  * ```typescript
- * import { bargs } from 'bargs';
+ * import { bargs, opt, pos, pipe, map, handle } from '@boneskull/bargs';
  *
- * // Use as function
- * const result = bargs({
- *   name: 'myapp',
- *   options: { verbose: bargs.boolean({ aliases: ['v'] }) },
- * });
- *
- * // Access builder namespace
- * const opts = bargs.options({ name: bargs.string() });
+ * const cli = bargs
+ *   .create('my-app', { version: '1.0.0' })
+ *   .globals(opt.options({ verbose: opt.boolean({ aliases: ['v'] }) }))
+ *   .command(
+ *     'greet',
+ *     pipe(
+ *       pos.positionals(pos.string({ name: 'name', required: true })),
+ *       handle(({ positionals }) =>
+ *         console.log(`Hello, ${positionals[0]}!`),
+ *       ),
+ *     ),
+ *     'Say hello',
+ *   )
+ *   .parseAsync();
  * ```
  *
  * @packageDocumentation
  */
 
-import { bargsAsync as bargsAsyncBase, bargs as bargsBase } from './bargs.js';
-import { opt } from './opt.js';
+// Main API
+export { bargs, handle, map, pipe } from './bargs.js';
 
-/**
- * Main bargs entry point (sync). Also provides access to all opt builders via
- * bargs.string(), bargs.boolean(), etc.
- */
-export const bargs = Object.assign(bargsBase, opt);
-
-/**
- * Async bargs entry point. Also provides access to all opt builders via
- * bargsAsync.string(), etc.
- */
-export const bargsAsync = Object.assign(bargsAsyncBase, opt);
-
-// Re-export errors
+// Errors
 export { BargsError, HelpError, ValidationError } from './errors.js';
 
-// Re-export help generators
+// Help generators
 export { generateCommandHelp, generateHelp } from './help.js';
 
-// Re-export opt types
-export type { CommandBuilder } from './opt.js';
+// Option and positional builders
+export { opt, pos } from './opt.js';
 
-// Re-export OSC utilities for terminal hyperlinks
+// OSC utilities for terminal hyperlinks
 export { link, linkifyUrls, supportsHyperlinks } from './osc.js';
 
-// Re-export theme utilities
+// Theme utilities
 export {
   ansi,
   createStyler,
@@ -61,7 +51,7 @@ export {
   themes,
 } from './theme.js';
 
-// Re-export theme types
+// Theme types
 export type {
   StyleFn,
   Styler,
@@ -70,36 +60,38 @@ export type {
   ThemeInput,
 } from './theme.js';
 
-// Re-export all types
+// Core types
 export type {
-  AnyCommandConfig,
+  // Option definitions
   ArrayOption,
-  BargsConfig,
-  BargsConfigWithCommands,
-  BargsOptions,
-  BargsResult,
   BooleanOption,
-  CommandConfig,
-  CommandConfigInput,
+  // Parser combinator types
+  CliBuilder,
+  CliResult,
+  Command,
+  CommandDef,
   CountOption,
+  CreateOptions,
   EnumOption,
+  // Positional definitions
   EnumPositional,
-  Handler,
   HandlerFn,
-  InferCommandResult,
+  // Type inference
   InferOption,
   InferOptions,
   InferPositional,
   InferPositionals,
-  InferredCommands,
   InferTransformedPositionals,
   InferTransformedValues,
   NumberOption,
   NumberPositional,
   OptionDef,
   OptionsSchema,
+  Parser,
+  ParseResult,
   PositionalDef,
   PositionalsSchema,
+  // Transform types
   PositionalsTransformFn,
   StringOption,
   StringPositional,

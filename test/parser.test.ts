@@ -1,141 +1,12 @@
-// test/parser.test.ts
-import { expect, expectAsync } from 'bupkis';
+/**
+ * Tests for low-level parsing functionality.
+ */
+import { expect } from 'bupkis';
 import { describe, it } from 'node:test';
 
 import { opt } from '../src/opt.js';
-import { parseCommandsAsync, parseSimple } from '../src/parser.js';
-import { validateConfig } from '../src/validate.js';
-
-describe('parseCommands', () => {
-  it('parses a command with options', async () => {
-    const result = await parseCommandsAsync({
-      args: ['greet', '--name', 'world'],
-      commands: {
-        greet: opt.command({
-          description: 'Greet someone',
-          handler: () => {},
-          options: {
-            name: opt.string({ default: 'stranger' }),
-          },
-        }),
-      },
-      name: 'test-cli',
-    });
-
-    expect(result.command, 'to be', 'greet');
-    expect(result.values, 'to deeply equal', { name: 'world' });
-  });
-
-  it('parses command positionals', async () => {
-    const result = await parseCommandsAsync({
-      args: ['greet', 'Alice'],
-      commands: {
-        greet: opt.command({
-          description: 'Greet someone',
-          handler: () => {},
-          positionals: [opt.stringPos({ required: true })],
-        }),
-      },
-      name: 'test-cli',
-    });
-
-    expect(result.positionals, 'to deeply equal', ['Alice']);
-  });
-
-  it('calls command handler', async () => {
-    let called = false;
-    await parseCommandsAsync({
-      args: ['greet'],
-      commands: {
-        greet: opt.command({
-          description: 'Greet someone',
-          handler: () => {
-            called = true;
-          },
-        }),
-      },
-      name: 'test-cli',
-    });
-
-    expect(called, 'to be', true);
-  });
-
-  it('uses defaultHandler when no command given', async () => {
-    let called = false;
-    await parseCommandsAsync({
-      args: [],
-      commands: {
-        greet: opt.command({
-          description: 'Greet someone',
-          handler: () => {},
-        }),
-      },
-      defaultHandler: () => {
-        called = true;
-      },
-      name: 'test-cli',
-    });
-
-    expect(called, 'to be', true);
-  });
-
-  it('throws on unknown command', async () => {
-    await expectAsync(
-      parseCommandsAsync({
-        args: ['unknown'],
-        commands: {
-          greet: opt.command({
-            description: 'Greet someone',
-            handler: () => {},
-          }),
-        },
-        name: 'test-cli',
-      }),
-      'to reject with error satisfying',
-      /Unknown command/,
-    );
-  });
-
-  it('merges global and command options', async () => {
-    const result = await parseCommandsAsync({
-      args: ['greet', '--verbose', '--name', 'world'],
-      commands: {
-        greet: opt.command({
-          description: 'Greet someone',
-          handler: () => {},
-          options: {
-            name: opt.string({ default: 'stranger' }),
-          },
-        }),
-      },
-      name: 'test-cli',
-      options: {
-        verbose: opt.boolean(),
-      },
-    });
-
-    expect(result.values, 'to deeply equal', { name: 'world', verbose: true });
-  });
-
-  it('uses named default command when no command given', async () => {
-    let handlerCalled = false;
-    await parseCommandsAsync({
-      args: [],
-      commands: {
-        greet: opt.command({
-          description: 'Greet someone',
-          handler: () => {
-            handlerCalled = true;
-          },
-        }),
-      },
-      defaultHandler: 'greet',
-      name: 'test-cli',
-    });
-
-    expect(handlerCalled, 'to be', true);
-  });
-});
+import { parseSimple } from '../src/parser.js';
+import { validatePositionalsSchema } from '../src/validate.js';
 
 describe('parseSimple', () => {
   it('parses string options', () => {
@@ -322,14 +193,9 @@ describe('parseSimple positionals', () => {
   });
 
   it('throws if variadic is not the last positional', () => {
-    // Validation is done by validateConfig in bargs(), not parseSimple
-    // See validate.test.ts for comprehensive validation tests
     expect(
       () => {
-        validateConfig({
-          name: 'test',
-          positionals: [opt.variadic('string'), opt.stringPos()],
-        });
+        validatePositionalsSchema([opt.variadic('string'), opt.stringPos()]);
       },
       'to throw',
       /variadic positional must be the last/i,
@@ -385,17 +251,12 @@ describe('parseSimple positionals', () => {
   });
 
   it('throws if required positional follows optional positional', () => {
-    // Validation is done by validateConfig in bargs(), not parseSimple
-    // See validate.test.ts for comprehensive validation tests
     expect(
       () => {
-        validateConfig({
-          name: 'test',
-          positionals: [
-            opt.stringPos(), // optional (no required, no default)
-            opt.stringPos({ required: true }), // required - ERROR
-          ],
-        });
+        validatePositionalsSchema([
+          opt.stringPos(), // optional (no required, no default)
+          opt.stringPos({ required: true }), // required - ERROR
+        ]);
       },
       'to throw',
       /required positional cannot follow an optional/i,

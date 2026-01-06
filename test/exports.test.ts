@@ -1,8 +1,10 @@
-// test/exports.test.ts
+/**
+ * Tests for public exports.
+ */
 import { expect } from 'bupkis';
 import { describe, it } from 'node:test';
 
-import type { BargsOptions, Theme, ThemeColors } from '../src/index.js';
+import type { CreateOptions, Theme, ThemeColors } from '../src/index.js';
 
 import { createStyler, defaultTheme, themes } from '../src/index.js';
 
@@ -21,9 +23,9 @@ describe('public exports', () => {
     expect(_colors, 'to be defined');
   });
 
-  it('exports BargsOptions type (compiles = passes)', () => {
-    // Type-only test - if this compiles, BargsOptions is exported
-    const _opts: BargsOptions = { theme: 'mono' };
+  it('exports CreateOptions type (compiles = passes)', () => {
+    // Type-only test - if this compiles, CreateOptions is exported
+    const _opts: CreateOptions = { theme: 'mono', version: '1.0.0' };
     expect(_opts, 'to be defined');
   });
 });

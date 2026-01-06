@@ -10,10 +10,6 @@
  */
 
 import type {
-  AnyCommandConfig,
-  BargsConfig,
-  BargsConfigWithCommands,
-  CommandConfigInput,
   OptionDef,
   OptionsSchema,
   PositionalDef,
@@ -28,6 +24,26 @@ import {
   type Theme,
 } from './theme.js';
 import { readPackageInfoSync } from './version.js';
+
+/**
+ * Minimal config shape for help generation.
+ */
+interface HelpConfig {
+  commands?: Record<
+    string,
+    {
+      description: string;
+      options?: OptionsSchema;
+      positionals?: PositionalsSchema;
+    }
+  >;
+  description?: string;
+  epilog?: false | string;
+  name: string;
+  options?: OptionsSchema;
+  positionals?: PositionalsSchema;
+  version?: string;
+}
 
 /**
  * URL regex pattern for matching URLs in text.
@@ -188,25 +204,17 @@ const formatOptionHelp = (
 /**
  * Check if config has commands.
  */
-const hasCommands = <
-  T extends { commands?: Record<string, CommandConfigInput> },
->(
-  config: T,
-): config is T & { commands: Record<string, CommandConfigInput> } =>
-  config.commands !== undefined && Object.keys(config.commands).length > 0;
+const hasCommands = (
+  config: HelpConfig,
+): config is HelpConfig & {
+  commands: Record<string, { description: string }>;
+} => config.commands !== undefined && Object.keys(config.commands).length > 0;
 
 /**
  * Generate help text for a bargs config.
  */
-export const generateHelp = <
-  TOptions extends OptionsSchema = OptionsSchema,
-  TPositionals extends PositionalsSchema = PositionalsSchema,
-  TCommands extends Record<string, AnyCommandConfig> = Record<
-    string,
-    AnyCommandConfig
-  >,
->(
-  config: BargsConfig<TOptions, TPositionals, TCommands | undefined>,
+export const generateHelp = (
+  config: HelpConfig,
   theme: Theme = defaultTheme,
 ): string => {
   const styler = createStyler(theme);
@@ -336,20 +344,13 @@ export const generateHelp = <
 /**
  * Generate help text for a specific command.
  */
-export const generateCommandHelp = <
-  TOptions extends OptionsSchema = OptionsSchema,
-  TCommands extends Record<string, CommandConfigInput> = Record<
-    string,
-    CommandConfigInput
-  >,
->(
-  config: BargsConfigWithCommands<TOptions, TCommands>,
+export const generateCommandHelp = (
+  config: HelpConfig,
   commandName: string,
   theme: Theme = defaultTheme,
 ): string => {
   const styler = createStyler(theme);
-  const commandsRecord = config.commands as Record<string, CommandConfigInput>;
-  const command = commandsRecord[commandName];
+  const command = config.commands?.[commandName];
   if (!command) {
     return `Unknown command: ${commandName}`;
   }
