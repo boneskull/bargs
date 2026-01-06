@@ -38,21 +38,32 @@ export type TransformFn<
 > = (
   result: ParseResult<V1, P1>,
 ) => ParseResult<V2, P2> | Promise<ParseResult<V2, P2>>;
+// A command entry can be either a leaf command or a nested builder
+type CommandEntry =
+  | {
+      builder: CliBuilder<unknown, readonly unknown[]>;
+      description?: string;
+      type: 'nested';
+    }
+  | {
+      cmd: Command<unknown, readonly unknown[]>;
+      description?: string;
+      type: 'command';
+    };
 // Type for commands that may have transforms
 type CommandWithTransform<V, P extends readonly unknown[]> = Command<V, P> & {
   __transform?: (
     r: ParseResult<unknown, readonly unknown[]>,
   ) => ParseResult<V, P>;
 };
+
 interface InternalCliState {
-  commands: Map<
-    string,
-    { cmd: Command<unknown, readonly unknown[]>; description?: string }
-  >;
+  commands: Map<string, CommandEntry>;
   defaultCommandName?: string;
   globalParser?: Parser<unknown, readonly unknown[]>;
   name: string;
   options: CreateOptions;
+  parentGlobals?: ParseResult<unknown, readonly unknown[]>;
   theme: Theme;
 }
 // Type for parsers that may have transforms
@@ -347,30 +358,70 @@ const isCommand = (x: unknown): x is Command<unknown, readonly unknown[]> => {
   return '__brand' in obj && obj.__brand === 'Command';
 };
 
+// Internal type for CliBuilder with internal methods
+type InternalCliBuilder<V, P extends readonly unknown[]> = CliBuilder<V, P> & {
+  __parseWithParentGlobals: (
+    args: string[],
+    parentGlobals: ParseResult<unknown, readonly unknown[]>,
+    allowAsync: boolean,
+  ) =>
+    | (ParseResult<V, P> & { command?: string })
+    | Promise<ParseResult<V, P> & { command?: string }>;
+};
+
 /**
  * Create a CLI builder.
  */
 const createCliBuilder = <V, P extends readonly unknown[]>(
   state: InternalCliState,
 ): CliBuilder<V, P> => {
-  return {
-    // Overloaded command(): accepts either (name, Command, desc?) or (name, Parser, handler, desc?)
+  const builder: InternalCliBuilder<V, P> = {
+    // Internal method for nested command support - not part of public API
+    __parseWithParentGlobals(
+      args: string[],
+      parentGlobals: ParseResult<unknown, readonly unknown[]>,
+      allowAsync: boolean,
+    ):
+      | (ParseResult<V, P> & { command?: string })
+      | Promise<ParseResult<V, P> & { command?: string }> {
+      const stateWithGlobals = { ...state, parentGlobals };
+      return parseCore(stateWithGlobals, args, allowAsync) as
+        | (ParseResult<V, P> & { command?: string })
+        | Promise<ParseResult<V, P> & { command?: string }>;
+    },
+
+    // Overloaded command(): accepts (name, Command, desc?), (name, Parser, handler, desc?), or (name, CliBuilder, desc?)
     command<CV, CP extends readonly unknown[]>(
       name: string,
-      cmdOrParser: Command<CV, CP> | Parser<CV, CP>,
+      cmdOrParserOrBuilder:
+        | CliBuilder<CV, CP>
+        | Command<CV, CP>
+        | Parser<CV, CP>,
       handlerOrDesc?: HandlerFn<CV & V, CP> | string,
       maybeDesc?: string,
     ): CliBuilder<V, P> {
+      // Form 3: command(name, CliBuilder, description?) - nested commands
+      if (isCliBuilder(cmdOrParserOrBuilder)) {
+        const builder = cmdOrParserOrBuilder;
+        const description = handlerOrDesc as string | undefined;
+        state.commands.set(name, {
+          builder: builder as CliBuilder<unknown, readonly unknown[]>,
+          description,
+          type: 'nested',
+        });
+        return this;
+      }
+
       let cmd: Command<unknown, readonly unknown[]>;
       let description: string | undefined;
 
-      if (isCommand(cmdOrParser)) {
+      if (isCommand(cmdOrParserOrBuilder)) {
         // Form 1: command(name, Command, description?)
-        cmd = cmdOrParser;
+        cmd = cmdOrParserOrBuilder;
         description = handlerOrDesc as string | undefined;
-      } else if (isParser(cmdOrParser)) {
+      } else if (isParser(cmdOrParserOrBuilder)) {
         // Form 2: command(name, Parser, handler, description?)
-        const parser = cmdOrParser;
+        const parser = cmdOrParserOrBuilder;
         const handler = handlerOrDesc as HandlerFn<CV & V, CP>;
         description = maybeDesc;
 
@@ -391,11 +442,11 @@ const createCliBuilder = <V, P extends readonly unknown[]>(
         cmd = newCmd as Command<unknown, readonly unknown[]>;
       } else {
         throw new Error(
-          'command() requires a Command or Parser as second argument',
+          'command() requires a Command, Parser, or CliBuilder as second argument',
         );
       }
 
-      state.commands.set(name, { cmd, description });
+      state.commands.set(name, { cmd, description, type: 'command' });
       return this;
     },
 
@@ -420,6 +471,7 @@ const createCliBuilder = <V, P extends readonly unknown[]>(
         state.commands.set(defaultName, {
           cmd: nameOrCmdOrParser,
           description: undefined,
+          type: 'command',
         });
       } else if (isParser(nameOrCmdOrParser)) {
         // Form 3: defaultCommand(Parser, handler)
@@ -442,6 +494,7 @@ const createCliBuilder = <V, P extends readonly unknown[]>(
         state.commands.set(defaultName, {
           cmd: newCmd as Command<unknown, readonly unknown[]>,
           description: undefined,
+          type: 'command',
         });
       } else {
         throw new Error('defaultCommand() requires a name, Command, or Parser');
@@ -482,6 +535,9 @@ const createCliBuilder = <V, P extends readonly unknown[]>(
       >;
     },
   };
+
+  // Return as public CliBuilder (hiding internal method from type)
+  return builder as CliBuilder<V, P>;
 };
 
 /**
@@ -544,6 +600,12 @@ const generateCommandHelpNew = (
     return `Unknown command: ${commandName}`;
   }
 
+  // Handle nested commands - show their subcommand list
+  if (commandEntry.type === 'nested') {
+    // TODO: Generate proper help for nested command groups
+    return `${commandName} is a command group. Run '${state.name} ${commandName} --help' for subcommands.`;
+  }
+
   // TODO: Implement proper command help generation
   const config = {
     commands: {
@@ -594,6 +656,25 @@ const isParser = (x: unknown): x is Parser<unknown, readonly unknown[]> => {
   // Handle both plain objects and functions with Parser properties
   const obj = x as Record<string, unknown>;
   return '__brand' in obj && obj.__brand === 'Parser';
+};
+
+/**
+ * Check if something is a CliBuilder (has command, globals, parse, parseAsync
+ * methods).
+ */
+const isCliBuilder = (
+  x: unknown,
+): x is CliBuilder<unknown, readonly unknown[]> => {
+  if (x === null || x === undefined || typeof x !== 'object') {
+    return false;
+  }
+  const obj = x as Record<string, unknown>;
+  return (
+    typeof obj.command === 'function' &&
+    typeof obj.globals === 'function' &&
+    typeof obj.parse === 'function' &&
+    typeof obj.parseAsync === 'function'
+  );
 };
 
 /**
@@ -663,6 +744,39 @@ const runSimple = (
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
+ * Delegate parsing to a nested CliBuilder, passing down parent globals.
+ */
+const delegateToNestedBuilder = (
+  builder: CliBuilder<unknown, readonly unknown[]>,
+  remainingArgs: string[],
+  parentGlobals: ParseResult<unknown, readonly unknown[]>,
+  allowAsync: boolean,
+):
+  | (ParseResult<unknown, readonly unknown[]> & { command?: string })
+  | Promise<
+      ParseResult<unknown, readonly unknown[]> & { command?: string }
+    > => {
+  // Access the internal parse function that accepts parent globals
+  const internalBuilder = builder as unknown as {
+    __parseWithParentGlobals: (
+      args: string[],
+      parentGlobals: ParseResult<unknown, readonly unknown[]>,
+      allowAsync: boolean,
+    ) =>
+      | (ParseResult<unknown, readonly unknown[]> & { command?: string })
+      | Promise<
+          ParseResult<unknown, readonly unknown[]> & { command?: string }
+        >;
+  };
+
+  return internalBuilder.__parseWithParentGlobals(
+    remainingArgs,
+    parentGlobals,
+    allowAsync,
+  );
+};
+
+/**
  * Run a CLI with commands.
  */
 const runWithCommands = (
@@ -709,6 +823,62 @@ const runWithCommands = (
     throw new HelpError(`Unknown command: ${commandName}`);
   }
 
+  // Handle nested commands (subcommands)
+  if (commandEntry.type === 'nested') {
+    const { builder } = commandEntry;
+
+    // Parse global options first (before the command name)
+    const globalOptionsSchema = globalParser?.__optionsSchema ?? {};
+    const globalParsed = parseSimple({
+      args: args.slice(0, commandIndex),
+      options: globalOptionsSchema,
+      positionals: [],
+    });
+
+    // Apply global transforms if any
+    let globalResult: ParseResult<unknown, readonly unknown[]> = {
+      positionals: globalParsed.positionals,
+      values: globalParsed.values,
+    };
+
+    const globalTransform = (
+      globalParser as {
+        __transform?: (
+          r: ParseResult<unknown, readonly unknown[]>,
+        ) =>
+          | ParseResult<unknown, readonly unknown[]>
+          | Promise<ParseResult<unknown, readonly unknown[]>>;
+      }
+    )?.__transform;
+
+    // Args for nested builder are ONLY those after the command name (not global options)
+    const nestedArgs = args.slice(commandIndex + 1);
+
+    if (globalTransform) {
+      const transformed = globalTransform(globalResult);
+      if (transformed instanceof Promise) {
+        if (!allowAsync) {
+          throw new BargsError(
+            'Async global transform detected. Use parseAsync() instead of parse().',
+          );
+        }
+        return transformed.then(
+          (r: ParseResult<unknown, readonly unknown[]>) => {
+            return delegateToNestedBuilder(builder, nestedArgs, r, allowAsync);
+          },
+        );
+      }
+      globalResult = transformed;
+    }
+
+    return delegateToNestedBuilder(
+      builder,
+      nestedArgs,
+      globalResult,
+      allowAsync,
+    );
+  }
+
   const { cmd } = commandEntry;
 
   // Merge global and command options schemas
@@ -727,9 +897,12 @@ const runWithCommands = (
     positionals: commandPositionalsSchema,
   });
 
+  // Merge parent globals (from nested command delegation) with parsed values
+  const parentValues =
+    (state.parentGlobals?.values as Record<string, unknown> | undefined) ?? {};
   let result: ParseResult<unknown, readonly unknown[]> = {
     positionals: parsed.positionals,
-    values: parsed.values,
+    values: { ...parentValues, ...parsed.values },
   };
 
   // Helper to check for async and throw if not allowed

@@ -69,6 +69,18 @@ export interface CliBuilder<
   ): CliBuilder<TGlobalValues, TGlobalPositionals>;
 
   /**
+   * Register a nested command group (subcommands).
+   *
+   * The nested CliBuilder's commands become subcommands of this command. Parent
+   * globals are passed down to nested command handlers.
+   */
+  command<CV, CP extends readonly unknown[]>(
+    name: string,
+    nestedBuilder: CliBuilder<CV, CP>,
+    description?: string,
+  ): CliBuilder<TGlobalValues, TGlobalPositionals>;
+
+  /**
    * Set the default command by name (must be registered first).
    */
   defaultCommand(name: string): CliBuilder<TGlobalValues, TGlobalPositionals>;
