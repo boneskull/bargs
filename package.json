@@ -50,6 +50,7 @@
     "fix:prettier": "prettier --write . && markdownlint-cli2 --fix \"**/*.md\"",
     "lint": "run-p -sl --aggregate-output lint:*",
     "lint-staged": "lint-staged",
+    "lint:docs": "typedoc --treatWarningsAsErrors --emit none",
     "lint:eslint": "eslint .",
     "lint:knip": "knip",
     "lint:markdown": "markdownlint-cli2 \"**/*.md\"",
@@ -116,7 +117,7 @@
     }
   },
   "lint-staged": {
-    "*.{ts,js,yml,json5}": [
+    "*.{ts,js,yml,yaml,json5}": [
       "eslint --fix",
       "prettier --write",
       "cspell lint --no-must-find-files"
@@ -128,6 +129,10 @@
     ],
     "*.md": [
       "markdownlint-cli2 --fix",
+      "prettier --write",
+      "cspell lint --no-must-find-files"
+    ],
+    "*.{css,html}": [
       "prettier --write",
       "cspell lint --no-must-find-files"
     ]
