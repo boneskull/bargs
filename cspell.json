@@ -58,7 +58,8 @@
     "ptmux",
     "nargs",
     "vitesse",
-    "realfavicongenerator"
+    "realfavicongenerator",
+    "frickin"
   ],
   "words": [
     "bupkis",
@@ -69,6 +70,7 @@
     "positionals",
     "subcommand",
     "subcommands",
-    "navigations"
+    "navigations",
+    "dogg"
   ]
 }

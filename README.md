@@ -18,6 +18,8 @@ npm install @boneskull/bargs
 
 Most argument parsers make you choose: either a simple API with weak types, or a complex and overengineered DSL. **bargs** provides a combinator-style API for building type-safe CLIs—composable schema definitions with full type inference.
 
+> Also: this is the only argument parser I know of that comes with frickin' _themes_. _Themes_, dogg.
+
 ## Quick Start
 
 A CLI with an optional command and a couple options:
