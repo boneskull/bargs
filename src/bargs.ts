@@ -346,7 +346,7 @@ export function merge(
  * Convert kebab-case string to camelCase.
  */
 const kebabToCamel = (s: string): string =>
-  s.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
+  s.replace(/-([a-zA-Z])/g, (_, c: string) => c.toUpperCase());
 
 /**
  * Transform for use with `map()` that converts kebab-case option keys to
