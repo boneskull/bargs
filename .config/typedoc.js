@@ -33,6 +33,14 @@ export default {
   favicon: '../site/media/favicon.svg',
   // @ts-expect-error from extras plugin
   footerLastModified: true,
+  kindSortOrder: [
+    'Reference',
+    'Project',
+    'Module',
+    'Namespace',
+    'Function',
+    'TypeAlias',
+  ],
   lightHighlightTheme: 'vitesse-light',
   markdownLinkExternal: true,
   name: 'BARGS',
