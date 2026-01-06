@@ -1,6 +1,6 @@
 {
-  "name": "bargs documentation",
-  "short_name": "bargs",
+  "background_color": "#ffffff",
+  "display": "standalone",
   "icons": [
     {
       "src": "/bargs/web-app-manifest-192x192.png",
@@ -15,7 +15,7 @@
       "purpose": "maskable"
     }
   ],
-  "theme_color": "#ffffff",
-  "background_color": "#ffffff",
-  "display": "standalone"
+  "name": "bargs documentation",
+  "short_name": "bargs",
+  "theme_color": "#ffffff"
 }
