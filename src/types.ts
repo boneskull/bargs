@@ -140,11 +140,11 @@ export interface Command<
   TValues = Record<string, unknown>,
   TPositionals extends readonly unknown[] = readonly unknown[],
 > {
-  /** @internal Brand for type discrimination */
+  /** Brand for type discrimination. Do not use directly. */
   readonly __brand: 'Command';
-  /** @internal Options schema */
+  /** Options schema. Do not use directly. */
   readonly __optionsSchema: OptionsSchema;
-  /** @internal Positionals schema */
+  /** Positionals schema. Do not use directly. */
   readonly __positionalsSchema: PositionalsSchema;
   /** Command description for help text */
   readonly description?: string;
@@ -378,15 +378,15 @@ export interface Parser<
   TValues = Record<string, unknown>,
   TPositionals extends readonly unknown[] = readonly unknown[],
 > {
-  /** @internal Brand for type discrimination */
+  /** Brand for type discrimination. Do not use directly. */
   readonly __brand: 'Parser';
-  /** @internal Options schema */
+  /** Options schema. Do not use directly. */
   readonly __optionsSchema: OptionsSchema;
-  /** @internal Phantom type for positionals */
+  /** Phantom type for positionals. Do not use directly. */
   readonly __positionals: TPositionals;
-  /** @internal Positionals schema */
+  /** Positionals schema. Do not use directly. */
   readonly __positionalsSchema: PositionalsSchema;
-  /** @internal Phantom type for values */
+  /** Phantom type for values. Do not use directly. */
   readonly __values: TValues;
 }
 
