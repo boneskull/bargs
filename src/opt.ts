@@ -71,6 +71,31 @@ export type CallableOptionsParser<V> = (<V2, P2 extends readonly unknown[]>(
   Parser<V, readonly []>;
 
 /**
+ * Extract the inferred values type from a CallableOptionsParser or Parser.
+ *
+ * Useful for getting the type of global options to use elsewhere in your code.
+ *
+ * @example
+ *
+ * ```typescript
+ * const globalOptions = opt.options({
+ *   verbose: opt.boolean(),
+ *   'output-dir': opt.string(),
+ * });
+ *
+ * // Extract the type for use elsewhere
+ * type GlobalOpts = InferParserValues<typeof globalOptions>;
+ * // { verbose: boolean | undefined; 'output-dir': string | undefined }
+ * ```
+ */
+export type InferParserValues<T> =
+  T extends CallableOptionsParser<infer V>
+    ? V
+    : T extends Parser<infer V, readonly unknown[]>
+      ? V
+      : never;
+
+/**
  * Create a Parser from an options schema that can also merge with existing
  * parsers.
  *
@@ -361,6 +386,30 @@ export type CallablePositionalsParser<P extends readonly unknown[]> = (<
   parser: Parser<V2, P2>,
 ) => Parser<V2, readonly [...P2, ...P]>) &
   Parser<object, P>;
+
+/**
+ * Extract the inferred positionals tuple type from a CallablePositionalsParser
+ * or Parser.
+ *
+ * @example
+ *
+ * ```typescript
+ * const positionals = pos.positionals(
+ *   pos.string({ name: 'source', required: true }),
+ *   pos.string({ name: 'dest', required: true }),
+ * );
+ *
+ * // Extract the type for use elsewhere
+ * type Positionals = InferParserPositionals<typeof positionals>;
+ * // readonly [string, string]
+ * ```
+ */
+export type InferParserPositionals<T> =
+  T extends CallablePositionalsParser<infer P>
+    ? P
+    : T extends Parser<unknown, infer P>
+      ? P
+      : never;
 
 /**
  * Create a Parser from positional definitions that can also merge with existing

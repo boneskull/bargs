@@ -38,6 +38,8 @@ export { opt, pos } from './opt.js';
 export type {
   CallableOptionsParser,
   CallablePositionalsParser,
+  InferParserPositionals,
+  InferParserValues,
 } from './opt.js';
 
 // OSC utilities for terminal hyperlinks
