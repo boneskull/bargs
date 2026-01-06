@@ -59,16 +59,23 @@ type TransformFn<
 > = (
   result: ParseResult<V1, P1>,
 ) => ParseResult<V2, P2> | Promise<ParseResult<V2, P2>>;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MERGE COMBINATOR
+// ═══════════════════════════════════════════════════════════════════════════════
+
 /**
  * Create a command with a handler (terminal in the pipeline).
  */
 export function handle<V, P extends readonly unknown[]>(
   fn: HandlerFn<V, P>,
 ): (parser: Parser<V, P>) => Command<V, P>;
+
 export function handle<V, P extends readonly unknown[]>(
   parser: Parser<V, P>,
   fn: HandlerFn<V, P>,
 ): Command<V, P>;
+
 export function handle<V, P extends readonly unknown[]>(
   parserOrFn: HandlerFn<V, P> | Parser<V, P>,
   maybeFn?: HandlerFn<V, P>,
@@ -120,17 +127,12 @@ export function map<
   P2 extends readonly unknown[],
 >(fn: TransformFn<V1, P1, V2, P2>): (parser: Parser<V1, P1>) => Parser<V2, P2>;
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// MAP COMBINATOR
-// ═══════════════════════════════════════════════════════════════════════════════
-
 export function map<
   V1,
   P1 extends readonly unknown[],
   V2,
   P2 extends readonly unknown[],
 >(parser: Parser<V1, P1>, fn: TransformFn<V1, P1, V2, P2>): Parser<V2, P2>;
-
 export function map<
   V1,
   P1 extends readonly unknown[],
@@ -165,6 +167,132 @@ export function map<
       __values: {} as V2,
     } as Parser<V2, P2> & { __transform: typeof fn };
   };
+}
+/**
+ * Merge multiple parsers into one.
+ *
+ * Combines options and positionals from all parsers. Later parsers' options
+ * override earlier ones if there are conflicts.
+ *
+ * @example
+ *
+ * ```typescript
+ * const parser = merge(
+ *   opt.options({ verbose: opt.boolean() }),
+ *   pos.positionals(pos.string({ name: 'file', required: true })),
+ * );
+ * ```
+ */
+export function merge<
+  V1,
+  P1 extends readonly unknown[],
+  V2,
+  P2 extends readonly unknown[],
+>(
+  p1: Parser<V1, P1>,
+  p2: Parser<V2, P2>,
+): Parser<V1 & V2, readonly [...P1, ...P2]>;
+
+export function merge<
+  V1,
+  P1 extends readonly unknown[],
+  V2,
+  P2 extends readonly unknown[],
+  V3,
+  P3 extends readonly unknown[],
+>(
+  p1: Parser<V1, P1>,
+  p2: Parser<V2, P2>,
+  p3: Parser<V3, P3>,
+): Parser<V1 & V2 & V3, readonly [...P1, ...P2, ...P3]>;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MAP COMBINATOR
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export function merge<
+  V1,
+  P1 extends readonly unknown[],
+  V2,
+  P2 extends readonly unknown[],
+  V3,
+  P3 extends readonly unknown[],
+  V4,
+  P4 extends readonly unknown[],
+>(
+  p1: Parser<V1, P1>,
+  p2: Parser<V2, P2>,
+  p3: Parser<V3, P3>,
+  p4: Parser<V4, P4>,
+): Parser<V1 & V2 & V3 & V4, readonly [...P1, ...P2, ...P3, ...P4]>;
+
+export function merge(
+  ...parsers: Array<Parser<unknown, readonly unknown[]>>
+): Parser<unknown, readonly unknown[]> {
+  if (parsers.length === 0) {
+    throw new BargsError('merge() requires at least one parser');
+  }
+
+  // Start with the first parser and fold the rest in
+  let result = parsers[0]!;
+
+  for (let i = 1; i < parsers.length; i++) {
+    const next = parsers[i]!;
+
+    // Merge options schemas
+    const mergedOptions = {
+      ...result.__optionsSchema,
+      ...next.__optionsSchema,
+    };
+
+    // Merge positionals schemas
+    const mergedPositionals = [
+      ...result.__positionalsSchema,
+      ...next.__positionalsSchema,
+    ];
+
+    // Preserve transforms from both parsers (chain them)
+    type AsyncTransform = (
+      r: ParseResult<unknown, readonly unknown[]>,
+    ) =>
+      | ParseResult<unknown, readonly unknown[]>
+      | Promise<ParseResult<unknown, readonly unknown[]>>;
+
+    const resultWithTransform = result as { __transform?: AsyncTransform };
+    const nextWithTransform = next as { __transform?: AsyncTransform };
+
+    let mergedTransform: AsyncTransform | undefined;
+    if (resultWithTransform.__transform && nextWithTransform.__transform) {
+      // Chain transforms
+      const t1 = resultWithTransform.__transform;
+      const t2 = nextWithTransform.__transform;
+      mergedTransform = (r) => {
+        const r1 = t1(r);
+        if (r1 instanceof Promise) {
+          return r1.then(t2);
+        }
+        return t2(r1);
+      };
+    } else {
+      mergedTransform =
+        nextWithTransform.__transform ?? resultWithTransform.__transform;
+    }
+
+    result = {
+      __brand: 'Parser',
+      __optionsSchema: mergedOptions,
+      __positionals: [] as unknown as readonly unknown[],
+      __positionalsSchema: mergedPositionals,
+      __values: {} as unknown,
+    };
+
+    if (mergedTransform) {
+      (result as { __transform?: AsyncTransform }).__transform =
+        mergedTransform;
+    }
+  }
+
+  return result;
 }
 // ═══════════════════════════════════════════════════════════════════════════════
 // CLI BUILDER

@@ -1,11 +1,62 @@
 /**
- * Tests for parser combinators: map, handle.
+ * Tests for parser combinators: merge, map, handle.
  */
 import { expect } from 'bupkis';
 import { describe, it } from 'node:test';
 
-import { handle, map } from '../src/bargs.js';
+import { handle, map, merge } from '../src/bargs.js';
 import { opt, pos } from '../src/opt.js';
+
+describe('merge()', () => {
+  it('merges two parsers', () => {
+    const parser = merge(
+      opt.options({ verbose: opt.boolean() }),
+      pos.positionals(pos.string({ name: 'file', required: true })),
+    );
+
+    expect(parser.__brand, 'to be', 'Parser');
+    expect(parser.__optionsSchema, 'to satisfy', {
+      verbose: { type: 'boolean' },
+    });
+    expect(parser.__positionalsSchema, 'to satisfy', [
+      { name: 'file', type: 'string' },
+    ]);
+  });
+
+  it('merges three parsers', () => {
+    const parser = merge(
+      opt.options({ verbose: opt.boolean() }),
+      opt.options({ output: opt.string() }),
+      pos.positionals(pos.string({ name: 'input' })),
+    );
+
+    expect(parser.__brand, 'to be', 'Parser');
+    expect(parser.__optionsSchema, 'to satisfy', {
+      output: { type: 'string' },
+      verbose: { type: 'boolean' },
+    });
+  });
+
+  it('later options override earlier ones', () => {
+    const parser = merge(
+      opt.options({ name: opt.string({ default: 'first' }) }),
+      opt.options({ name: opt.string({ default: 'second' }) }),
+    );
+
+    expect(parser.__optionsSchema.name?.default, 'to be', 'second');
+  });
+
+  it('concatenates positionals', () => {
+    const parser = merge(
+      pos.positionals(pos.string({ name: 'a' })),
+      pos.positionals(pos.string({ name: 'b' })),
+    );
+
+    expect(parser.__positionalsSchema, 'to have length', 2);
+    expect(parser.__positionalsSchema[0]?.name, 'to be', 'a');
+    expect(parser.__positionalsSchema[1]?.name, 'to be', 'b');
+  });
+});
 
 describe('map()', () => {
   describe('curried form', () => {

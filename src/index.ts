@@ -24,7 +24,7 @@
  */
 
 // Main API
-export { bargs, handle, map } from './bargs.js';
+export { bargs, handle, map, merge } from './bargs.js';
 
 // Errors
 export { BargsError, HelpError, ValidationError } from './errors.js';

@@ -50,7 +50,7 @@ const globalOptions = opt.options({
 // Add command parser: priority option + text positional
 // First create options, then merge with positionals
 const addOptions = opt.options({
-  priority: opt.enum(['low', 'medium', 'high'] as const, { default: 'medium' }),
+  priority: opt.enum(['low', 'medium', 'high'], { default: 'medium' }),
 });
 const addPositionals = pos.positionals(
   pos.string({ name: 'text', required: true }),

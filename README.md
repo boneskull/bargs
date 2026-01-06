@@ -122,16 +122,12 @@ const text = words.join(' ');
 console.log(values.uppercase ? text.toUpperCase() : text);
 ```
 
-### Zero (0) Dependencies
-
-Only Node.js v22+.
-
 ### Command-Based CLI
 
 For a CLI with multiple subcommands:
 
 ```typescript
-import { bargs, opt, pos } from '@boneskull/bargs';
+import { bargs, merge, opt, pos } from '@boneskull/bargs';
 
 await bargs
   .create('tasks', {
@@ -145,10 +141,16 @@ await bargs
   )
   .command(
     'add',
-    pos.positionals(pos.string({ name: 'text', required: true })),
+    // Use merge() to combine positionals with command-specific options
+    merge(
+      opt.options({
+        priority: opt.enum(['low', 'medium', 'high'], { default: 'medium' }),
+      }),
+      pos.positionals(pos.string({ name: 'text', required: true })),
+    ),
     ({ positionals, values }) => {
       const [text] = positionals;
-      console.log(`Adding task: ${text}`);
+      console.log(`Adding ${values.priority} priority task: ${text}`);
       if (values.verbose) console.log('Verbose mode enabled');
     },
     'Add a task',
@@ -168,8 +170,8 @@ await bargs
 ```
 
 ```shell
-$ tasks add "Buy groceries" --verbose
-Adding task: Buy groceries
+$ tasks add "Buy groceries" --priority high --verbose
+Adding high priority task: Buy groceries
 Verbose mode enabled
 
 $ tasks list --all
@@ -322,23 +324,36 @@ const parser = pos.positionals(pos.variadic('string', { name: 'files' }));
 
 ## Merging Parsers
 
-Options and positionals parsers can be merged by calling one with the other:
+Use `merge()` to combine multiple parsers into one:
 
 ```typescript
-const options = opt.options({
-  priority: opt.enum(['low', 'medium', 'high'] as const, { default: 'medium' }),
-});
+import { merge, opt, pos } from '@boneskull/bargs';
 
+const combined = merge(
+  opt.options({
+    priority: opt.enum(['low', 'medium', 'high'], { default: 'medium' }),
+  }),
+  pos.positionals(pos.string({ name: 'task', required: true })),
+);
+// Type: Parser<{ priority: 'low' | 'medium' | 'high' }, [string]>
+```
+
+You can merge as many parsers as needed—options are merged (later overrides earlier), and positionals are concatenated.
+
+Alternatively, parsers can be merged by calling one with the other:
+
+```typescript
+const options = opt.options({ priority: opt.enum(['low', 'medium', 'high']) });
 const positionals = pos.positionals(
   pos.string({ name: 'task', required: true }),
 );
 
-// Merge: call positionals with options
-const combined = positionals(options);
-// Type: Parser<{ priority: 'low' | 'medium' | 'high' }, [string]>
+// These are equivalent:
+const combined1 = positionals(options);
+const combined2 = options(positionals);
 ```
 
-This works in either direction—`options(positionals)` or `positionals(options)`.
+Use whichever style you find more readable.
 
 ## Transforms
 
@@ -481,10 +496,12 @@ try {
 } catch (error) {
   if (error instanceof ValidationError) {
     // Config validation failed (e.g., invalid schema)
+    // i.e., "you screwed up"
     console.error(`Config error at "${error.path}": ${error.message}`);
   } else if (error instanceof HelpError) {
-    // User needs guidance (e.g., unknown option)
-    console.error(error.message);
+    // Likely invalid options, command or positionals;
+    // re-throw to trigger help display
+    throw error;
   } else if (error instanceof BargsError) {
     // General bargs error
     console.error(error.message);
@@ -546,6 +563,10 @@ const plain = stripAnsi('\x1b[32m--verbose\x1b[0m'); // '--verbose'
 ### Low-Level Utilities
 
 The `handle(parser, fn)` function is exported for advanced use cases where you need to create a `Command` object outside the fluent builder. It's mostly superseded by `.command(name, parser, handler)`.
+
+## Dependencies
+
+**bargs** has zero (0) dependencies. Only Node.js v22+.
 
 ## Motivation
 
