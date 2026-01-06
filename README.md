@@ -262,6 +262,7 @@ opt.number({ default: 42 }); // --count 42
 opt.boolean({ aliases: ['v'] }); // --verbose, -v
 opt.enum(['a', 'b', 'c']); // --level a
 opt.array('string'); // --file x --file y
+opt.array(['low', 'medium', 'high']); // --priority low --priority high
 opt.count(); // -vvv → 3
 ```
 
