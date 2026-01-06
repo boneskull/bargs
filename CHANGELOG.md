@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.0.1](https://github.com/boneskull/bargs/compare/bargs-v3.0.0...bargs-v3.0.1) (2026-01-06)
+
+
+### Bug Fixes
+
+* preserve Parser/Command interface properties in build ([259646f](https://github.com/boneskull/bargs/commit/259646fdd1905114050f597aab3333c6d7370764))
+
 ## [3.0.0](https://github.com/boneskull/bargs/compare/bargs-v2.0.0...bargs-v3.0.0) (2026-01-06)
 
 
