@@ -19,7 +19,7 @@ ignores:
   - 'CHANGELOG.md' # generated
   - '.tmp/**/*.md'
   - '.worktrees/**/*.md'
-  - 'docs/plans/**/*.md'
+  - '.plans/**/*.md'
 outputFormatters:
   - - 'markdownlint-cli2-formatter-pretty'
     - appendLink: true
