@@ -473,8 +473,8 @@ const createCliBuilder = <V, P extends readonly unknown[]>(
         | Promise<ParseResult<V, P> & { command?: string }>;
     },
 
-    // Overloaded command(): accepts (name, Command, desc?), (name, Parser, handler, desc?),
-    // (name, CliBuilder, desc?), or (name, factory, desc?)
+    // Overloaded command(): accepts (name, factory, desc?), (name, CliBuilder, desc?),
+    // (name, Command, desc?), or (name, Parser, handler, desc?)
     command<CV, CP extends readonly unknown[]>(
       name: string,
       cmdOrParserOrBuilderOrFactory:
