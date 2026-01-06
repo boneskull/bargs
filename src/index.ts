@@ -25,15 +25,21 @@
 
 // Main API
 export { bargs, handle, map, merge } from './bargs.js';
+export type { TransformFn } from './bargs.js';
 
 // Errors
 export { BargsError, HelpError, ValidationError } from './errors.js';
 
 // Help generators
 export { generateCommandHelp, generateHelp } from './help.js';
+export type { HelpConfig } from './help.js';
 
 // Option and positional builders
 export { opt, pos } from './opt.js';
+export type {
+  CallableOptionsParser,
+  CallablePositionalsParser,
+} from './opt.js';
 
 // OSC utilities for terminal hyperlinks
 export { link, linkifyUrls, supportsHyperlinks } from './osc.js';

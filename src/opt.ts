@@ -59,8 +59,10 @@ const validateAliasConflicts = (schema: OptionsSchema): void => {
  *
  * - First arg in pipe: used directly as a Parser
  * - Later arg in pipe: called as function to merge with incoming Parser
+ *
+ * @knipignore
  */
-type CallableOptionsParser<V> = (<V2, P2 extends readonly unknown[]>(
+export type CallableOptionsParser<V> = (<V2, P2 extends readonly unknown[]>(
   parser: Parser<V2, P2>,
 ) => Parser<V & V2, P2>) &
   Parser<V, readonly []>;
@@ -290,21 +292,16 @@ export const opt = {
  * - Later arg in pipe: called as function to merge with incoming Parser
  *
  * For positionals, we DON'T intersect values - we just pass through V2.
+ *
+ * @knipignore
  */
-type CallablePositionalsParser<P extends readonly unknown[]> = (<
+export type CallablePositionalsParser<P extends readonly unknown[]> = (<
   V2,
   P2 extends readonly unknown[],
 >(
   parser: Parser<V2, P2>,
 ) => Parser<V2, readonly [...P2, ...P]>) &
-  Parser<EmptyObject, P>;
-
-/**
- * Empty object type that works better with intersections than Record<string,
- * never>. {} & T = T, but Record<string, never> & T can be problematic.
- */
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-type EmptyObject = {};
+  Parser<object, P>;
 
 /**
  * Create a Parser from positional definitions that can also merge with existing
@@ -341,12 +338,12 @@ const positionalsImpl = <T extends PositionalsSchema>(
 
   // Add Parser properties to the function
   // Use empty object {} instead of Record<string, never> for better intersection behavior
-  const parserProps: Parser<EmptyObject, InferPositionals<T>> = {
+  const parserProps: Parser<object, InferPositionals<T>> = {
     __brand: 'Parser',
     __optionsSchema: {},
     __positionals: [] as unknown as InferPositionals<T>,
     __positionalsSchema: positionals,
-    __values: {} as EmptyObject,
+    __values: {},
   };
 
   return Object.assign(merger, parserProps) as CallablePositionalsParser<

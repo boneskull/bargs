@@ -27,8 +27,10 @@ import { readPackageInfoSync } from './version.js';
 
 /**
  * Minimal config shape for help generation.
+ *
+ * @knipignore
  */
-interface HelpConfig {
+export interface HelpConfig {
   commands?: Record<
     string,
     {

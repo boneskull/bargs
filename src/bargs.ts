@@ -25,6 +25,19 @@ import { defaultTheme, getTheme, type Theme } from './theme.js';
 // INTERNAL TYPES
 // ═══════════════════════════════════════════════════════════════════════════════
 
+/**
+ * Transform fn type - can be sync or async.
+ *
+ * @knipignore
+ */
+export type TransformFn<
+  V1,
+  P1 extends readonly unknown[],
+  V2,
+  P2 extends readonly unknown[],
+> = (
+  result: ParseResult<V1, P1>,
+) => ParseResult<V2, P2> | Promise<ParseResult<V2, P2>>;
 // Type for commands that may have transforms
 type CommandWithTransform<V, P extends readonly unknown[]> = Command<V, P> & {
   __transform?: (
@@ -48,17 +61,6 @@ type ParserWithTransform<V, P extends readonly unknown[]> = Parser<V, P> & {
     r: ParseResult<unknown, readonly unknown[]>,
   ) => ParseResult<V, P>;
 };
-/**
- * Transform fn type - can be sync or async.
- */
-type TransformFn<
-  V1,
-  P1 extends readonly unknown[],
-  V2,
-  P2 extends readonly unknown[],
-> = (
-  result: ParseResult<V1, P1>,
-) => ParseResult<V2, P2> | Promise<ParseResult<V2, P2>>;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // MERGE COMBINATOR

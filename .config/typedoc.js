@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { OptionDefaults } from 'typedoc';
 
 /**
  * @import {TypeDocOptions} from "typedoc"
@@ -12,6 +13,7 @@ const customFooterHtml = readFileSync(
 /** @type {Partial<TypeDocOptions>} */
 export default {
   basePath: process.env.GITHUB_ACTIONS ? '/bargs/' : '/',
+  blockTags: [...OptionDefaults.blockTags, '@knipignore'],
   customCss: '../site/media/bargs-theme.css',
   customFooterHtml,
   darkHighlightTheme: 'vitesse-dark',

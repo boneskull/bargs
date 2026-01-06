@@ -41,7 +41,8 @@
   "scripts": {
     "build": "zshy",
     "commitlint": "commitlint",
-    "docs": "typedoc",
+    "docs": "typedoc --treatWarningsAsErrors",
+    "docs:dev": "typedoc --watch",
     "fix": "run-s -sl fix:*",
     "fix:eslint": "eslint --fix .",
     "fix:markdown": "markdownlint-cli2 --fix \"**/*.md\"",
