@@ -30,6 +30,7 @@
     ".*.js",
     "scripts/**/*.ts",
     "scripts/**/*.js",
-    "examples/**/*.ts"
+    "examples/**/*.ts",
+    ".config/*.js"
   ]
 }
