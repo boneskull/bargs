@@ -181,7 +181,7 @@ All tasks
 
 ## API
 
-### `bargs.create(name, options?)`
+### bargs.create(name, options?)
 
 Create a CLI builder.
 
@@ -192,7 +192,7 @@ Create a CLI builder.
 | `epilog`      | `string` or `false` | Footer text in help (see [Epilog](#epilog)) |
 | `theme`       | `Theme`             | Help color theme (see [Theming](#theming))  |
 
-### `.globals(parser)`
+### .globals(parser)
 
 Set global options and transforms that apply to all commands.
 
@@ -201,7 +201,7 @@ bargs.create('my-cli').globals(opt.options({ verbose: opt.boolean() }));
 // ...
 ```
 
-### `.command(name, parser, handler, description?)`
+### .command(name, parser, handler, description?)
 
 Register a command. The handler receives merged global + command types.
 
@@ -217,7 +217,9 @@ Register a command. The handler receives merged global + command types.
 )
 ```
 
-### `.defaultCommand(name)` or `.defaultCommand(parser, handler)`
+### .defaultCommand(name)
+
+> Or `.defaultCommand(parser, handler)`
 
 Set the command that runs when no command is specified.
 
@@ -232,7 +234,7 @@ Set the command that runs when no command is specified.
 )
 ```
 
-### `.parse(args?)` / `.parseAsync(args?)`
+### .parse(args?) / .parseAsync(args?)
 
 Parse arguments and execute handlers.
 
