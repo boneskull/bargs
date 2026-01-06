@@ -181,6 +181,50 @@ $ tasks list --all
 All tasks
 ```
 
+### Nested Commands (Subcommands)
+
+Commands can be nested to arbitrary depth by passing a `CliBuilder` as the second argument to `.command()`:
+
+```typescript
+import { bargs, opt, pos } from '@boneskull/bargs';
+
+// Define subcommands as a separate builder
+const remoteCommands = bargs
+  .create('remote')
+  .command(
+    'add',
+    pos.positionals(
+      pos.string({ name: 'name', required: true }),
+      pos.string({ name: 'url', required: true }),
+    ),
+    ({ positionals, values }) => {
+      const [name, url] = positionals;
+      // Parent globals (verbose) are available here!
+      if (values.verbose) console.log(`Adding ${name}: ${url}`);
+    },
+    'Add a remote',
+  )
+  .command('remove' /* ... */)
+  .defaultCommand('add');
+
+// Nest under parent CLI
+await bargs
+  .create('git')
+  .globals(opt.options({ verbose: opt.boolean({ aliases: ['v'] }) }))
+  .command('remote', remoteCommands, 'Manage remotes') // ← CliBuilder
+  .command('commit', commitParser, commitHandler) // ← Regular command
+  .parseAsync();
+```
+
+```shell
+$ git --verbose remote add origin https://github.com/...
+Adding origin: https://github.com/...
+
+$ git remote remove origin
+```
+
+Parent globals automatically flow to nested command handlers. You can nest as deep as you like—just nest `CliBuilder`s inside `CliBuilder`s. See `examples/nested-commands.ts` for a full example.
+
 ## API
 
 ### bargs.create(name, options?)
@@ -217,6 +261,21 @@ Register a command. The handler receives merged global + command types.
   },
   'Build the project',
 )
+```
+
+### .command(name, cliBuilder, description?)
+
+Register a nested command group. The `cliBuilder` is another `CliBuilder` whose commands become subcommands. Parent globals are passed down to nested handlers.
+
+```typescript
+const subCommands = bargs.create('sub').command('foo', ...).command('bar', ...);
+
+bargs.create('main')
+  .command('nested', subCommands, 'Nested commands')  // nested group
+  .parseAsync();
+
+// $ main nested foo
+// $ main nested bar
 ```
 
 ### .defaultCommand(name)
