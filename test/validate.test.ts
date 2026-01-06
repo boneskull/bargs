@@ -271,6 +271,46 @@ describe('validateOptionsSchema', () => {
     );
   });
 
+  it('validates enum array option choices', () => {
+    expect(
+      () =>
+        validateOptionsSchema({
+          priority: opt.array(['low', 'medium', 'high']),
+        }),
+      'not to throw',
+    );
+  });
+
+  it('validates enum array option default is in choices', () => {
+    expect(
+      () =>
+        validateOptionsSchema({
+          priority: opt.array(['low', 'medium', 'high'], {
+            default: ['low', 'high'],
+          }),
+        }),
+      'not to throw',
+    );
+
+    expect(
+      () =>
+        validateOptionsSchema({
+          priority: {
+            choices: ['low', 'medium', 'high'],
+            default: ['invalid'],
+            type: 'array',
+          },
+        }),
+      'to throw a',
+      Error,
+      'satisfying',
+      {
+        message: /must be one of/,
+        path: 'options.priority.default[0]',
+      },
+    );
+  });
+
   it('validates aliases are single characters', () => {
     expect(
       () =>

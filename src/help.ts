@@ -148,8 +148,13 @@ const buildPositionalsUsage = (schema?: PositionalsSchema): string => {
  */
 const getTypeLabel = (def: OptionDef): string => {
   switch (def.type) {
-    case 'array':
-      return `${def.items}[]`;
+    case 'array': {
+      const arrayDef = def as { choices?: readonly string[]; items?: string };
+      if (arrayDef.choices) {
+        return `(${arrayDef.choices.join(' | ')})[]`;
+      }
+      return `${arrayDef.items ?? 'string'}[]`;
+    }
     case 'boolean':
       return 'boolean';
     case 'count':

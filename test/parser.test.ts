@@ -128,6 +128,31 @@ describe('parseSimple', () => {
 
     expect(result.values.ports, 'to deeply equal', [80, 443]);
   });
+
+  it('parses enum array options', () => {
+    const result = parseSimple({
+      args: ['--priority', 'low', '--priority', 'high'],
+      options: {
+        priority: opt.array(['low', 'medium', 'high']),
+      },
+    });
+
+    expect(result.values.priority, 'to deeply equal', ['low', 'high']);
+  });
+
+  it('throws on invalid enum array value', () => {
+    expect(
+      () =>
+        parseSimple({
+          args: ['--priority', 'invalid'],
+          options: {
+            priority: opt.array(['low', 'medium', 'high']),
+          },
+        }),
+      'to throw',
+      /invalid/i,
+    );
+  });
 });
 
 describe('parseSimple positionals', () => {

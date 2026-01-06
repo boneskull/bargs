@@ -13,6 +13,7 @@ import type {
   ArrayOption,
   BooleanOption,
   CountOption,
+  EnumArrayOption,
   EnumOption,
   EnumPositional,
   InferOptions,
@@ -139,15 +140,48 @@ export const opt = {
 
   /**
    * Define an array option (--flag value --flag value2).
+   *
+   * @example
+   *
+   * ```typescript
+   * // Primitive array
+   * opt.array('string'); // --file a.txt --file b.txt → ['a.txt', 'b.txt']
+   * opt.array('number'); // --port 80 --port 443 → [80, 443]
+   *
+   * // Enum array (with choices)
+   * opt.array(['low', 'medium', 'high']); // --priority low --priority high
+   * ```
    */
-  array: (
-    items: 'number' | 'string',
+  array: ((
+    itemsOrChoices: 'number' | 'string' | readonly string[],
     props: Omit<ArrayOption, 'items' | 'type'> = {},
-  ): ArrayOption => ({
-    items,
-    type: 'array',
-    ...props,
-  }),
+  ): ArrayOption | EnumArrayOption<string> => {
+    if (Array.isArray(itemsOrChoices)) {
+      // Enum array
+      return {
+        choices: itemsOrChoices,
+        type: 'array',
+        ...props,
+      } as EnumArrayOption<string>;
+    }
+    // Primitive array
+    return {
+      items: itemsOrChoices,
+      type: 'array',
+      ...props,
+    } as ArrayOption;
+  }) as {
+    // Overload for primitive arrays
+    (
+      items: 'number' | 'string',
+      props?: Omit<ArrayOption, 'items' | 'type'>,
+    ): ArrayOption;
+    // Overload for enum arrays
+    <const T extends readonly string[]>(
+      choices: T,
+      props?: Omit<EnumArrayOption<T[number]>, 'choices' | 'type'>,
+    ): EnumArrayOption<T[number]>;
+  },
 
   /**
    * Define a boolean option.

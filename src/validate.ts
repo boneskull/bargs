@@ -127,6 +127,37 @@ const validateOption = (
   switch (type) {
     case 'array': {
       const items = opt['items'];
+      const choices = opt['choices'];
+
+      // Enum array (with choices)
+      if (choices !== undefined) {
+        if (!isStringArray(choices) || choices.length === 0) {
+          throw new ValidationError(
+            `${path}.choices`,
+            'must be a non-empty array of strings',
+          );
+        }
+        if (opt['default'] !== undefined) {
+          if (!isStringArray(opt['default'])) {
+            throw new ValidationError(
+              `${path}.default`,
+              'must be an array of strings',
+            );
+          }
+          for (let i = 0; i < opt['default'].length; i++) {
+            const val = opt['default'][i]!;
+            if (!choices.includes(val)) {
+              throw new ValidationError(
+                `${path}.default[${i}]`,
+                `must be one of: ${choices.join(', ')}`,
+              );
+            }
+          }
+        }
+        break;
+      }
+
+      // Primitive array (with items)
       if (typeof items !== 'string') {
         throw new ValidationError(
           `${path}.items`,

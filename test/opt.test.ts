@@ -126,6 +126,18 @@ describe('opt builders', () => {
     });
   });
 
+  it('creates enum array options', () => {
+    const option = opt.array(['low', 'medium', 'high'], {
+      description: 'Priority levels',
+    });
+
+    expect(option, 'to satisfy', {
+      choices: ['low', 'medium', 'high'],
+      description: 'Priority levels',
+      type: 'array',
+    });
+  });
+
   it('creates count options', () => {
     const option = opt.count({ aliases: ['v'] });
 

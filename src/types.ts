@@ -23,8 +23,8 @@ import type { ThemeInput } from './theme.js';
  */
 export interface ArrayOption extends OptionBase {
   default?: number[] | string[];
-  /** Element type of the array */
-  items: 'number' | 'string';
+  /** Element type of the array (for primitive arrays) */
+  items?: 'number' | 'string';
   type: 'array';
 }
 
@@ -190,6 +190,16 @@ export interface CreateOptions {
 }
 
 /**
+ * Enum array option definition (--flag a --flag b with limited choices).
+ */
+export interface EnumArrayOption<T extends string = string> extends OptionBase {
+  /** Valid choices for array elements */
+  choices: readonly T[];
+  default?: T[];
+  type: 'array';
+}
+
+/**
  * Enum option definition with string choices.
  */
 export interface EnumOption<T extends string = string> extends OptionBase {
@@ -247,13 +257,15 @@ export type InferOption<T extends OptionDef> = T extends BooleanOption
           : T['default'] extends E
             ? E
             : E | undefined
-        : T extends ArrayOption
-          ? T['items'] extends 'number'
-            ? number[]
-            : string[]
-          : T extends CountOption
-            ? number
-            : never;
+        : T extends EnumArrayOption<infer E>
+          ? E[]
+          : T extends ArrayOption
+            ? T['items'] extends 'number'
+              ? number[]
+              : string[]
+            : T extends CountOption
+              ? number
+              : never;
 
 /**
  * Infer values type from an options schema.
@@ -357,6 +369,7 @@ export type OptionDef =
   | ArrayOption
   | BooleanOption
   | CountOption
+  | EnumArrayOption<string>
   | EnumOption<string>
   | NumberOption
   | StringOption;

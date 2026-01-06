@@ -80,8 +80,22 @@ const coerceValues = (
     // Type coercion
     if (value !== undefined) {
       switch (def.type) {
-        case 'array':
-          if (def.items === 'number' && Array.isArray(value)) {
+        case 'array': {
+          const arrayDef = def as {
+            choices?: readonly string[];
+            items?: string;
+          };
+          if (arrayDef.choices && Array.isArray(value)) {
+            // Enum array - validate each value
+            for (const v of value as string[]) {
+              if (!arrayDef.choices.includes(v)) {
+                throw new Error(
+                  `Invalid value for --${name}: "${v}". Must be one of: ${arrayDef.choices.join(', ')}`,
+                );
+              }
+            }
+            result[name] = value;
+          } else if (arrayDef.items === 'number' && Array.isArray(value)) {
             result[name] = (value as (number | string)[]).map(
               (v: number | string) => (typeof v === 'string' ? Number(v) : v),
             );
@@ -89,6 +103,7 @@ const coerceValues = (
             result[name] = value;
           }
           break;
+        }
         case 'count':
           // Count options count occurrences
           result[name] = typeof value === 'number' ? value : value ? 1 : 0;
