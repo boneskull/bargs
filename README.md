@@ -103,6 +103,7 @@ For a CLI without subcommands, use `.globals()` with merged options and position
 import { bargs, opt, pos } from '@boneskull/bargs';
 
 // Merge options and positionals into one parser
+// when a positional is variadic, it becomes an array within the result
 const parser = pos.positionals(pos.variadic('string', { name: 'text' }))(
   opt.options({
     uppercase: opt.boolean({ aliases: ['u'], default: false }),
