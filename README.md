@@ -480,6 +480,36 @@ const globals = map(
 );
 ```
 
+### CamelCase Option Keys
+
+If you prefer camelCase property names instead of kebab-case, use the `camelCaseValues` transform:
+
+```typescript
+import { bargs, map, opt, camelCaseValues } from '@boneskull/bargs';
+
+const { values } = await bargs
+  .create('my-cli')
+  .globals(
+    map(
+      opt.options({
+        'output-dir': opt.string({ default: '/tmp' }),
+        'dry-run': opt.boolean(),
+      }),
+      camelCaseValues,
+    ),
+  )
+  .parseAsync(['--output-dir', './dist', '--dry-run']);
+
+console.log(values.outputDir); // './dist'
+console.log(values.dryRun); // true
+```
+
+The `camelCaseValues` transform:
+
+- Converts all kebab-case keys to camelCase (`output-dir` → `outputDir`)
+- Preserves keys that are already camelCase or have no hyphens
+- Is fully type-safe—TypeScript knows the transformed key names
+
 ## Epilog
 
 By default, **bargs** displays your package's homepage and repository URLs (from `package.json`) at the end of help output. URLs become clickable hyperlinks in supported terminals.
