@@ -204,7 +204,7 @@ export interface CountOption extends OptionBase {
 }
 
 /**
- * Options for bargs.create().
+ * Options for bargs().
  */
 export interface CreateOptions {
   /** Description shown in help */

@@ -9,9 +9,9 @@ import type { StringOption } from '../src/types.js';
 import { bargs, handle, map } from '../src/bargs.js';
 import { opt, pos } from '../src/opt.js';
 
-describe('bargs.create()', () => {
+describe('bargs()', () => {
   it('creates a CLI builder', () => {
-    const cli = bargs.create('test-cli');
+    const cli = bargs('test-cli');
 
     expect(cli.globals, 'to be a', 'function');
     expect(cli.command, 'to be a', 'function');
@@ -21,7 +21,7 @@ describe('bargs.create()', () => {
   });
 
   it('accepts name and options', () => {
-    const cli = bargs.create('test-cli', {
+    const cli = bargs('test-cli', {
       description: 'A test CLI',
       version: '1.0.0',
     });
@@ -32,15 +32,15 @@ describe('bargs.create()', () => {
 
 describe('.globals()', () => {
   it('accepts a parser for global options', () => {
-    const cli = bargs
-      .create('test-cli')
-      .globals(opt.options({ verbose: opt.boolean() }));
+    const cli = bargs('test-cli').globals(
+      opt.options({ verbose: opt.boolean() }),
+    );
 
     expect(cli.command, 'to be a', 'function');
   });
 
   it('returns a new builder (immutable)', () => {
-    const cli1 = bargs.create('test-cli');
+    const cli1 = bargs('test-cli');
     const cli2 = cli1.globals(opt.options({ verbose: opt.boolean() }));
 
     // Should be different objects
@@ -50,7 +50,7 @@ describe('.globals()', () => {
 
 describe('.command()', () => {
   it('registers a command', () => {
-    const cli = bargs.create('test-cli').command(
+    const cli = bargs('test-cli').command(
       'greet',
       handle(opt.options({ name: opt.string({ default: 'world' }) }), () => {}),
     );
@@ -59,7 +59,7 @@ describe('.command()', () => {
   });
 
   it('accepts description as third argument', () => {
-    const cli = bargs.create('test-cli').command(
+    const cli = bargs('test-cli').command(
       'greet',
       handle(opt.options({}), () => {}),
       'Greet someone',
@@ -69,8 +69,7 @@ describe('.command()', () => {
   });
 
   it('is chainable', () => {
-    const cli = bargs
-      .create('test-cli')
+    const cli = bargs('test-cli')
       .command(
         'cmd1',
         handle(opt.options({}), () => {}),
@@ -86,8 +85,7 @@ describe('.command()', () => {
 
 describe('.defaultCommand()', () => {
   it('sets the default command', () => {
-    const cli = bargs
-      .create('test-cli')
+    const cli = bargs('test-cli')
       .command(
         'greet',
         handle(opt.options({}), () => {}),
@@ -100,7 +98,7 @@ describe('.defaultCommand()', () => {
 
 describe('.parseAsync()', () => {
   it('parses arguments with global options', async () => {
-    const cli = bargs.create('test-cli').globals(
+    const cli = bargs('test-cli').globals(
       opt.options({
         name: opt.string({ default: 'world' }),
         verbose: opt.boolean({ default: false }),
@@ -114,7 +112,7 @@ describe('.parseAsync()', () => {
   });
 
   it('applies defaults when no args provided', async () => {
-    const cli = bargs.create('test-cli').globals(
+    const cli = bargs('test-cli').globals(
       opt.options({
         name: opt.string({ default: 'world' }),
         verbose: opt.boolean({ default: false }),
@@ -131,7 +129,7 @@ describe('.parseAsync()', () => {
     let handlerCalled = false;
     let handlerResult: unknown;
 
-    const cli = bargs.create('test-cli').command(
+    const cli = bargs('test-cli').command(
       'greet',
       opt.options({ name: opt.string({ default: 'world' }) }),
       ({ values }) => {
@@ -150,8 +148,7 @@ describe('.parseAsync()', () => {
   it('merges global and command options', async () => {
     let handlerResult: unknown;
 
-    const cli = bargs
-      .create('test-cli')
+    const cli = bargs('test-cli')
       .globals(opt.options({ verbose: opt.boolean({ default: false }) }))
       .command(
         'greet',
@@ -172,8 +169,7 @@ describe('.parseAsync()', () => {
   it('uses default command when no command specified', async () => {
     let handlerCalled = false;
 
-    const cli = bargs
-      .create('test-cli')
+    const cli = bargs('test-cli')
       .command(
         'greet',
         handle(opt.options({}), () => {
@@ -188,7 +184,7 @@ describe('.parseAsync()', () => {
   });
 
   it('throws on unknown command', async () => {
-    const cli = bargs.create('test-cli').command(
+    const cli = bargs('test-cli').command(
       'greet',
       handle(opt.options({}), () => {}),
     );
@@ -201,13 +197,11 @@ describe('.parseAsync()', () => {
   });
 
   it('returns parsed result with command name', async () => {
-    const cli = bargs
-      .create('test-cli')
-      .command(
-        'greet',
-        opt.options({ name: opt.string({ default: 'world' }) }),
-        () => {},
-      );
+    const cli = bargs('test-cli').command(
+      'greet',
+      opt.options({ name: opt.string({ default: 'world' }) }),
+      () => {},
+    );
 
     const result = await cli.parseAsync(['greet', '--name', 'Test']);
 
@@ -220,8 +214,7 @@ describe('transforms via map()', () => {
   it('applies global transforms', async () => {
     let handlerResult: unknown;
 
-    const cli = bargs
-      .create('test-cli')
+    const cli = bargs('test-cli')
       .globals(
         map(
           opt.options({ name: opt.string({ default: 'world' }) }),
@@ -273,8 +266,7 @@ describe('transforms via map()', () => {
       return { ...parser, __brand: 'Parser' as const, __transform: transform };
     };
 
-    const cli = bargs
-      .create('test-cli')
+    const cli = bargs('test-cli')
       .globals(
         asyncTransform(
           opt.options({ name: opt.string({ default: 'world' }) }),
@@ -298,7 +290,7 @@ describe('transforms via map()', () => {
 
 describe('.parse() (sync)', () => {
   it('parses synchronously when no async transforms/handlers', () => {
-    const cli = bargs.create('test-cli').globals(
+    const cli = bargs('test-cli').globals(
       opt.options({
         name: opt.string({ default: 'world' }),
       }),
@@ -318,13 +310,13 @@ describe('.parse() (sync)', () => {
       },
     );
 
-    const cli = bargs.create('test-cli').globals(asyncParser);
+    const cli = bargs('test-cli').globals(asyncParser);
 
     expect(() => cli.parse([]), 'to throw', /Async.*transform.*Use parseAsync/);
   });
 
   it('throws on async handler', () => {
-    const cli = bargs.create('test-cli').command(
+    const cli = bargs('test-cli').command(
       'greet',
       handle(opt.options({}), async () => {
         await Promise.resolve();
@@ -343,15 +335,13 @@ describe('positionals', () => {
   it('parses positional arguments', async () => {
     let handlerResult: unknown;
 
-    const cli = bargs
-      .create('test-cli')
-      .command(
-        'echo',
-        pos.positionals(pos.string({ name: 'message', required: true })),
-        ({ positionals }) => {
-          handlerResult = positionals;
-        },
-      );
+    const cli = bargs('test-cli').command(
+      'echo',
+      pos.positionals(pos.string({ name: 'message', required: true })),
+      ({ positionals }) => {
+        handlerResult = positionals;
+      },
+    );
 
     await cli.parseAsync(['echo', 'Hello, world!']);
 
@@ -361,18 +351,16 @@ describe('positionals', () => {
   it('handles multiple positionals', async () => {
     let handlerResult: unknown;
 
-    const cli = bargs
-      .create('test-cli')
-      .command(
-        'copy',
-        pos.positionals(
-          pos.string({ name: 'source', required: true }),
-          pos.string({ name: 'dest', required: true }),
-        ),
-        ({ positionals }) => {
-          handlerResult = positionals;
-        },
-      );
+    const cli = bargs('test-cli').command(
+      'copy',
+      pos.positionals(
+        pos.string({ name: 'source', required: true }),
+        pos.string({ name: 'dest', required: true }),
+      ),
+      ({ positionals }) => {
+        handlerResult = positionals;
+      },
+    );
 
     await cli.parseAsync(['copy', 'src.txt', 'dst.txt']);
 
@@ -382,15 +370,13 @@ describe('positionals', () => {
   it('handles variadic positionals', async () => {
     let handlerResult: unknown;
 
-    const cli = bargs
-      .create('test-cli')
-      .command(
-        'concat',
-        pos.positionals(pos.variadic('string', { name: 'files' })),
-        ({ positionals }) => {
-          handlerResult = positionals;
-        },
-      );
+    const cli = bargs('test-cli').command(
+      'concat',
+      pos.positionals(pos.variadic('string', { name: 'files' })),
+      ({ positionals }) => {
+        handlerResult = positionals;
+      },
+    );
 
     await cli.parseAsync(['concat', 'a.txt', 'b.txt', 'c.txt']);
 
@@ -402,7 +388,7 @@ describe('nested commands (subcommands)', () => {
   it('supports nested commands via CliBuilder', async () => {
     let result: unknown;
 
-    const remoteCommands = bargs.create('remote').command(
+    const remoteCommands = bargs('remote').command(
       'add',
       pos.positionals(
         pos.string({ name: 'name', required: true }),
@@ -414,9 +400,11 @@ describe('nested commands (subcommands)', () => {
       'Add a remote',
     );
 
-    const cli = bargs
-      .create('git')
-      .command('remote', remoteCommands, 'Manage remotes');
+    const cli = bargs('git').command(
+      'remote',
+      remoteCommands,
+      'Manage remotes',
+    );
 
     await cli.parseAsync(['remote', 'add', 'origin', 'https://github.com/...']);
 
@@ -429,25 +417,27 @@ describe('nested commands (subcommands)', () => {
   it('supports deeply nested commands', async () => {
     let result: unknown;
 
-    const setCommands = bargs
-      .create('set')
-      .command(
-        'url',
-        pos.positionals(pos.string({ name: 'url', required: true })),
-        ({ positionals }) => {
-          result = { command: 'remote origin set url', positionals };
-        },
-      );
+    const setCommands = bargs('set').command(
+      'url',
+      pos.positionals(pos.string({ name: 'url', required: true })),
+      ({ positionals }) => {
+        result = { command: 'remote origin set url', positionals };
+      },
+    );
 
-    const originCommands = bargs
-      .create('origin')
-      .command('set', setCommands, 'Set properties');
+    const originCommands = bargs('origin').command(
+      'set',
+      setCommands,
+      'Set properties',
+    );
 
-    const remoteCommands = bargs
-      .create('remote')
-      .command('origin', originCommands, 'Manage origin');
+    const remoteCommands = bargs('remote').command(
+      'origin',
+      originCommands,
+      'Manage origin',
+    );
 
-    const cli = bargs.create('git').command('remote', remoteCommands);
+    const cli = bargs('git').command('remote', remoteCommands);
 
     await cli.parseAsync(['remote', 'origin', 'set', 'url', 'https://new.url']);
 
@@ -460,18 +450,15 @@ describe('nested commands (subcommands)', () => {
   it('passes parent globals to nested command handlers', async () => {
     let result: unknown;
 
-    const remoteCommands = bargs
-      .create('remote')
-      .command(
-        'add',
-        pos.positionals(pos.string({ name: 'name', required: true })),
-        ({ positionals, values }) => {
-          result = { positionals, values };
-        },
-      );
+    const remoteCommands = bargs('remote').command(
+      'add',
+      pos.positionals(pos.string({ name: 'name', required: true })),
+      ({ positionals, values }) => {
+        result = { positionals, values };
+      },
+    );
 
-    const cli = bargs
-      .create('git')
+    const cli = bargs('git')
       .globals(opt.options({ verbose: opt.boolean({ aliases: ['v'] }) }))
       .command('remote', remoteCommands);
 
@@ -486,8 +473,7 @@ describe('nested commands (subcommands)', () => {
   it('runs default subcommand when no subcommand specified', async () => {
     let result: unknown;
 
-    const remoteCommands = bargs
-      .create('remote')
+    const remoteCommands = bargs('remote')
       .command(
         'list',
         opt.options({}),
@@ -501,7 +487,7 @@ describe('nested commands (subcommands)', () => {
       })
       .defaultCommand('list');
 
-    const cli = bargs.create('git').command('remote', remoteCommands);
+    const cli = bargs('git').command('remote', remoteCommands);
 
     await cli.parseAsync(['remote']);
 
@@ -509,14 +495,15 @@ describe('nested commands (subcommands)', () => {
   });
 
   it('generates help listing nested command', () => {
-    const remoteCommands = bargs
-      .create('remote')
+    const remoteCommands = bargs('remote')
       .command('add', opt.options({}), () => {}, 'Add a remote')
       .command('remove', opt.options({}), () => {}, 'Remove a remote');
 
-    const cli = bargs
-      .create('git')
-      .command('remote', remoteCommands, 'Manage remotes');
+    const cli = bargs('git').command(
+      'remote',
+      remoteCommands,
+      'Manage remotes',
+    );
 
     // The parent CLI should list 'remote' as a command with its description
     // Note: The actual help generation for nested commands is handled by the

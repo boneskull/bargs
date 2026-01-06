@@ -71,11 +71,10 @@ const doneParser = pos.positionals(pos.string({ name: 'id', required: true }));
 // Using (Parser, handler, description) form for full type inference!
 // ═══════════════════════════════════════════════════════════════════════════════
 
-await bargs
-  .create('tasks', {
-    description: 'A simple task manager',
-    version: '1.0.0',
-  })
+await bargs('tasks', {
+  description: 'A simple task manager',
+  version: '1.0.0',
+})
   .globals(globalOptions)
   // The handler receives merged global + command types
   .command(
