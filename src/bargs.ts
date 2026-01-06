@@ -1,8 +1,8 @@
 /**
  * Core bargs API using parser combinator pattern.
  *
- * Provides `bargs.create()` for building CLIs with a fluent API, plus
- * combinator functions like `pipe()`, `map()`, and `handle()`.
+ * Provides `bargs()` for building CLIs with a fluent API, plus combinator
+ * functions like `pipe()`, `map()`, and `handle()`.
  *
  * @packageDocumentation
  */
@@ -362,8 +362,7 @@ const kebabToCamel = (s: string): string =>
  * ```typescript
  * import { bargs, opt, map, camelCaseValues } from '@boneskull/bargs';
  *
- * const { values } = await bargs
- *   .create('my-cli')
+ * const { values } = await bargs('my-cli')
  *   .globals(
  *     map(opt.options({ 'output-dir': opt.string() }), camelCaseValues),
  *   )
@@ -396,8 +395,7 @@ export const camelCaseValues = <V, P extends readonly unknown[]>(
  * @example
  *
  * ```typescript
- * const cli = await bargs
- *   .create('my-app', { version: '1.0.0' })
+ * const cli = await bargs('my-app', { version: '1.0.0' })
  *   .globals(
  *     map(opt.options({ verbose: opt.boolean() }), ({ values }) => ({
  *       values: { ...values, ts: Date.now() },
@@ -414,7 +412,7 @@ export const camelCaseValues = <V, P extends readonly unknown[]>(
  *
  * @function
  */
-const create = (
+export const bargs = (
   name: string,
   options: CreateOptions = {},
 ): CliBuilder<Record<string, never>, readonly []> => {
@@ -1110,8 +1108,7 @@ const runWithCommands = (
 };
 
 /**
- * Main bargs namespace.
+ * @ignore
+ * @deprecated
  */
-export const bargs = {
-  create,
-};
+bargs.create = bargs;

@@ -45,11 +45,10 @@ const greetPositionals = pos.positionals(
 
 // Build and run the CLI
 // Using the (Parser, handler) form for full type inference of merged globals
-await bargs
-  .create('greeter', {
-    description: 'A friendly greeter CLI',
-    version: '1.0.0',
-  })
+await bargs('greeter', {
+  description: 'A friendly greeter CLI',
+  version: '1.0.0',
+})
   .globals(globalOptions)
   // The (Parser, handler, description) form gives us merged global + command types!
   .command(

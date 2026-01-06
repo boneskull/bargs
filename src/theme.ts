@@ -13,6 +13,8 @@ import { stripVTControlCharacters } from 'node:util';
 
 /**
  * Strip all ANSI escape codes from a string.
+ *
+ * @function
  */
 export const stripAnsi = stripVTControlCharacters;
 

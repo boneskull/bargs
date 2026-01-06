@@ -8,8 +8,7 @@
  * ```typescript
  * import { bargs, opt, pos } from '@boneskull/bargs';
  *
- * await bargs
- *   .create('my-app', { version: '1.0.0' })
+ * await bargs('my-app', { version: '1.0.0' })
  *   .globals(opt.options({ verbose: opt.boolean({ aliases: ['v'] }) }))
  *   .command(
  *     'greet',

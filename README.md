@@ -27,8 +27,7 @@ A CLI with an optional command and a couple options:
 ```typescript
 import { bargs, opt, pos } from '@boneskull/bargs';
 
-await bargs
-  .create('greet', { version: '1.0.0' })
+await bargs('greet', { version: '1.0.0' })
   .globals(
     opt.options({
       name: opt.string({ default: 'world' }),
@@ -112,11 +111,10 @@ const parser = pos.positionals(pos.variadic('string', { name: 'text' }))(
   }),
 );
 
-const { values, positionals } = await bargs
-  .create('echo', {
-    description: 'Echo text to stdout',
-    version: '1.0.0',
-  })
+const { values, positionals } = await bargs('echo', {
+  description: 'Echo text to stdout',
+  version: '1.0.0',
+})
   .globals(parser)
   .parseAsync();
 
@@ -132,11 +130,10 @@ For a CLI with multiple subcommands:
 ```typescript
 import { bargs, merge, opt, pos } from '@boneskull/bargs';
 
-await bargs
-  .create('tasks', {
-    description: 'A task manager',
-    version: '1.0.0',
-  })
+await bargs('tasks', {
+  description: 'A task manager',
+  version: '1.0.0',
+})
   .globals(
     opt.options({
       verbose: opt.boolean({ aliases: ['v'], default: false }),
@@ -189,8 +186,7 @@ Commands can be nested to arbitrary depth by passing a `CliBuilder` as the secon
 import { bargs, opt, pos } from '@boneskull/bargs';
 
 // Define subcommands as a separate builder
-const remoteCommands = bargs
-  .create('remote')
+const remoteCommands = bargs('remote')
   .command(
     'add',
     pos.positionals(
@@ -208,8 +204,7 @@ const remoteCommands = bargs
   .defaultCommand('add');
 
 // Nest under parent CLI
-await bargs
-  .create('git')
+await bargs('git')
   .globals(opt.options({ verbose: opt.boolean({ aliases: ['v'] }) }))
   .command('remote', remoteCommands, 'Manage remotes') // ← CliBuilder
   .command('commit', commitParser, commitHandler) // ← Regular command
@@ -227,7 +222,7 @@ Parent globals automatically flow to nested command handlers. You can nest as de
 
 ## API
 
-### bargs.create(name, options?)
+### bargs(name, options?)
 
 Create a CLI builder.
 
@@ -243,7 +238,7 @@ Create a CLI builder.
 Set global options and transforms that apply to all commands.
 
 ```typescript
-bargs.create('my-cli').globals(opt.options({ verbose: opt.boolean() }));
+bargs('my-cli').globals(opt.options({ verbose: opt.boolean() }));
 // ...
 ```
 
@@ -268,9 +263,9 @@ Register a command. The handler receives merged global + command types.
 Register a nested command group. The `cliBuilder` is another `CliBuilder` whose commands become subcommands. Parent globals are passed down to nested handlers.
 
 ```typescript
-const subCommands = bargs.create('sub').command('foo', ...).command('bar', ...);
+const subCommands = bargs('sub').command('foo', ...).command('bar', ...);
 
-bargs.create('main')
+bargs('main')
   .command('nested', subCommands, 'Nested commands')  // nested group
   .parseAsync();
 
@@ -304,11 +299,11 @@ Parse arguments and execute handlers.
 
 ```typescript
 // Async (supports async transforms/handlers)
-const result = await bargs.create('my-cli').globals(...).parseAsync();
+const result = await bargs('my-cli').globals(...).parseAsync();
 console.log(result.values, result.positionals, result.command);
 
 // Sync (no async transforms/handlers)
-const result = bargs.create('my-cli').globals(...).parse();
+const result = bargs('my-cli').globals(...).parse();
 ```
 
 ## Option Helpers
@@ -469,8 +464,7 @@ const globals = map(
   }),
 );
 
-await bargs
-  .create('my-cli')
+await bargs('my-cli')
   .globals(globals)
   .command(
     'info',
@@ -513,8 +507,7 @@ If you prefer camelCase property names instead of kebab-case, use the `camelCase
 ```typescript
 import { bargs, map, opt, camelCaseValues } from '@boneskull/bargs';
 
-const { values } = await bargs
-  .create('my-cli')
+const { values } = await bargs('my-cli')
   .globals(
     map(
       opt.options({
@@ -542,12 +535,12 @@ By default, **bargs** displays your package's homepage and repository URLs (from
 
 ```typescript
 // Custom epilog
-bargs.create('my-cli', {
+bargs('my-cli', {
   epilog: 'For more info, visit https://example.com',
 });
 
 // Disable epilog entirely
-bargs.create('my-cli', { epilog: false });
+bargs('my-cli', { epilog: false });
 ```
 
 ## Theming
@@ -556,10 +549,10 @@ Customize help output colors with built-in themes or your own:
 
 ```typescript
 // Use a built-in theme: 'default', 'mono', 'ocean', 'warm'
-bargs.create('my-cli', { theme: 'ocean' });
+bargs('my-cli', { theme: 'ocean' });
 
 // Disable colors entirely
-bargs.create('my-cli', { theme: 'mono' });
+bargs('my-cli', { theme: 'mono' });
 ```
 
 The `ansi` export provides common ANSI escape codes for styled terminal output:
@@ -567,7 +560,7 @@ The `ansi` export provides common ANSI escape codes for styled terminal output:
 ```typescript
 import { ansi } from '@boneskull/bargs';
 
-bargs.create('my-cli', {
+bargs('my-cli', {
   theme: {
     command: ansi.bold,
     flag: ansi.brightCyan,
@@ -613,7 +606,7 @@ import {
 } from '@boneskull/bargs';
 
 try {
-  await bargs.create('my-cli').parseAsync();
+  await bargs('my-cli').parseAsync();
 } catch (error) {
   if (error instanceof ValidationError) {
     // Config validation failed (e.g., invalid schema)

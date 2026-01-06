@@ -35,8 +35,7 @@ const config: Map<string, string> = new Map([
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // "remote" command group with subcommands: add, remove, list
-const remoteCommands = bargs
-  .create('remote')
+const remoteCommands = bargs('remote')
   .command(
     'add',
     pos.positionals(
@@ -96,8 +95,7 @@ const remoteCommands = bargs
   .defaultCommand('list');
 
 // "config" command group with subcommands: get, set
-const configCommands = bargs
-  .create('config')
+const configCommands = bargs('config')
   .command(
     'get',
     pos.positionals(pos.string({ name: 'key', required: true })),
@@ -137,11 +135,10 @@ const globals = opt.options({
   verbose: opt.boolean({ aliases: ['v'], default: false }),
 });
 
-await bargs
-  .create('git-like', {
-    description: 'A git-like CLI demonstrating nested commands',
-    version: '1.0.0',
-  })
+await bargs('git-like', {
+  description: 'A git-like CLI demonstrating nested commands',
+  version: '1.0.0',
+})
   .globals(globals)
   // Register nested command groups
   .command('remote', remoteCommands, 'Manage remotes')

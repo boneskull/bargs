@@ -97,11 +97,10 @@ const infoParser = opt.options({});
 // Using (Parser, handler, description) form for full type inference!
 // ═══════════════════════════════════════════════════════════════════════════════
 
-await bargs
-  .create('transforms-demo', {
-    description: 'Demonstrates transforms with commands',
-    version: '1.0.0',
-  })
+await bargs('transforms-demo', {
+  description: 'Demonstrates transforms with commands',
+  version: '1.0.0',
+})
   .globals(globals)
   // The handler receives merged global + command types
   .command(
