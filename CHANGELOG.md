@@ -1,5 +1,17 @@
 # Changelog
 
+## [3.2.0](https://github.com/boneskull/bargs/compare/bargs-v3.1.0...bargs-v3.2.0) (2026-01-06)
+
+
+### Features
+
+* add support for nested commands (subcommands) ([85aa259](https://github.com/boneskull/bargs/commit/85aa2593e083610e8eeb0b6cfa865de2c31492b5))
+
+
+### Bug Fixes
+
+* **types:** export EnumArrayOption ([5869e1e](https://github.com/boneskull/bargs/commit/5869e1eedde4e4a7f2192242b17c11f5f607f6a1))
+
 ## [3.1.0](https://github.com/boneskull/bargs/compare/bargs-v3.0.1...bargs-v3.1.0) (2026-01-06)
 
 
