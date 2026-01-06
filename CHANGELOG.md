@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.1.0](https://github.com/boneskull/bargs/compare/bargs-v3.0.1...bargs-v3.1.0) (2026-01-06)
+
+
+### Features
+
+* add enum array option type ([bd797c9](https://github.com/boneskull/bargs/commit/bd797c9365262328d57112fd64be7b5e053e03d8))
+
 ## [3.0.1](https://github.com/boneskull/bargs/compare/bargs-v3.0.0...bargs-v3.0.1) (2026-01-06)
 
 
