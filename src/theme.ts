@@ -212,6 +212,8 @@ export const defaultTheme = themes.default;
 /**
  * Resolve a theme input to a fully resolved Theme with all colors defined.
  * Missing colors fall back to the default theme.
+ *
+ * @function
  */
 export const getTheme = (input: ThemeInput): ResolvedTheme => {
   if (typeof input === 'string') {
@@ -255,6 +257,8 @@ const RESET = '\x1b[0m';
 /**
  * Create a style function from a color code. Returns passthrough if color is
  * empty.
+ *
+ * @function
  */
 const makeStyleFn = (color: string): StyleFn => {
   if (!color) {
@@ -266,6 +270,8 @@ const makeStyleFn = (color: string): StyleFn => {
 /**
  * Create a Styler from a Theme. If the theme has missing colors, they fall back
  * to the default theme.
+ *
+ * @function
  */
 export const createStyler = (theme: Theme): Styler => {
   const resolved = getTheme(theme as ThemeInput);

@@ -33,6 +33,8 @@ import { BargsError } from './errors.js';
 
 /**
  * Validate that no alias conflicts exist in a merged options schema.
+ *
+ * @function
  */
 const validateAliasConflicts = (schema: OptionsSchema): void => {
   const aliasToOption = new Map<string, string>();
@@ -77,6 +79,8 @@ export type CallableOptionsParser<V> = (<V2, P2 extends readonly unknown[]>(
  * 1. Standalone: `opt.options({ ... })` - returns a Parser
  * 2. Merging: `pos.positionals(...)(opt.options(...))` - merges positionals into
  *    options
+ *
+ * @function
  */
 const optionsImpl = <T extends OptionsSchema>(
   schema: T,
@@ -84,6 +88,9 @@ const optionsImpl = <T extends OptionsSchema>(
   validateAliasConflicts(schema);
 
   // Create the merge function
+  /**
+   * @function
+   */
   const merger = <V2, P2 extends readonly unknown[]>(
     parser: Parser<V2, P2>,
   ): Parser<InferOptions<T> & V2, P2> => {
@@ -185,6 +192,8 @@ export const opt = {
 
   /**
    * Define a boolean option.
+   *
+   * @function
    */
   boolean: <
     P extends Omit<BooleanOption, 'type'> = Omit<BooleanOption, 'type'>,
@@ -198,6 +207,8 @@ export const opt = {
 
   /**
    * Define a count option (--verbose --verbose = 2).
+   *
+   * @function
    */
   count: (props: Omit<CountOption, 'type'> = {}): CountOption => ({
     type: 'count',
@@ -206,6 +217,8 @@ export const opt = {
 
   /**
    * Define an enum option with string choices.
+   *
+   * @function
    */
   enum: <
     const T extends readonly string[],
@@ -225,6 +238,8 @@ export const opt = {
 
   /**
    * Define an enum positional argument with string choices.
+   *
+   * @function
    */
   enumPos: <
     const T extends readonly string[],
@@ -244,6 +259,8 @@ export const opt = {
 
   /**
    * Define a number option.
+   *
+   * @function
    */
   number: <P extends Omit<NumberOption, 'type'> = Omit<NumberOption, 'type'>>(
     props: P = {} as P,
@@ -255,6 +272,8 @@ export const opt = {
 
   /**
    * Define a number positional argument.
+   *
+   * @function
    */
   numberPos: <
     P extends Omit<NumberPositional, 'type'> = Omit<NumberPositional, 'type'>,
@@ -283,6 +302,8 @@ export const opt = {
 
   /**
    * Define a string option.
+   *
+   * @function
    */
   string: <P extends Omit<StringOption, 'type'> = Omit<StringOption, 'type'>>(
     props: P = {} as P,
@@ -294,6 +315,8 @@ export const opt = {
 
   /**
    * Define a string positional argument.
+   *
+   * @function
    */
   stringPos: <
     P extends Omit<StringPositional, 'type'> = Omit<StringPositional, 'type'>,
@@ -307,6 +330,8 @@ export const opt = {
 
   /**
    * Define a variadic positional (rest args).
+   *
+   * @function
    */
   variadic: (
     items: 'number' | 'string',
@@ -346,11 +371,16 @@ export type CallablePositionalsParser<P extends readonly unknown[]> = (<
  * 1. Standalone: `pos.positionals(...)` - returns a Parser
  * 2. Merging: `pos.positionals(...)(opt.options(...))` - merges positionals into
  *    options
+ *
+ * @function
  */
 const positionalsImpl = <T extends PositionalsSchema>(
   ...positionals: T
 ): CallablePositionalsParser<InferPositionals<T>> => {
   // Create the merge function - just passes through V2, no intersection needed
+  /**
+   * @function
+   */
   const merger = <V2, P2 extends readonly unknown[]>(
     parser: Parser<V2, P2>,
   ): Parser<V2, readonly [...P2, ...InferPositionals<T>]> => {
@@ -402,6 +432,8 @@ const positionalsImpl = <T extends PositionalsSchema>(
 export const pos = {
   /**
    * Define an enum positional argument with string choices.
+   *
+   * @function
    */
   enum: <
     const T extends readonly string[],
@@ -421,6 +453,8 @@ export const pos = {
 
   /**
    * Define a number positional argument.
+   *
+   * @function
    */
   number: <
     P extends Omit<NumberPositional, 'type'> = Omit<NumberPositional, 'type'>,
@@ -476,6 +510,8 @@ export const pos = {
 
   /**
    * Define a string positional argument.
+   *
+   * @function
    */
   string: <
     P extends Omit<StringPositional, 'type'> = Omit<StringPositional, 'type'>,
@@ -489,6 +525,8 @@ export const pos = {
 
   /**
    * Define a variadic positional (rest args).
+   *
+   * @function
    */
   variadic: (
     items: 'number' | 'string',

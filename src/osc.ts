@@ -32,6 +32,8 @@ const SEP = ';';
 
 /**
  * Check if running inside tmux.
+ *
+ * @function
  */
 const isTmux = (): boolean => 'TMUX' in process.env;
 
@@ -39,6 +41,8 @@ const isTmux = (): boolean => 'TMUX' in process.env;
  * Wrap an OSC sequence for tmux compatibility. Tmux requires OSC sequences to
  * be wrapped with DCS tmux; <sequence> ST and all ESCs in <sequence> to be
  * replaced with ESC ESC.
+ *
+ * @function
  */
 const wrapOsc = (sequence: string): string => {
   if (isTmux()) {
@@ -50,6 +54,8 @@ const wrapOsc = (sequence: string): string => {
 /**
  * Parse a version string into major/minor/patch components. Handles both dotted
  * versions (1.72.0) and compact versions (4601 -> 46.1.0).
+ *
+ * @function
  */
 const parseVersion = (
   versionString = '',
@@ -77,6 +83,8 @@ const parseVersion = (
 /**
  * Detect if the terminal supports hyperlinks (OSC 8). Based on the logic from
  * supports-hyperlinks package but implemented inline without dependencies.
+ *
+ * @function
  */
 export const supportsHyperlinks = (
   stream: NodeJS.WriteStream = process.stdout,
@@ -199,6 +207,8 @@ export const supportsHyperlinks = (
 /**
  * Create an OSC 8 hyperlink. The link text is displayed, and clicking it opens
  * the URL in supported terminals.
+ *
+ * @function
  */
 export const link = (text: string, url: string): string => {
   const openLink = wrapOsc(`${OSC}8${SEP}${SEP}${url}${BEL}`);
@@ -215,6 +225,8 @@ const URL_PATTERN = /https?:\/\/[^\s<>"\])}]+/g;
 /**
  * Auto-linkify URLs in text. If terminal supports hyperlinks, URLs become
  * clickable. Otherwise, text is returned unchanged.
+ *
+ * @function
  */
 export const linkifyUrls = (
   text: string,
