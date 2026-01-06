@@ -473,19 +473,56 @@ const createCliBuilder = <V, P extends readonly unknown[]>(
         | Promise<ParseResult<V, P> & { command?: string }>;
     },
 
-    // Overloaded command(): accepts (name, Command, desc?), (name, Parser, handler, desc?), or (name, CliBuilder, desc?)
+    // Overloaded command(): accepts (name, Command, desc?), (name, Parser, handler, desc?),
+    // (name, CliBuilder, desc?), or (name, factory, desc?)
     command<CV, CP extends readonly unknown[]>(
       name: string,
-      cmdOrParserOrBuilder:
+      cmdOrParserOrBuilderOrFactory:
+        | ((builder: CliBuilder<V, P>) => CliBuilder<CV, CP>)
         | CliBuilder<CV, CP>
         | Command<CV, CP>
         | Parser<CV, CP>,
       handlerOrDesc?: HandlerFn<CV & V, CP> | string,
       maybeDesc?: string,
     ): CliBuilder<V, P> {
+      // Form 4: command(name, factory, description?) - factory for nested commands with parent globals
+      // Check this FIRST before isCliBuilder/isParser since those check for __brand which a plain function won't have
+      if (
+        typeof cmdOrParserOrBuilderOrFactory === 'function' &&
+        !isParser(cmdOrParserOrBuilderOrFactory) &&
+        !isCommand(cmdOrParserOrBuilderOrFactory) &&
+        !isCliBuilder(cmdOrParserOrBuilderOrFactory)
+      ) {
+        const factory = cmdOrParserOrBuilderOrFactory as (
+          b: CliBuilder<V, P>,
+        ) => CliBuilder<CV, CP>;
+        const description = handlerOrDesc as string | undefined;
+
+        // Create a child builder with parent global TYPES (for type inference)
+        // but NOT the globalParser (parent globals are passed via parentGlobals at runtime,
+        // not re-parsed from args)
+        const childBuilder = createCliBuilder<V, P>({
+          commands: new Map(),
+          globalParser: undefined, // Parent globals come via parentGlobals, not re-parsing
+          name,
+          options: state.options,
+          theme: state.theme,
+        });
+
+        // Call factory to let user add commands
+        const nestedBuilder = factory(childBuilder);
+
+        state.commands.set(name, {
+          builder: nestedBuilder as CliBuilder<unknown, readonly unknown[]>,
+          description,
+          type: 'nested',
+        });
+        return this;
+      }
+
       // Form 3: command(name, CliBuilder, description?) - nested commands
-      if (isCliBuilder(cmdOrParserOrBuilder)) {
-        const builder = cmdOrParserOrBuilder;
+      if (isCliBuilder(cmdOrParserOrBuilderOrFactory)) {
+        const builder = cmdOrParserOrBuilderOrFactory;
         const description = handlerOrDesc as string | undefined;
         state.commands.set(name, {
           builder: builder as CliBuilder<unknown, readonly unknown[]>,
@@ -498,13 +535,13 @@ const createCliBuilder = <V, P extends readonly unknown[]>(
       let cmd: Command<unknown, readonly unknown[]>;
       let description: string | undefined;
 
-      if (isCommand(cmdOrParserOrBuilder)) {
+      if (isCommand(cmdOrParserOrBuilderOrFactory)) {
         // Form 1: command(name, Command, description?)
-        cmd = cmdOrParserOrBuilder;
+        cmd = cmdOrParserOrBuilderOrFactory;
         description = handlerOrDesc as string | undefined;
-      } else if (isParser(cmdOrParserOrBuilder)) {
+      } else if (isParser(cmdOrParserOrBuilderOrFactory)) {
         // Form 2: command(name, Parser, handler, description?)
-        const parser = cmdOrParserOrBuilder;
+        const parser = cmdOrParserOrBuilderOrFactory;
         const handler = handlerOrDesc as HandlerFn<CV & V, CP>;
         description = maybeDesc;
 
@@ -525,7 +562,7 @@ const createCliBuilder = <V, P extends readonly unknown[]>(
         cmd = newCmd as Command<unknown, readonly unknown[]>;
       } else {
         throw new Error(
-          'command() requires a Command, Parser, or CliBuilder as second argument',
+          'command() requires a Command, Parser, CliBuilder, or factory function as second argument',
         );
       }
 

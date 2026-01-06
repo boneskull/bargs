@@ -180,34 +180,36 @@ All tasks
 
 ### Nested Commands (Subcommands)
 
-Commands can be nested to arbitrary depth by passing a `CliBuilder` as the second argument to `.command()`:
+Commands can be nested to arbitrary depth. Use the **factory pattern** for full type inference of parent globals:
 
 ```typescript
 import { bargs, opt, pos } from '@boneskull/bargs';
 
-// Define subcommands as a separate builder
-const remoteCommands = bargs('remote')
-  .command(
-    'add',
-    pos.positionals(
-      pos.string({ name: 'name', required: true }),
-      pos.string({ name: 'url', required: true }),
-    ),
-    ({ positionals, values }) => {
-      const [name, url] = positionals;
-      // Parent globals (verbose) are available here!
-      if (values.verbose) console.log(`Adding ${name}: ${url}`);
-    },
-    'Add a remote',
-  )
-  .command('remove' /* ... */)
-  .defaultCommand('add');
-
-// Nest under parent CLI
 await bargs('git')
   .globals(opt.options({ verbose: opt.boolean({ aliases: ['v'] }) }))
-  .command('remote', remoteCommands, 'Manage remotes') // ← CliBuilder
-  .command('commit', commitParser, commitHandler) // ← Regular command
+  // Factory pattern: receives a builder with parent globals already typed
+  .command(
+    'remote',
+    (remote) =>
+      remote
+        .command(
+          'add',
+          pos.positionals(
+            pos.string({ name: 'name', required: true }),
+            pos.string({ name: 'url', required: true }),
+          ),
+          ({ positionals, values }) => {
+            const [name, url] = positionals;
+            // values.verbose is fully typed! (from parent globals)
+            if (values.verbose) console.log(`Adding ${name}: ${url}`);
+          },
+          'Add a remote',
+        )
+        .command('remove' /* ... */)
+        .defaultCommand('add'),
+    'Manage remotes',
+  )
+  .command('commit', commitParser, commitHandler) // Regular command
   .parseAsync();
 ```
 
@@ -218,7 +220,9 @@ Adding origin: https://github.com/...
 $ git remote remove origin
 ```
 
-Parent globals automatically flow to nested command handlers. You can nest as deep as you like—just nest `CliBuilder`s inside `CliBuilder`s. See `examples/nested-commands.ts` for a full example.
+The factory function receives a `CliBuilder` that already has parent globals typed, so all nested command handlers get full type inference for merged `global + command` options.
+
+You can also pass a pre-built `CliBuilder` directly (see [.command(name, cliBuilder)](#commandname-clibuilder-description)), but handlers won't have parent globals typed at compile time. See `examples/nested-commands.ts` for a full example.
 
 ## API
 
@@ -260,7 +264,7 @@ Register a command. The handler receives merged global + command types.
 
 ### .command(name, cliBuilder, description?)
 
-Register a nested command group. The `cliBuilder` is another `CliBuilder` whose commands become subcommands. Parent globals are passed down to nested handlers.
+Register a nested command group. The `cliBuilder` is another `CliBuilder` whose commands become subcommands. Parent globals are passed down to nested handlers at runtime, but **handlers won't have parent globals typed** at compile time.
 
 ```typescript
 const subCommands = bargs('sub').command('foo', ...).command('bar', ...);
@@ -271,6 +275,26 @@ bargs('main')
 
 // $ main nested foo
 // $ main nested bar
+```
+
+### .command(name, factory, description?)
+
+Register a nested command group using a factory function. **This is the recommended form** because the factory receives a builder that already has parent globals typed, giving full type inference in nested handlers.
+
+```typescript
+bargs('main')
+  .globals(opt.options({ verbose: opt.boolean() }))
+  .command(
+    'nested',
+    (nested) =>
+      nested
+        .command('foo', fooParser, ({ values }) => {
+          // values.verbose is typed correctly!
+        })
+        .command('bar', barParser, barHandler),
+    'Nested commands',
+  )
+  .parseAsync();
 ```
 
 ### .defaultCommand(name)
