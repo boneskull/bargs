@@ -1,5 +1,19 @@
 # Changelog
 
+## [3.3.0](https://github.com/boneskull/bargs/compare/bargs-v3.2.0...bargs-v3.3.0) (2026-01-06)
+
+
+### Features
+
+* add automatic --no-&lt;flag&gt; support for boolean options ([6dfa924](https://github.com/boneskull/bargs/commit/6dfa924b599b02f0ddba12e55a14f203235db808))
+* add camelCaseValues transform for kebab-to-camel option keys ([ed83b73](https://github.com/boneskull/bargs/commit/ed83b73019d8a33db539464e1ae54427e4e66983))
+* alias bargs.create to bargs (or vice-versa) ([d958763](https://github.com/boneskull/bargs/commit/d9587632fde6ff30239e3ef97f6153cfcf0e1a29))
+
+
+### Bug Fixes
+
+* address PR review comments ([aa94953](https://github.com/boneskull/bargs/commit/aa94953c2cd40b2c94ecaebb57b4ac65e52d35a5))
+
 ## [3.2.0](https://github.com/boneskull/bargs/compare/bargs-v3.1.0...bargs-v3.2.0) (2026-01-06)
 
 
