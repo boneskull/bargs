@@ -27,6 +27,8 @@ import { HelpError } from './errors.js';
  *
  * For boolean options, also adds `no-<name>` variants to support explicit
  * negation (e.g., `--no-verbose` sets `verbose` to `false`).
+ *
+ * @function
  */
 const buildParseArgsConfig = (
   schema: OptionsSchema,
@@ -72,6 +74,8 @@ const buildParseArgsConfig = (
 
 /**
  * Coerce parsed values to their expected types.
+ *
+ * @function
  */
 const coerceValues = (
   values: Record<string, unknown>,
@@ -144,6 +148,8 @@ const coerceValues = (
 
 /**
  * Coerce positional values.
+ *
+ * @function
  */
 const coercePositionals = (
   positionals: string[],
@@ -199,6 +205,8 @@ const coercePositionals = (
  * - If `--no-<name>` is true and `--<name>` is not set, sets `<name>` to false
  * - If both `--<name>` and `--no-<name>` are set, throws an error
  * - Removes all `no-<name>` keys from the result
+ *
+ * @function
  */
 const processNegatedBooleans = (
   values: Record<string, unknown>,
@@ -246,6 +254,8 @@ interface ParseSimpleOptions<
 
 /**
  * Parse arguments for a simple CLI (no commands).
+ *
+ * @function
  */
 export const parseSimple = <
   TOptions extends OptionsSchema = OptionsSchema,

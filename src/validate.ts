@@ -34,12 +34,21 @@ const VALID_ITEM_TYPES = ['string', 'number'] as const;
 
 // ─── Primitive Helpers ──────────────────────────────────────────────────────
 
+/**
+ * @function
+ */
 const isObject = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
 
+/**
+ * @function
+ */
 const isStringArray = (value: unknown): value is string[] =>
   Array.isArray(value) && value.every((v) => typeof v === 'string');
 
+/**
+ * @function
+ */
 const isNumberArray = (value: unknown): value is number[] =>
   Array.isArray(value) && value.every((v) => typeof v === 'number');
 
@@ -47,6 +56,8 @@ const isNumberArray = (value: unknown): value is number[] =>
 
 /**
  * Validate a single option definition.
+ *
+ * @function
  */
 const validateOption = (
   name: string,
@@ -245,6 +256,8 @@ const validateOption = (
 
 /**
  * Validate an options schema.
+ *
+ * @function
  */
 export const validateOptionsSchema = (
   schema: unknown,
@@ -268,6 +281,8 @@ export const validateOptionsSchema = (
 
 /**
  * Validate a single positional definition.
+ *
+ * @function
  */
 const validatePositional = (
   index: number,
@@ -374,6 +389,8 @@ const validatePositional = (
 
 /**
  * Validate a positionals schema.
+ *
+ * @function
  */
 export const validatePositionalsSchema = (
   schema: unknown,

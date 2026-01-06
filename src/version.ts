@@ -41,6 +41,8 @@ interface RepositoryField {
 /**
  * Normalize a repository URL to clean HTTPS format. Strips leading `git+` and
  * trailing `.git`.
+ *
+ * @function
  */
 const normalizeRepoUrl = (url: string): string => {
   return url.replace(/^git\+/, '').replace(/\.git$/, '');
@@ -48,6 +50,8 @@ const normalizeRepoUrl = (url: string): string => {
 
 /**
  * Validate that a URL is HTTPS. Returns the URL if valid, undefined otherwise.
+ *
+ * @function
  */
 const validateHttpsUrl = (url: string | undefined): string | undefined => {
   if (!url) {
@@ -59,6 +63,8 @@ const validateHttpsUrl = (url: string | undefined): string | undefined => {
 /**
  * Extract repository URL from package.json repository field. Handles both
  * string and object forms.
+ *
+ * @function
  */
 const extractRepoUrl = (
   repository: RepositoryField | string | undefined,
@@ -78,6 +84,8 @@ const extractRepoUrl = (
 
 /**
  * Find package.json by walking up from startDir (async).
+ *
+ * @function
  */
 const findPackageJson = async (
   startDir: string,
@@ -101,6 +109,8 @@ const findPackageJson = async (
 
 /**
  * Find package.json by walking up from startDir (sync).
+ *
+ * @function
  */
 const findPackageJsonSync = (startDir: string): string | undefined => {
   let dir = startDir;
@@ -122,6 +132,8 @@ const findPackageJsonSync = (startDir: string): string | undefined => {
 
 /**
  * Read version from package.json (async).
+ *
+ * @function
  */
 const readVersionFromPackageJson = async (
   pkgPath: string,
@@ -137,6 +149,8 @@ const readVersionFromPackageJson = async (
 
 /**
  * Detect version: use provided version or read from nearest package.json.
+ *
+ * @function
  */
 export const detectVersion = async (
   providedVersion: string | undefined,
@@ -157,6 +171,8 @@ export const detectVersion = async (
 /**
  * Read package info (homepage, repository) from package.json synchronously.
  * Returns only HTTPS URLs; other URL schemes are omitted.
+ *
+ * @function
  */
 export const readPackageInfoSync = (
   startDir: string = process.cwd(),

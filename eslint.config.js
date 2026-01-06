@@ -6,6 +6,8 @@ import { defineConfig } from 'eslint/config';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
+import requireFunctionTagInArrowFunctions from './.config/require-function-tag-in-arrow-functions.js';
+
 export default defineConfig(
   jsPlugin.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
@@ -24,7 +26,15 @@ export default defineConfig(
     plugins: {
       '@perfectionist': perfectionist,
       '@stylistic': stylistic,
+      custom: {
+        rules: {
+          'require-function-tag-in-arrow-functions': /** @type {any} */ (
+            requireFunctionTagInArrowFunctions
+          ),
+        },
+      },
     },
+
     rules: {
       '@perfectionist/sort-classes': ['error', { partitionByNewLine: true }],
       '@stylistic/lines-around-comment': [
@@ -41,7 +51,6 @@ export default defineConfig(
       ],
       '@stylistic/lines-between-class-members': ['error', 'always'],
       '@stylistic/semi': 'error',
-
       '@typescript-eslint/consistent-type-exports': [
         'error',
         { fixMixedExportsWithInlineTypeSpecifier: true },
@@ -57,9 +66,9 @@ export default defineConfig(
       ],
 
       '@typescript-eslint/no-explicit-any': 'off',
+
       '@typescript-eslint/no-invalid-void-type': 'off',
       '@typescript-eslint/no-non-null-assertion': 'off',
-
       '@typescript-eslint/no-unnecessary-boolean-literal-compare': [
         'error',
         {
@@ -69,8 +78,8 @@ export default defineConfig(
       ],
 
       '@typescript-eslint/no-unnecessary-condition': 'off',
-      '@typescript-eslint/no-unsafe-assignment': 'warn',
 
+      '@typescript-eslint/no-unsafe-assignment': 'warn',
       '@typescript-eslint/no-unused-vars': [
         'error',
         {
@@ -83,8 +92,8 @@ export default defineConfig(
       ],
 
       '@typescript-eslint/require-await': 'off',
-      '@typescript-eslint/restrict-template-expressions': 'off',
 
+      '@typescript-eslint/restrict-template-expressions': 'off',
       '@typescript-eslint/unified-signatures': [
         'error',
         {
@@ -93,6 +102,14 @@ export default defineConfig(
       ],
 
       curly: 'error',
+
+      'custom/require-function-tag-in-arrow-functions': [
+        'error',
+        {
+          requireForAnonymous: false,
+          requireForNamed: true,
+        },
+      ],
       'func-style': ['error', 'expression'],
       'new-cap': ['error', { capIsNew: true, newIsCap: true }],
       'no-constructor-return': 'error',

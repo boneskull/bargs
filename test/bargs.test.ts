@@ -248,11 +248,17 @@ describe('transforms via map()', () => {
 
     // Note: For async transforms, we work around the type system limitations
     // by defining the transform separately with explicit typing
+    /**
+     * @function
+     */
     const asyncTransform = (
       parser: ReturnType<
         typeof opt.options<{ name: StringOption & { default: string } }>
       >,
     ) => {
+      /**
+       * @function
+       */
       const transform = async (result: {
         positionals: readonly [];
         values: { name: string };

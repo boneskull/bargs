@@ -54,6 +54,8 @@ const URL_PATTERN = /https?:\/\/[^\s<>"\])}]+/g;
 
 /**
  * Linkify URLs in text if terminal supports hyperlinks. Applies URL styling.
+ *
+ * @function
  */
 const linkifyText = (
   text: string,
@@ -70,6 +72,8 @@ const linkifyText = (
 
 /**
  * Generate default epilog from package.json (homepage and repository).
+ *
+ * @function
  */
 const generateDefaultEpilog = (styler: Styler): string[] => {
   const pkgInfo = readPackageInfoSync();
@@ -97,6 +101,8 @@ const generateDefaultEpilog = (styler: Styler): string[] => {
 /**
  * Format epilog based on config. Returns empty array if epilog is disabled,
  * custom epilog lines if provided, or default epilog from package.json.
+ *
+ * @function
  */
 const formatEpilog = (
   config: { epilog?: false | string },
@@ -120,6 +126,8 @@ const formatEpilog = (
 /**
  * Format a single positional for help usage line. Required positionals use
  * <name>, optional use [name]. Variadic positionals append "...".
+ *
+ * @function
  */
 const formatPositionalUsage = (def: PositionalDef, index: number): string => {
   const name = def.name ?? `arg${index}`;
@@ -132,6 +140,8 @@ const formatPositionalUsage = (def: PositionalDef, index: number): string => {
 
 /**
  * Build the positionals usage string from a schema.
+ *
+ * @function
  */
 const buildPositionalsUsage = (schema?: PositionalsSchema): string => {
   if (!schema || schema.length === 0) {
@@ -145,6 +155,8 @@ const buildPositionalsUsage = (schema?: PositionalsSchema): string => {
 
 /**
  * Get type label for help display.
+ *
+ * @function
  */
 const getTypeLabel = (def: OptionDef): string => {
   switch (def.type) {
@@ -175,6 +187,8 @@ const getTypeLabel = (def: OptionDef): string => {
  *
  * For boolean options with `default: true`, shows `--no-<name>` instead of
  * `--<name>` since that's how users would turn it off.
+ *
+ * @function
  */
 const formatOptionHelp = (
   name: string,
@@ -222,6 +236,8 @@ const formatOptionHelp = (
 
 /**
  * Check if config has commands.
+ *
+ * @function
  */
 const hasCommands = (
   config: HelpConfig,
@@ -231,6 +247,8 @@ const hasCommands = (
 
 /**
  * Generate help text for a bargs config.
+ *
+ * @function
  */
 export const generateHelp = (
   config: HelpConfig,
@@ -362,6 +380,8 @@ export const generateHelp = (
 
 /**
  * Generate help text for a specific command.
+ *
+ * @function
  */
 export const generateCommandHelp = (
   config: HelpConfig,

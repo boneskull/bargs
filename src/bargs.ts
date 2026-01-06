@@ -157,6 +157,9 @@ export function map<
   maybeFn?: TransformFn<V1, P1, V2, P2>,
 ): ((parser: Parser<V1, P1>) => Parser<V2, P2>) | Parser<V2, P2> {
   // Helper to compose transforms (chains existing + new)
+  /**
+   * @function
+   */
   const composeTransform = (
     parser: Parser<V1, P1>,
     fn: TransformFn<V1, P1, V2, P2>,
@@ -344,6 +347,8 @@ export function merge(
 
 /**
  * Convert kebab-case string to camelCase.
+ *
+ * @function
  */
 const kebabToCamel = (s: string): string =>
   s.replace(/-([a-zA-Z])/g, (_, c: string) => c.toUpperCase());
@@ -366,6 +371,8 @@ const kebabToCamel = (s: string): string =>
  *
  * console.log(values.outputDir); // camelCased!
  * ```
+ *
+ * @function
  */
 export const camelCaseValues = <V, P extends readonly unknown[]>(
   result: ParseResult<V, P>,
@@ -404,6 +411,8 @@ export const camelCaseValues = <V, P extends readonly unknown[]>(
  *   )
  *   .parseAsync();
  * ```
+ *
+ * @function
  */
 const create = (
   name: string,
@@ -421,6 +430,8 @@ const create = (
 
 /**
  * Check if something is a Command (has __brand: 'Command').
+ *
+ * @function
  */
 const isCommand = (x: unknown): x is Command<unknown, readonly unknown[]> => {
   if (x === null || x === undefined) {
@@ -443,6 +454,8 @@ type InternalCliBuilder<V, P extends readonly unknown[]> = CliBuilder<V, P> & {
 
 /**
  * Create a CLI builder.
+ *
+ * @function
  */
 const createCliBuilder = <V, P extends readonly unknown[]>(
   state: InternalCliState,
@@ -614,6 +627,8 @@ const createCliBuilder = <V, P extends readonly unknown[]>(
 
 /**
  * Core parse logic shared between parse() and parseAsync().
+ *
+ * @function
  */
 const parseCore = (
   state: InternalCliState,
@@ -661,6 +676,8 @@ const parseCore = (
 
 /**
  * Generate command-specific help.
+ *
+ * @function
  */
 const generateCommandHelpNew = (
   state: InternalCliState,
@@ -698,6 +715,8 @@ const generateCommandHelpNew = (
 
 /**
  * Generate help for the new CLI structure.
+ *
+ * @function
  */
 const generateHelpNew = (state: InternalCliState, theme: Theme): string => {
   // TODO: Implement proper help generation for new structure
@@ -720,6 +739,8 @@ const generateHelpNew = (state: InternalCliState, theme: Theme): string => {
 /**
  * Check if something is a Parser (has __brand: 'Parser'). Parsers can be either
  * objects or functions (CallableParser).
+ *
+ * @function
  */
 const isParser = (x: unknown): x is Parser<unknown, readonly unknown[]> => {
   if (x === null || x === undefined) {
@@ -733,6 +754,8 @@ const isParser = (x: unknown): x is Parser<unknown, readonly unknown[]> => {
 /**
  * Check if something is a CliBuilder (has command, globals, parse, parseAsync
  * methods).
+ *
+ * @function
  */
 const isCliBuilder = (
   x: unknown,
@@ -751,6 +774,8 @@ const isCliBuilder = (
 
 /**
  * Run a simple CLI (no commands).
+ *
+ * @function
  */
 const runSimple = (
   state: InternalCliState,
@@ -817,6 +842,8 @@ const runSimple = (
 
 /**
  * Delegate parsing to a nested CliBuilder, passing down parent globals.
+ *
+ * @function
  */
 const delegateToNestedBuilder = (
   builder: CliBuilder<unknown, readonly unknown[]>,
@@ -850,6 +877,8 @@ const delegateToNestedBuilder = (
 
 /**
  * Run a CLI with commands.
+ *
+ * @function
  */
 const runWithCommands = (
   state: InternalCliState,
@@ -978,6 +1007,9 @@ const runWithCommands = (
   };
 
   // Helper to check for async and throw if not allowed
+  /**
+   * @function
+   */
   const checkAsync = (value: unknown, context: string): void => {
     if (value instanceof Promise && !allowAsync) {
       throw new BargsError(
@@ -1008,6 +1040,9 @@ const runWithCommands = (
   )?.__transform;
 
   // Apply transforms and run handler
+  /**
+   * @function
+   */
   const applyTransformsAndHandle = ():
     | (ParseResult<unknown, readonly unknown[]> & { command?: string })
     | Promise<
@@ -1030,6 +1065,9 @@ const runWithCommands = (
     return continueWithCommandTransform();
   };
 
+  /**
+   * @function
+   */
   const continueWithCommandTransform = ():
     | (ParseResult<unknown, readonly unknown[]> & { command?: string })
     | Promise<
@@ -1052,6 +1090,9 @@ const runWithCommands = (
     return runHandler();
   };
 
+  /**
+   * @function
+   */
   const runHandler = ():
     | (ParseResult<unknown, readonly unknown[]> & { command?: string })
     | Promise<
