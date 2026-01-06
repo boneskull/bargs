@@ -130,6 +130,92 @@ describe('generateHelp', () => {
     expect(help, 'to contain', 'LOGGING');
     expect(help, 'to contain', 'NETWORK');
   });
+
+  describe('boolean negation display', () => {
+    it('shows --no-<flag> for boolean with default: true', () => {
+      const help = stripAnsi(
+        generateHelp({
+          name: 'my-cli',
+          options: {
+            verbose: opt.boolean({
+              default: true,
+              description: 'Enable verbose output',
+            }),
+          },
+        }),
+      );
+
+      expect(help, 'to contain', '--no-verbose');
+      expect(help, 'not to match', /\s--verbose\s/); // should not show --verbose without "no-"
+    });
+
+    it('shows --<flag> for boolean with default: false', () => {
+      const help = stripAnsi(
+        generateHelp({
+          name: 'my-cli',
+          options: {
+            verbose: opt.boolean({
+              default: false,
+              description: 'Enable verbose output',
+            }),
+          },
+        }),
+      );
+
+      expect(help, 'to contain', '--verbose');
+      expect(help, 'not to contain', '--no-verbose');
+    });
+
+    it('shows --<flag> for boolean without default', () => {
+      const help = stripAnsi(
+        generateHelp({
+          name: 'my-cli',
+          options: {
+            verbose: opt.boolean({ description: 'Enable verbose output' }),
+          },
+        }),
+      );
+
+      expect(help, 'to contain', '--verbose');
+      expect(help, 'not to contain', '--no-verbose');
+    });
+
+    it('does not show short alias for negated boolean', () => {
+      const help = stripAnsi(
+        generateHelp({
+          name: 'my-cli',
+          options: {
+            verbose: opt.boolean({
+              aliases: ['v'],
+              default: true,
+              description: 'Enable verbose output',
+            }),
+          },
+        }),
+      );
+
+      // Should show --no-verbose but NOT -v for the negated form
+      expect(help, 'to contain', '--no-verbose');
+      expect(help, 'not to match', /-v,\s*--no-verbose/);
+    });
+
+    it('shows short alias for non-negated boolean', () => {
+      const help = stripAnsi(
+        generateHelp({
+          name: 'my-cli',
+          options: {
+            verbose: opt.boolean({
+              aliases: ['v'],
+              default: false,
+              description: 'Enable verbose output',
+            }),
+          },
+        }),
+      );
+
+      expect(help, 'to match', /-v,\s*--verbose/);
+    });
+  });
 });
 
 describe('generateHelp positionals', () => {

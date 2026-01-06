@@ -172,6 +172,9 @@ const getTypeLabel = (def: OptionDef): string => {
 
 /**
  * Format a single option for help output.
+ *
+ * For boolean options with `default: true`, shows `--no-<name>` instead of
+ * `--<name>` since that's how users would turn it off.
  */
 const formatOptionHelp = (
   name: string,
@@ -180,9 +183,18 @@ const formatOptionHelp = (
 ): string => {
   const parts: string[] = [];
 
-  // Build flag string: -v, --verbose
+  // For boolean options with default: true, show --no-<name>
+  // since that's how users would turn it off
+  const displayName =
+    def.type === 'boolean' && def.default === true ? `no-${name}` : name;
+
+  // Build flag string: -v, --verbose (or --no-verbose for default:true booleans)
   const shortAlias = def.aliases?.find((a) => a.length === 1);
-  const flagText = shortAlias ? `-${shortAlias}, --${name}` : `    --${name}`;
+  // Don't show short alias for negated booleans
+  const flagText =
+    shortAlias && displayName === name
+      ? `-${shortAlias}, --${displayName}`
+      : `    --${displayName}`;
   parts.push(`  ${styler.flag(flagText)}`);
 
   // Pad to align descriptions
