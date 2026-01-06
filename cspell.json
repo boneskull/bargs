@@ -25,6 +25,7 @@
     "coverage",
     "dist",
     "docs",
+    ".plans",
     "node_modules",
     "worktrees",
     ".git"
