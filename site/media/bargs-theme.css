@@ -91,10 +91,10 @@
   --color-icon-background: var(--color-background);
   --color-focus-outline: var(--bargs-lime);
 
-  --light-icon-npm: url('/media/mark-npm-24.svg');
-  --dark-icon-npm: url('/media/mark-npm-inverse-24.svg');
-  --light-icon-github: url('/media/mark-github-24.svg');
-  --dark-icon-github: url('/media/mark-github-inverse-24.svg');
+  --light-icon-npm: url('media/mark-npm-24.svg');
+  --dark-icon-npm: url('media/mark-npm-inverse-24.svg');
+  --light-icon-github: url('media/mark-github-24.svg');
+  --dark-icon-github: url('media/mark-github-inverse-24.svg');
 }
 
 @media (prefers-color-scheme: light) {
