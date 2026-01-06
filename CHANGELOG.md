@@ -1,5 +1,24 @@
 # Changelog
 
+## [3.0.0](https://github.com/boneskull/bargs/compare/bargs-v2.0.0...bargs-v3.0.0) (2026-01-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* none, additive only
+* The `pipe()` function has been removed from the public API.
+* Complete API redesign
+
+### Features
+
+* add merge() combinator for combining parsers ([7c2c1ca](https://github.com/boneskull/bargs/commit/7c2c1cabbbc1b054b73f52a57482e826f19e004d))
+* redesign API with fluent builder and combinator-style composition ([d3688c8](https://github.com/boneskull/bargs/commit/d3688c80b76139201d14e64382a0b2af44b86046))
+
+
+### Code Refactoring
+
+* remove pipe() function ([8ba0a55](https://github.com/boneskull/bargs/commit/8ba0a55fddfb992b5f11b93776829d6c9fbcb5f6))
+
 ## [2.0.0](https://github.com/boneskull/bargs/compare/bargs-v1.0.0...bargs-v2.0.0) (2026-01-04)
 
 
