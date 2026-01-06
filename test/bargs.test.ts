@@ -6,7 +6,7 @@ import { describe, it } from 'node:test';
 
 import type { StringOption } from '../src/types.js';
 
-import { bargs, handle, map, pipe } from '../src/bargs.js';
+import { bargs, handle, map } from '../src/bargs.js';
 import { opt, pos } from '../src/opt.js';
 
 describe('bargs.create()', () => {
@@ -52,10 +52,7 @@ describe('.command()', () => {
   it('registers a command', () => {
     const cli = bargs.create('test-cli').command(
       'greet',
-      pipe(
-        opt.options({ name: opt.string({ default: 'world' }) }),
-        handle(() => {}),
-      ),
+      handle(opt.options({ name: opt.string({ default: 'world' }) }), () => {}),
     );
 
     expect(cli, 'to be defined');
@@ -64,10 +61,7 @@ describe('.command()', () => {
   it('accepts description as third argument', () => {
     const cli = bargs.create('test-cli').command(
       'greet',
-      pipe(
-        opt.options({}),
-        handle(() => {}),
-      ),
+      handle(opt.options({}), () => {}),
       'Greet someone',
     );
 
@@ -139,13 +133,11 @@ describe('.parseAsync()', () => {
 
     const cli = bargs.create('test-cli').command(
       'greet',
-      pipe(
-        opt.options({ name: opt.string({ default: 'world' }) }),
-        handle(({ values }) => {
-          handlerCalled = true;
-          handlerResult = values;
-        }),
-      ),
+      opt.options({ name: opt.string({ default: 'world' }) }),
+      ({ values }) => {
+        handlerCalled = true;
+        handlerResult = values;
+      },
       'Greet someone',
     );
 
@@ -163,12 +155,10 @@ describe('.parseAsync()', () => {
       .globals(opt.options({ verbose: opt.boolean({ default: false }) }))
       .command(
         'greet',
-        pipe(
-          opt.options({ name: opt.string({ default: 'world' }) }),
-          handle(({ values }) => {
-            handlerResult = values;
-          }),
-        ),
+        opt.options({ name: opt.string({ default: 'world' }) }),
+        ({ values }) => {
+          handlerResult = values;
+        },
       );
 
     await cli.parseAsync(['greet', '--verbose', '--name', 'Bob']);
@@ -211,13 +201,13 @@ describe('.parseAsync()', () => {
   });
 
   it('returns parsed result with command name', async () => {
-    const cli = bargs.create('test-cli').command(
-      'greet',
-      pipe(
+    const cli = bargs
+      .create('test-cli')
+      .command(
+        'greet',
         opt.options({ name: opt.string({ default: 'world' }) }),
-        handle(() => {}),
-      ),
-    );
+        () => {},
+      );
 
     const result = await cli.parseAsync(['greet', '--name', 'Test']);
 
@@ -233,20 +223,17 @@ describe('transforms via map()', () => {
     const cli = bargs
       .create('test-cli')
       .globals(
-        pipe(
+        map(
           opt.options({ name: opt.string({ default: 'world' }) }),
-          map(({ values }) => ({
+          ({ values }) => ({
             positionals: [] as const,
             values: { ...values, greeting: `Hello, ${values.name}!` },
-          })),
+          }),
         ),
       )
-      .command(
-        'greet',
-        handle(opt.options({}), ({ values }) => {
-          handlerResult = values;
-        }),
-      );
+      .command('greet', opt.options({}), ({ values }) => {
+        handlerResult = values;
+      });
 
     await cli.parseAsync(['greet', '--name', 'Alice']);
 
@@ -350,15 +337,15 @@ describe('positionals', () => {
   it('parses positional arguments', async () => {
     let handlerResult: unknown;
 
-    const cli = bargs.create('test-cli').command(
-      'echo',
-      pipe(
+    const cli = bargs
+      .create('test-cli')
+      .command(
+        'echo',
         pos.positionals(pos.string({ name: 'message', required: true })),
-        handle(({ positionals }) => {
+        ({ positionals }) => {
           handlerResult = positionals;
-        }),
-      ),
-    );
+        },
+      );
 
     await cli.parseAsync(['echo', 'Hello, world!']);
 
@@ -368,18 +355,18 @@ describe('positionals', () => {
   it('handles multiple positionals', async () => {
     let handlerResult: unknown;
 
-    const cli = bargs.create('test-cli').command(
-      'copy',
-      pipe(
+    const cli = bargs
+      .create('test-cli')
+      .command(
+        'copy',
         pos.positionals(
           pos.string({ name: 'source', required: true }),
           pos.string({ name: 'dest', required: true }),
         ),
-        handle(({ positionals }) => {
+        ({ positionals }) => {
           handlerResult = positionals;
-        }),
-      ),
-    );
+        },
+      );
 
     await cli.parseAsync(['copy', 'src.txt', 'dst.txt']);
 
@@ -389,15 +376,15 @@ describe('positionals', () => {
   it('handles variadic positionals', async () => {
     let handlerResult: unknown;
 
-    const cli = bargs.create('test-cli').command(
-      'concat',
-      pipe(
+    const cli = bargs
+      .create('test-cli')
+      .command(
+        'concat',
         pos.positionals(pos.variadic('string', { name: 'files' })),
-        handle(({ positionals }) => {
+        ({ positionals }) => {
           handlerResult = positionals;
-        }),
-      ),
-    );
+        },
+      );
 
     await cli.parseAsync(['concat', 'a.txt', 'b.txt', 'c.txt']);
 

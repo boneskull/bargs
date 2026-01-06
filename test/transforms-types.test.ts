@@ -9,7 +9,6 @@ describe('Parser type inference', () => {
   test.todo('opt.options() infers values type');
   test.todo('pos.positionals() infers tuple type');
   test.todo('map() infers transformed type');
-  test.todo('pipe() composes types correctly');
 });
 
 describe('Command type inference', () => {

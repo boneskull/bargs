@@ -22,7 +22,7 @@ import { parseSimple } from './parser.js';
 import { defaultTheme, getTheme, type Theme } from './theme.js';
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// PIPE COMBINATOR
+// INTERNAL TYPES
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // Type for commands that may have transforms
@@ -166,55 +166,6 @@ export function map<
     } as Parser<V2, P2> & { __transform: typeof fn };
   };
 }
-/**
- * Compose functions left-to-right.
- */
-export function pipe<A, B>(a: A, ab: (a: A) => B): B;
-export function pipe<A, B, C>(a: A, ab: (a: A) => B, bc: (b: B) => C): C;
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// HANDLE COMBINATOR (TERMINAL)
-// ═══════════════════════════════════════════════════════════════════════════════
-
-export function pipe<A, B, C, D>(
-  a: A,
-  ab: (a: A) => B,
-  bc: (b: B) => C,
-  cd: (c: C) => D,
-): D;
-
-export function pipe<A, B, C, D, E>(
-  a: A,
-  ab: (a: A) => B,
-  bc: (b: B) => C,
-  cd: (c: C) => D,
-  de: (d: D) => E,
-): E;
-
-export function pipe<A, B, C, D, E, F>(
-  a: A,
-  ab: (a: A) => B,
-  bc: (b: B) => C,
-  cd: (c: C) => D,
-  de: (d: D) => E,
-  ef: (e: E) => F,
-): F;
-export function pipe<A, B, C, D, E, F, G>(
-  a: A,
-  ab: (a: A) => B,
-  bc: (b: B) => C,
-  cd: (c: C) => D,
-  de: (d: D) => E,
-  ef: (e: E) => F,
-  fg: (f: F) => G,
-): G;
-export function pipe(
-  initial: unknown,
-  ...fns: Array<(arg: unknown) => unknown>
-): unknown {
-  return fns.reduce((acc, fn) => fn(acc), initial);
-}
-
 // ═══════════════════════════════════════════════════════════════════════════════
 // CLI BUILDER
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -225,27 +176,20 @@ export function pipe(
  * @example
  *
  * ```typescript
- * const cli = bargs
+ * const cli = await bargs
  *   .create('my-app', { version: '1.0.0' })
  *   .globals(
- *     pipe(
- *       opt.options({ verbose: opt.boolean() }),
- *       map(({ values }) => ({
- *         values: { ...values, ts: Date.now() },
- *         positionals: [] as const,
- *       })),
- *     ),
+ *     map(opt.options({ verbose: opt.boolean() }), ({ values }) => ({
+ *       values: { ...values, ts: Date.now() },
+ *       positionals: [] as const,
+ *     })),
  *   )
  *   .command(
  *     'greet',
- *     pipe(
- *       pos.positionals(pos.string({ name: 'name', required: true })),
- *       handle(({ positionals }) =>
- *         console.log(`Hello, ${positionals[0]}!`),
- *       ),
- *     ),
+ *     pos.positionals(pos.string({ name: 'name', required: true })),
+ *     ({ positionals }) => console.log(`Hello, ${positionals[0]}!`),
  *   )
- *   .run();
+ *   .parseAsync();
  * ```
  */
 const create = (

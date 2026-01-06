@@ -1,24 +1,20 @@
 /**
  * Main entry point for the bargs CLI argument parser.
  *
- * Provides a parser combinator-inspired API for building type-safe CLIs.
+ * Provides a combinator-style API for building type-safe CLIs.
  *
  * @example
  *
  * ```typescript
- * import { bargs, opt, pos, pipe, map, handle } from '@boneskull/bargs';
+ * import { bargs, opt, pos } from '@boneskull/bargs';
  *
- * const cli = bargs
+ * await bargs
  *   .create('my-app', { version: '1.0.0' })
  *   .globals(opt.options({ verbose: opt.boolean({ aliases: ['v'] }) }))
  *   .command(
  *     'greet',
- *     pipe(
- *       pos.positionals(pos.string({ name: 'name', required: true })),
- *       handle(({ positionals }) =>
- *         console.log(`Hello, ${positionals[0]}!`),
- *       ),
- *     ),
+ *     pos.positionals(pos.string({ name: 'name', required: true })),
+ *     ({ positionals }) => console.log(`Hello, ${positionals[0]}!`),
  *     'Say hello',
  *   )
  *   .parseAsync();
@@ -28,7 +24,7 @@
  */
 
 // Main API
-export { bargs, handle, map, pipe } from './bargs.js';
+export { bargs, handle, map } from './bargs.js';
 
 // Errors
 export { BargsError, HelpError, ValidationError } from './errors.js';

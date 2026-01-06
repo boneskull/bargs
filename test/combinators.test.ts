@@ -1,40 +1,11 @@
 /**
- * Tests for parser combinators: pipe, map, handle.
+ * Tests for parser combinators: map, handle.
  */
 import { expect } from 'bupkis';
 import { describe, it } from 'node:test';
 
-import { handle, map, pipe } from '../src/bargs.js';
+import { handle, map } from '../src/bargs.js';
 import { opt, pos } from '../src/opt.js';
-
-describe('pipe()', () => {
-  it('passes through a single value', () => {
-    const result = pipe(5, (x) => x * 2);
-    expect(result, 'to be', 10);
-  });
-
-  it('composes multiple functions left-to-right', () => {
-    const result = pipe(
-      1,
-      (x) => x + 1,
-      (x) => x * 2,
-      (x) => x + 10,
-    );
-    expect(result, 'to be', 14);
-  });
-
-  it('works with parsers', () => {
-    const parser = pipe(
-      opt.options({ verbose: opt.boolean() }),
-      map(({ values }) => ({
-        positionals: [] as const,
-        values: { ...values, extra: 'added' },
-      })),
-    );
-
-    expect(parser.__brand, 'to be', 'Parser');
-  });
-});
 
 describe('map()', () => {
   describe('curried form', () => {
@@ -67,25 +38,25 @@ describe('map()', () => {
     });
   });
 
-  it('works in pipe to transform values', () => {
-    const parser = pipe(
+  it('transforms values', () => {
+    const parser = map(
       opt.options({ name: opt.string({ default: 'world' }) }),
-      map(({ values }) => ({
+      ({ values }) => ({
         positionals: [] as const,
         values: { greeting: `Hello, ${values.name}!` },
-      })),
+      }),
     );
 
     expect(parser.__brand, 'to be', 'Parser');
   });
 
-  it('works in pipe to transform positionals', () => {
-    const parser = pipe(
+  it('transforms positionals', () => {
+    const parser = map(
       pos.positionals(pos.string({ name: 'input', required: true })),
-      map(({ positionals }) => ({
+      ({ positionals }) => ({
         positionals: [positionals[0]?.toUpperCase()] as const,
         values: {},
-      })),
+      }),
     );
 
     expect(parser.__brand, 'to be', 'Parser');
@@ -121,21 +92,10 @@ describe('handle()', () => {
     });
   });
 
-  it('creates command from parser in pipe', () => {
-    const command = pipe(
-      opt.options({ verbose: opt.boolean() }),
-      handle(() => {
-        // handler body
-      }),
-    );
-
-    expect(command.__brand, 'to be', 'Command');
-  });
-
   it('preserves options schema', () => {
-    const command = pipe(
+    const command = handle(
       opt.options({ name: opt.string(), verbose: opt.boolean() }),
-      handle(() => {}),
+      () => {},
     );
 
     expect(command.__optionsSchema, 'to satisfy', {
@@ -145,9 +105,9 @@ describe('handle()', () => {
   });
 
   it('preserves positionals schema', () => {
-    const command = pipe(
+    const command = handle(
       pos.positionals(pos.string({ name: 'input', required: true })),
-      handle(() => {}),
+      () => {},
     );
 
     expect(command.__positionalsSchema, 'to satisfy', [
@@ -157,22 +117,24 @@ describe('handle()', () => {
 });
 
 describe('combined usage', () => {
-  it('pipes options, map, and handle together', () => {
-    const command = pipe(
-      opt.options({
-        name: opt.string({ default: 'world' }),
-        verbose: opt.boolean(),
-      }),
-      map(({ values }) => ({
-        positionals: [] as const,
-        values: {
-          ...values,
-          greeting: `Hello, ${values.name}!`,
-        },
-      })),
-      handle(({ values: _values }) => {
+  it('combines map and handle', () => {
+    const command = handle(
+      map(
+        opt.options({
+          name: opt.string({ default: 'world' }),
+          verbose: opt.boolean(),
+        }),
+        ({ values }) => ({
+          positionals: [] as const,
+          values: {
+            ...values,
+            greeting: `Hello, ${values.name}!`,
+          },
+        }),
+      ),
+      ({ values: _values }) => {
         // Would log: _values.greeting, _values.verbose
-      }),
+      },
     );
 
     expect(command.__brand, 'to be', 'Command');
@@ -182,22 +144,24 @@ describe('combined usage', () => {
     });
   });
 
-  it('pipes positionals with map and handle', () => {
-    const command = pipe(
-      pos.positionals(
-        pos.string({ name: 'input', required: true }),
-        pos.string({ name: 'output' }),
+  it('combines positionals with map and handle', () => {
+    const command = handle(
+      map(
+        pos.positionals(
+          pos.string({ name: 'input', required: true }),
+          pos.string({ name: 'output' }),
+        ),
+        ({ positionals }) => ({
+          positionals,
+          values: {
+            input: positionals[0],
+            output: positionals[1] ?? 'stdout',
+          },
+        }),
       ),
-      map(({ positionals }) => ({
-        positionals,
-        values: {
-          input: positionals[0],
-          output: positionals[1] ?? 'stdout',
-        },
-      })),
-      handle(({ values: _values }) => {
+      ({ values: _values }) => {
         // Would process: _values.input -> _values.output
-      }),
+      },
     );
 
     expect(command.__brand, 'to be', 'Command');

@@ -545,12 +545,7 @@ const plain = stripAnsi('\x1b[32m--verbose\x1b[0m'); // '--verbose'
 
 ### Low-Level Utilities
 
-The `pipe()` and `handle()` functions are exported for advanced use cases, but they're rarely needed with the standard API:
-
-- **`pipe(a, b, c)`** - General function composition. Mostly superseded by direct parser merging (`positionals(options)`) and `map(parser, fn)`.
-- **`handle(parser, fn)`** - Creates a `Command` from a parser and handler. Mostly superseded by `.command(name, parser, handler)`.
-
-These exist for edge cases where you need to compose functions outside the fluent builder, but the main API covers most use cases with better type inference.
+The `handle(parser, fn)` function is exported for advanced use cases where you need to create a `Command` object outside the fluent builder. It's mostly superseded by `.command(name, parser, handler)`.
 
 ## Motivation
 

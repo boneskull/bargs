@@ -69,11 +69,11 @@ type CallableOptionsParser<V> = (<V2, P2 extends readonly unknown[]>(
  * Create a Parser from an options schema that can also merge with existing
  * parsers.
  *
- * Supports two usage patterns in pipe():
+ * Supports two usage patterns:
  *
- * 1. As first arg: `pipe(opt.options(...), ...)` - used as Parser directly
- * 2. As later arg: `pipe(pos.positionals(...), opt.options(...), ...)` - called to
- *    merge
+ * 1. Standalone: `opt.options({ ... })` - returns a Parser
+ * 2. Merging: `pos.positionals(...)(opt.options(...))` - merges positionals into
+ *    options
  */
 const optionsImpl = <T extends OptionsSchema>(
   schema: T,
@@ -310,11 +310,11 @@ type EmptyObject = {};
  * Create a Parser from positional definitions that can also merge with existing
  * parsers.
  *
- * Supports two usage patterns in pipe():
+ * Supports two usage patterns:
  *
- * 1. As first arg: `pipe(pos.positionals(...), ...)` - used as Parser directly
- * 2. As later arg: `pipe(opt.options(...), pos.positionals(...), ...)` - called to
- *    merge
+ * 1. Standalone: `pos.positionals(...)` - returns a Parser
+ * 2. Merging: `pos.positionals(...)(opt.options(...))` - merges positionals into
+ *    options
  */
 const positionalsImpl = <T extends PositionalsSchema>(
   ...positionals: T
