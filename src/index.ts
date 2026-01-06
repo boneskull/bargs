@@ -74,6 +74,7 @@ export type {
   CommandDef,
   CountOption,
   CreateOptions,
+  EnumArrayOption,
   EnumOption,
   // Positional definitions
   EnumPositional,
