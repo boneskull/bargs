@@ -28,6 +28,10 @@ import { HelpError } from './errors.js';
  * For boolean options, also adds `no-<name>` variants to support explicit
  * negation (e.g., `--no-verbose` sets `verbose` to `false`).
  *
+ * Multi-character aliases are registered as separate options with the same type
+ * and multiple settings, then collapsed back to canonical names after parsing
+ * via `collapseAliases()`.
+ *
  * @function
  */
 const buildParseArgsConfig = (
@@ -42,12 +46,16 @@ const buildParseArgsConfig = (
   > = {};
 
   for (const [name, def] of Object.entries(schema)) {
+    const parseArgsType: 'boolean' | 'string' =
+      def.type === 'boolean' ? 'boolean' : 'string';
+    const isMultiple = def.type === 'array';
+
     const opt: {
       multiple?: boolean;
       short?: string;
       type: 'boolean' | 'string';
     } = {
-      type: def.type === 'boolean' ? 'boolean' : 'string',
+      type: parseArgsType,
     };
 
     // First single-char alias becomes short option
@@ -57,13 +65,28 @@ const buildParseArgsConfig = (
     }
 
     // Arrays need multiple: true
-    if (def.type === 'array') {
+    if (isMultiple) {
       opt.multiple = true;
     }
 
     config[name] = opt;
 
+    // Register multi-character aliases as separate options
+    for (const alias of def.aliases ?? []) {
+      if (alias.length > 1) {
+        const aliasOpt: {
+          multiple?: boolean;
+          type: 'boolean' | 'string';
+        } = { type: parseArgsType };
+        if (isMultiple) {
+          aliasOpt.multiple = true;
+        }
+        config[alias] = aliasOpt;
+      }
+    }
+
     // For boolean options, add negated form (--no-<name>)
+    // Note: We do NOT add --no-<alias> forms for aliases
     if (def.type === 'boolean') {
       config[`no-${name}`] = { type: 'boolean' };
     }
@@ -241,6 +264,64 @@ const processNegatedBooleans = (
 };
 
 /**
+ * Collapse multi-character aliases into their canonical option names.
+ *
+ * For array options, merges values from all aliases into the canonical name.
+ * For non-array options, throws HelpError if both alias and canonical were
+ * provided. Always removes alias keys from the result.
+ *
+ * @function
+ */
+const collapseAliases = (
+  values: Record<string, unknown>,
+  schema: OptionsSchema,
+): Record<string, unknown> => {
+  const result = { ...values };
+
+  // Build alias-to-canonical mapping (only multi-char aliases)
+  const aliasToCanonical = new Map<string, string>();
+  for (const [name, def] of Object.entries(schema)) {
+    for (const alias of def.aliases ?? []) {
+      if (alias.length > 1) {
+        aliasToCanonical.set(alias, name);
+      }
+    }
+  }
+
+  // Process each alias found in the values
+  for (const [alias, canonical] of aliasToCanonical) {
+    const aliasValue = result[alias];
+    if (aliasValue === undefined) {
+      continue;
+    }
+
+    const def = schema[canonical]!;
+    const canonicalValue = result[canonical];
+    const isArray = def.type === 'array';
+
+    if (isArray) {
+      // For arrays, merge values
+      const existingArray = Array.isArray(canonicalValue) ? canonicalValue : [];
+      const aliasArray = Array.isArray(aliasValue) ? aliasValue : [aliasValue];
+      result[canonical] = [...existingArray, ...aliasArray];
+    } else {
+      // For non-arrays, check for conflict
+      if (canonicalValue !== undefined) {
+        throw new HelpError(
+          `Conflicting options: --${alias} and --${canonical} cannot both be specified`,
+        );
+      }
+      result[canonical] = aliasValue;
+    }
+
+    // Remove the alias key
+    delete result[alias];
+  }
+
+  return result;
+};
+
+/**
  * Options for parseSimple.
  */
 interface ParseSimpleOptions<
@@ -286,8 +367,11 @@ export const parseSimple = <
     optionsSchema,
   );
 
+  // Collapse multi-character aliases into canonical names
+  const collapsedValues = collapseAliases(processedValues, optionsSchema);
+
   // Coerce and apply defaults
-  const coercedValues = coerceValues(processedValues, optionsSchema);
+  const coercedValues = coerceValues(collapsedValues, optionsSchema);
   const coercedPositionals = coercePositionals(positionals, positionalsSchema);
 
   return {

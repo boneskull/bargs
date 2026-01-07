@@ -54,6 +54,60 @@ describe('generateHelp', () => {
     expect(help, 'to contain', '[boolean]');
   });
 
+  it('shows multi-character aliases in help', () => {
+    const help = stripAnsi(
+      generateHelp({
+        name: 'my-cli',
+        options: {
+          verbose: opt.boolean({
+            aliases: ['v', 'verb'],
+            description: 'Enable verbose output',
+          }),
+        },
+      }),
+    );
+
+    // Should show short alias, multi-char alias, and canonical name
+    expect(help, 'to contain', '-v');
+    expect(help, 'to contain', '--verb');
+    expect(help, 'to contain', '--verbose');
+  });
+
+  it('shows multiple multi-character aliases sorted by length', () => {
+    const help = stripAnsi(
+      generateHelp({
+        name: 'my-cli',
+        options: {
+          output: opt.string({
+            aliases: ['o', 'out', 'outfile'],
+            description: 'Output file',
+          }),
+        },
+      }),
+    );
+
+    // Aliases sorted by length: -o, --out, --outfile, --output
+    expect(help, 'to match', /-o.*--out.*--outfile.*--output/);
+  });
+
+  it('shows multi-char alias without short alias', () => {
+    const help = stripAnsi(
+      generateHelp({
+        name: 'my-cli',
+        options: {
+          verbose: opt.boolean({
+            aliases: ['verb'],
+            description: 'Enable verbose output',
+          }),
+        },
+      }),
+    );
+
+    expect(help, 'to contain', '--verb');
+    expect(help, 'to contain', '--verbose');
+    expect(help, 'not to match', /-v\b/); // No short -v alias
+  });
+
   it('shows enum choices', () => {
     const help = stripAnsi(
       generateHelp({

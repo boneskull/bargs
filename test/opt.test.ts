@@ -31,6 +31,43 @@ describe('opt.options', () => {
       /Alias conflict.*-v.*--verbose.*--version/,
     );
   });
+
+  it('throws when alias conflicts with canonical option name', () => {
+    expect(
+      () =>
+        opt.options({
+          debug: opt.boolean(),
+          verbose: opt.boolean({ aliases: ['debug'] }),
+        }),
+      'to throw',
+      /Alias conflict.*--debug.*conflicts with an existing option name/,
+    );
+  });
+
+  it('throws when alias conflicts with boolean negation', () => {
+    // The alias "no-debug" would conflict with auto-generated --no-debug
+    expect(
+      () =>
+        opt.options({
+          debug: opt.boolean(),
+          verbose: opt.boolean({ aliases: ['no-debug'] }),
+        }),
+      'to throw',
+      /Alias conflict.*--no-debug.*conflicts with auto-generated boolean negation/,
+    );
+  });
+
+  it('throws when alias conflicts with own boolean negation', () => {
+    // A boolean option's alias "no-op" would conflict with its own --no-op
+    expect(
+      () =>
+        opt.options({
+          op: opt.boolean({ aliases: ['no-op'] }),
+        }),
+      'to throw',
+      /Alias conflict.*--no-op.*conflicts with auto-generated boolean negation/,
+    );
+  });
 });
 
 describe('pos.positionals', () => {

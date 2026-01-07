@@ -570,7 +570,18 @@ export interface VariadicPositional extends PositionalBase {
  * Base properties shared by all option definitions.
  */
 interface OptionBase {
-  /** Aliases for this option (e.g., ['v'] for --verbose) */
+  /**
+   * Short or long aliases for this option.
+   *
+   * - Single-character aliases (e.g., `'v'`) become short flags (`-v`)
+   * - Multi-character aliases (e.g., `'verb'`) become long flags (`--verb`)
+   *
+   * @example
+   *
+   * ```typescript
+   * opt.boolean({ aliases: ['v', 'verb'] }); // -v, --verb, --verbose
+   * ```
+   */
   aliases?: string[];
   /** Option description displayed in help text */
   description?: string;

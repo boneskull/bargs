@@ -183,6 +183,181 @@ describe('parseSimple', () => {
     expect(result.values, 'to deeply equal', { verbose: true });
   });
 
+  describe('multi-character aliases', () => {
+    it('parses multi-char alias to canonical name', () => {
+      const result = parseSimple({
+        args: ['--verb'],
+        options: {
+          verbose: opt.boolean({ aliases: ['verb'] }),
+        },
+      });
+
+      expect(result.values, 'to deeply equal', { verbose: true });
+    });
+
+    it('parses multi-char string alias', () => {
+      const result = parseSimple({
+        args: ['--out', '/tmp/output'],
+        options: {
+          output: opt.string({ aliases: ['out'] }),
+        },
+      });
+
+      expect(result.values, 'to deeply equal', { output: '/tmp/output' });
+    });
+
+    it('short and multi-char aliases both work', () => {
+      // Test short alias
+      const result1 = parseSimple({
+        args: ['-v'],
+        options: {
+          verbose: opt.boolean({ aliases: ['v', 'verb'] }),
+        },
+      });
+      expect(result1.values, 'to deeply equal', { verbose: true });
+
+      // Test multi-char alias
+      const result2 = parseSimple({
+        args: ['--verb'],
+        options: {
+          verbose: opt.boolean({ aliases: ['v', 'verb'] }),
+        },
+      });
+      expect(result2.values, 'to deeply equal', { verbose: true });
+
+      // Test canonical name
+      const result3 = parseSimple({
+        args: ['--verbose'],
+        options: {
+          verbose: opt.boolean({ aliases: ['v', 'verb'] }),
+        },
+      });
+      expect(result3.values, 'to deeply equal', { verbose: true });
+    });
+
+    it('throws HelpError when both alias and canonical provided for non-array', () => {
+      expect(
+        () =>
+          parseSimple({
+            args: ['--verb', '--verbose'],
+            options: {
+              verbose: opt.boolean({ aliases: ['verb'] }),
+            },
+          }),
+        'to throw a',
+        HelpError,
+      );
+    });
+
+    it('throws HelpError for string option with alias and canonical', () => {
+      expect(
+        () =>
+          parseSimple({
+            args: ['--out', 'a', '--output', 'b'],
+            options: {
+              output: opt.string({ aliases: ['out'] }),
+            },
+          }),
+        'to throw a',
+        HelpError,
+      );
+    });
+
+    it('error message mentions conflicting options', () => {
+      expect(
+        () =>
+          parseSimple({
+            args: ['--verb', '--verbose'],
+            options: {
+              verbose: opt.boolean({ aliases: ['verb'] }),
+            },
+          }),
+        'to throw',
+        /Conflicting options.*--verb.*--verbose/,
+      );
+    });
+
+    it('merges array values from alias and canonical', () => {
+      const result = parseSimple({
+        args: ['--file', 'a.txt', '-f', 'b.txt', '--files', 'c.txt'],
+        options: {
+          files: opt.array('string', { aliases: ['f', 'file'] }),
+        },
+      });
+
+      // Short alias (-f) and canonical (--files) go to canonical first,
+      // then multi-char alias (--file) is appended during collapse
+      expect(result.values.files, 'to deeply equal', [
+        'b.txt',
+        'c.txt',
+        'a.txt',
+      ]);
+    });
+
+    it('merges number array values from aliases', () => {
+      const result = parseSimple({
+        args: ['--port', '80', '-p', '443', '--ports', '8080'],
+        options: {
+          ports: opt.array('number', { aliases: ['p', 'port'] }),
+        },
+      });
+
+      // Short alias (-p) and canonical (--ports) go to canonical first,
+      // then multi-char alias (--port) is appended during collapse
+      expect(result.values.ports, 'to deeply equal', [443, 8080, 80]);
+    });
+
+    it('boolean multi-char alias works correctly', () => {
+      const result = parseSimple({
+        args: ['--verb'],
+        options: {
+          verbose: opt.boolean({ aliases: ['verb'], default: false }),
+        },
+      });
+
+      expect(result.values, 'to deeply equal', { verbose: true });
+    });
+
+    it('--no-verbose does NOT create --no-verb negation for aliases', () => {
+      // Trying to use --no-verb (which is not registered) should throw
+      expect(
+        () =>
+          parseSimple({
+            args: ['--no-verb'],
+            options: {
+              verbose: opt.boolean({ aliases: ['verb'] }),
+            },
+          }),
+        'to throw',
+        /unknown.*verb|no-verb/i,
+      );
+    });
+
+    it('alias keys never appear in result values', () => {
+      const result = parseSimple({
+        args: ['--verb'],
+        options: {
+          verbose: opt.boolean({ aliases: ['v', 'verb'] }),
+        },
+      });
+
+      expect(Object.keys(result.values), 'not to contain', 'verb');
+      expect(Object.keys(result.values), 'not to contain', 'v');
+      expect(result.values, 'to have keys', ['verbose']);
+    });
+
+    it('works with multiple multi-char aliases', () => {
+      const result = parseSimple({
+        args: ['--verb'],
+        options: {
+          verbose: opt.boolean({ aliases: ['v', 'verb', 'vb'] }),
+        },
+      });
+
+      expect(result.values, 'to deeply equal', { verbose: true });
+    });
+  });
+
   it('returns undefined for options without defaults', () => {
     const result = parseSimple({
       args: [],
