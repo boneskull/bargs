@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.4.0](https://github.com/boneskull/bargs/compare/bargs-v3.3.0...bargs-v3.4.0) (2026-01-07)
+
+
+### Features
+
+* add helper types for inferring parser values ([24d145a](https://github.com/boneskull/bargs/commit/24d145a867f025843882e0486e1353358f353185))
+* **nested:** add factory pattern for nested commands with typed parent globals ([#18](https://github.com/boneskull/bargs/issues/18)) ([c1514f9](https://github.com/boneskull/bargs/commit/c1514f9e16ae255aeedc738294e228f4e258464e))
+
 ## [3.3.0](https://github.com/boneskull/bargs/compare/bargs-v3.2.0...bargs-v3.3.0) (2026-01-06)
 
 
