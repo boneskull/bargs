@@ -750,7 +750,7 @@ The `handle(parser, fn)` function is exported for advanced use cases where you n
 
 ## Dependencies
 
-**bargs** has zero (0) dependencies. Only Node.js v22+.
+**bargs** has zero (0) dependencies. Only Node.js v20+.
 
 ## Motivation
 
