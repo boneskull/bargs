@@ -636,4 +636,43 @@ describe('nested commands via factory pattern', () => {
       verbose: true,
     });
   });
+
+  it('merges nested .globals() with parent globals in factory', async () => {
+    let result: unknown;
+
+    // This tests the pattern:
+    //   .globals(globalOptions)  // verbose
+    //   .command('history', (history) =>
+    //     history.globals(quietOption)  // quiet - should MERGE with parent globals
+    //       .command('list', ...)
+    //   )
+    const cli = bargs('main')
+      .globals(opt.options({ verbose: opt.boolean() }))
+      .command('history', (history) =>
+        history
+          .globals(opt.options({ quiet: opt.boolean() }))
+          .command(
+            'list',
+            opt.options({ limit: opt.number() }),
+            ({ values }) => {
+              result = values;
+            },
+          ),
+      );
+
+    await cli.parseAsync([
+      '--verbose',
+      'history',
+      '--quiet',
+      'list',
+      '--limit',
+      '10',
+    ]);
+
+    expect(result, 'to satisfy', {
+      limit: 10,
+      quiet: true,
+      verbose: true,
+    });
+  });
 });

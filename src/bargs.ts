@@ -628,10 +628,35 @@ const createCliBuilder = <V, P extends readonly unknown[]>(
 
     globals<V2, P2 extends readonly unknown[]>(
       parser: Parser<V2, P2>,
-    ): CliBuilder<V2, P2> {
-      return createCliBuilder<V2, P2>({
+    ): CliBuilder<V & V2, readonly [...P, ...P2]> {
+      // Merge with existing global parser if present
+      let mergedParser: Parser<unknown, readonly unknown[]>;
+
+      if (state.globalParser) {
+        // Merge option schemas
+        const mergedOptions = {
+          ...state.globalParser.__optionsSchema,
+          ...parser.__optionsSchema,
+        };
+        // Merge positional schemas
+        const mergedPositionals = [
+          ...state.globalParser.__positionalsSchema,
+          ...parser.__positionalsSchema,
+        ];
+        mergedParser = {
+          __brand: 'Parser',
+          __optionsSchema: mergedOptions,
+          __positionals: [] as unknown as readonly unknown[],
+          __positionalsSchema: mergedPositionals,
+          __values: {} as unknown,
+        };
+      } else {
+        mergedParser = parser as Parser<unknown, readonly unknown[]>;
+      }
+
+      return createCliBuilder<V & V2, readonly [...P, ...P2]>({
         ...state,
-        globalParser: parser as Parser<unknown, readonly unknown[]>,
+        globalParser: mergedParser,
       });
     },
 

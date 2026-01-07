@@ -153,11 +153,14 @@ export interface CliBuilder<
   ): CliBuilder<TGlobalValues, TGlobalPositionals>;
 
   /**
-   * Set global options/transforms that apply to all commands.
+   * Set or extend global options/transforms that apply to all commands.
+   *
+   * When called on a builder that already has globals (e.g., from a factory),
+   * the new globals are merged with existing ones.
    */
   globals<V, P extends readonly unknown[]>(
     parser: Parser<V, P>,
-  ): CliBuilder<V, P>;
+  ): CliBuilder<TGlobalValues & V, readonly [...TGlobalPositionals, ...P]>;
 
   /**
    * Parse arguments synchronously and run handlers.
