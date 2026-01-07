@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.5.2](https://github.com/boneskull/bargs/compare/bargs-v3.5.1...bargs-v3.5.2) (2026-01-07)
+
+
+### Bug Fixes
+
+* **help:** properly delegate --help to nested command builders ([f05c30a](https://github.com/boneskull/bargs/commit/f05c30ac4bbd64017011be0775bc2ecb36020b5b))
+* require Node.js v20+ ([6aa61e3](https://github.com/boneskull/bargs/commit/6aa61e37ae1567a4d6653c79c58fee04f3894d12))
+
 ## [3.5.1](https://github.com/boneskull/bargs/compare/bargs-v3.5.0...bargs-v3.5.1) (2026-01-07)
 
 
