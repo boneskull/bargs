@@ -76,8 +76,10 @@ const validateAliasConflicts = (schema: OptionsSchema): void => {
       }
       // Check for conflicts with auto-generated boolean negations
       if (booleanNegations.has(alias)) {
+        // alias is "no-<name>", so extract the original option name
+        const originalOption = alias.replace(/^no-/, '');
         throw new BargsError(
-          `Alias conflict: "--${alias}" conflicts with auto-generated boolean negation "--${alias}"`,
+          `Alias conflict: "--${alias}" conflicts with auto-generated boolean negation for "--${originalOption}"`,
         );
       }
       aliasToOption.set(alias, optionName);

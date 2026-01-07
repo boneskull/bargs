@@ -385,7 +385,7 @@ $ my-cli --verb --verbose
 Error: Conflicting options: --verb and --verbose cannot both be specified
 ```
 
-For array options, values from all aliases are merged:
+For array options, values from all aliases are merged. Single-character aliases and the canonical name are processed first (in command-line order), then multi-character aliases are appended:
 
 ```typescript
 opt.options({
@@ -395,7 +395,8 @@ opt.options({
 
 ```shell
 $ my-cli --file a.txt -f b.txt --files c.txt
-# files: ["a.txt", "b.txt", "c.txt"]
+# files: ["b.txt", "c.txt", "a.txt"]
+# (-f and --files first, then --file appended)
 ```
 
 ### Boolean Negation (`--no-<flag>`)

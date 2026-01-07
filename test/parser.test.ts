@@ -285,8 +285,9 @@ describe('parseSimple', () => {
         },
       });
 
-      // Short alias (-f) and canonical (--files) go to canonical first,
-      // then multi-char alias (--file) is appended during collapse
+      // Documented merge order: short aliases and canonical are processed first
+      // (in command-line order), then multi-char aliases are appended.
+      // Here: -f (b.txt) and --files (c.txt) first, then --file (a.txt)
       expect(result.values.files, 'to deeply equal', [
         'b.txt',
         'c.txt',
@@ -302,8 +303,9 @@ describe('parseSimple', () => {
         },
       });
 
-      // Short alias (-p) and canonical (--ports) go to canonical first,
-      // then multi-char alias (--port) is appended during collapse
+      // Documented merge order: short aliases and canonical are processed first
+      // (in command-line order), then multi-char aliases are appended.
+      // Here: -p (443) and --ports (8080) first, then --port (80)
       expect(result.values.ports, 'to deeply equal', [443, 8080, 80]);
     });
 
