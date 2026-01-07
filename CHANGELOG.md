@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.5.1](https://github.com/boneskull/bargs/compare/bargs-v3.5.0...bargs-v3.5.1) (2026-01-07)
+
+
+### Bug Fixes
+
+* **globals:** merge globals instead of replacing when called multiple times ([2aaa0a7](https://github.com/boneskull/bargs/commit/2aaa0a7e9e28be0c21dee1370471b8bd927df63c))
+
 ## [3.5.0](https://github.com/boneskull/bargs/compare/bargs-v3.4.0...bargs-v3.5.0) (2026-01-07)
 
 
