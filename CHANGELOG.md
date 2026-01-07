@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.5.0](https://github.com/boneskull/bargs/compare/bargs-v3.4.0...bargs-v3.5.0) (2026-01-07)
+
+
+### Features
+
+* support multi-character aliases ([#19](https://github.com/boneskull/bargs/issues/19)) ([4a77c03](https://github.com/boneskull/bargs/commit/4a77c03c02f54a4014c4a4027b9845afb15147dc))
+
 ## [3.4.0](https://github.com/boneskull/bargs/compare/bargs-v3.3.0...bargs-v3.4.0) (2026-01-07)
 
 
