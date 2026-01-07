@@ -64,6 +64,8 @@ const validateOption = (
   opt: unknown,
   path: string,
   allAliases: Map<string, string>,
+  allCanonicalNames: Set<string>,
+  booleanNegationNames: Set<string>,
 ): void => {
   if (!isObject(opt)) {
     throw new ValidationError(path, 'option must be an object');
@@ -116,13 +118,28 @@ const validateOption = (
     }
     for (let i = 0; i < opt['aliases'].length; i++) {
       const alias = opt['aliases'][i]!;
-      if (alias.length !== 1) {
+      // Reject empty aliases
+      if (alias.length === 0) {
         throw new ValidationError(
           `${path}.aliases[${i}]`,
-          `alias must be a single character, got "${alias}"`,
+          'alias cannot be an empty string',
         );
       }
-      // Check for duplicates
+      // Check if alias conflicts with a canonical option name
+      if (allCanonicalNames.has(alias)) {
+        throw new ValidationError(
+          `${path}.aliases[${i}]`,
+          `alias "${alias}" conflicts with an existing option name`,
+        );
+      }
+      // Check if alias conflicts with auto-generated boolean negation (--no-<name>)
+      if (booleanNegationNames.has(alias)) {
+        throw new ValidationError(
+          `${path}.aliases[${i}]`,
+          `alias "${alias}" conflicts with an auto-generated boolean negation`,
+        );
+      }
+      // Check for duplicate aliases across options
       const existingOption = allAliases.get(alias);
       if (existingOption !== undefined) {
         throw new ValidationError(
@@ -263,6 +280,7 @@ export const validateOptionsSchema = (
   schema: unknown,
   path: string = 'options',
   allAliases: Map<string, string> = new Map(),
+  allCanonicalNames: Set<string> = new Set(),
 ): void => {
   if (schema === undefined) {
     return; // optional
@@ -272,8 +290,29 @@ export const validateOptionsSchema = (
     throw new ValidationError(path, 'must be an object');
   }
 
+  // Collect all canonical option names first (for alias conflict detection)
+  const canonicalNames = new Set([
+    ...allCanonicalNames,
+    ...Object.keys(schema),
+  ]);
+
+  // Collect auto-generated boolean negation names (--no-<name>)
+  const booleanNegations = new Set<string>();
   for (const [name, opt] of Object.entries(schema)) {
-    validateOption(name, opt, `${path}.${name}`, allAliases);
+    if (isObject(opt) && opt['type'] === 'boolean') {
+      booleanNegations.add(`no-${name}`);
+    }
+  }
+
+  for (const [name, opt] of Object.entries(schema)) {
+    validateOption(
+      name,
+      opt,
+      `${path}.${name}`,
+      allAliases,
+      canonicalNames,
+      booleanNegations,
+    );
   }
 };
 

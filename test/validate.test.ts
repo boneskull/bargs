@@ -311,7 +311,7 @@ describe('validateOptionsSchema', () => {
     );
   });
 
-  it('validates aliases are single characters', () => {
+  it('allows single-character aliases', () => {
     expect(
       () =>
         validateOptionsSchema({
@@ -319,18 +319,95 @@ describe('validateOptionsSchema', () => {
         }),
       'not to throw',
     );
+  });
 
+  it('allows multi-character aliases', () => {
     expect(
       () =>
         validateOptionsSchema({
-          verbose: { aliases: ['verbose'], type: 'boolean' },
+          verbose: opt.boolean({ aliases: ['verb'] }),
+        }),
+      'not to throw',
+    );
+
+    // Multiple aliases including both short and long
+    expect(
+      () =>
+        validateOptionsSchema({
+          verbose: opt.boolean({ aliases: ['v', 'verb', 'vb'] }),
+        }),
+      'not to throw',
+    );
+  });
+
+  it('rejects empty string aliases', () => {
+    expect(
+      () =>
+        validateOptionsSchema({
+          verbose: { aliases: [''], type: 'boolean' },
         }),
       'to throw a',
       Error,
       'satisfying',
       {
-        message: /must be a single character/,
+        message: /alias cannot be an empty string/,
         path: 'options.verbose.aliases[0]',
+      },
+    );
+  });
+
+  it('rejects alias that conflicts with canonical option name', () => {
+    expect(
+      () =>
+        validateOptionsSchema({
+          debug: opt.boolean(),
+          verbose: opt.boolean({ aliases: ['debug'] }),
+        }),
+      'to throw a',
+      Error,
+      'satisfying',
+      {
+        message: /alias "debug" conflicts with an existing option name/,
+        path: 'options.verbose.aliases[0]',
+      },
+    );
+  });
+
+  it('rejects alias that conflicts with auto-generated boolean negation', () => {
+    // An alias "no-debug" would conflict with the auto-generated --no-debug
+    // negation for boolean option "debug"
+    expect(
+      () =>
+        validateOptionsSchema({
+          debug: opt.boolean(),
+          verbose: opt.boolean({ aliases: ['no-debug'] }),
+        }),
+      'to throw a',
+      Error,
+      'satisfying',
+      {
+        message:
+          /alias "no-debug" conflicts with an auto-generated boolean negation/,
+        path: 'options.verbose.aliases[0]',
+      },
+    );
+  });
+
+  it('rejects alias that conflicts with own boolean negation', () => {
+    // A boolean option's alias "no-op" would conflict with its own
+    // auto-generated --no-op negation
+    expect(
+      () =>
+        validateOptionsSchema({
+          op: opt.boolean({ aliases: ['no-op'] }),
+        }),
+      'to throw a',
+      Error,
+      'satisfying',
+      {
+        message:
+          /alias "no-op" conflicts with an auto-generated boolean negation/,
+        path: 'options.op.aliases[0]',
       },
     );
   });
@@ -345,6 +422,17 @@ describe('validateOptionsSchema', () => {
       'to throw error satisfying',
       // Second option to be validated will fail
       { message: /alias "v" is already used/ },
+    );
+
+    // Also test with multi-char aliases
+    expect(
+      () =>
+        validateOptionsSchema({
+          debug: { aliases: ['verb'], type: 'boolean' },
+          verbose: { aliases: ['verb'], type: 'boolean' },
+        }),
+      'to throw error satisfying',
+      { message: /alias "verb" is already used/ },
     );
   });
 

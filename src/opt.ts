@@ -34,10 +34,26 @@ import { BargsError } from './errors.js';
 /**
  * Validate that no alias conflicts exist in a merged options schema.
  *
+ * Checks for:
+ *
+ * - Duplicate aliases across options
+ * - Aliases that conflict with canonical option names
+ * - Aliases that conflict with auto-generated boolean negation names
+ *   (--no-<name>)
+ *
  * @function
  */
 const validateAliasConflicts = (schema: OptionsSchema): void => {
   const aliasToOption = new Map<string, string>();
+  const canonicalNames = new Set(Object.keys(schema));
+
+  // Collect auto-generated boolean negation names (--no-<name>)
+  const booleanNegations = new Set<string>();
+  for (const [name, def] of Object.entries(schema)) {
+    if (def.type === 'boolean') {
+      booleanNegations.add(`no-${name}`);
+    }
+  }
 
   for (const [optionName, def] of Object.entries(schema)) {
     if (!def.aliases) {
@@ -45,10 +61,25 @@ const validateAliasConflicts = (schema: OptionsSchema): void => {
     }
 
     for (const alias of def.aliases) {
+      // Check for duplicate aliases
       const existing = aliasToOption.get(alias);
       if (existing && existing !== optionName) {
         throw new BargsError(
           `Alias conflict: "-${alias}" is used by both "--${existing}" and "--${optionName}"`,
+        );
+      }
+      // Check for conflicts with canonical option names
+      if (canonicalNames.has(alias)) {
+        throw new BargsError(
+          `Alias conflict: "--${alias}" conflicts with an existing option name`,
+        );
+      }
+      // Check for conflicts with auto-generated boolean negations
+      if (booleanNegations.has(alias)) {
+        // alias is "no-<name>", so extract the original option name
+        const originalOption = alias.replace(/^no-/, '');
+        throw new BargsError(
+          `Alias conflict: "--${alias}" conflicts with auto-generated boolean negation for "--${originalOption}"`,
         );
       }
       aliasToOption.set(alias, optionName);

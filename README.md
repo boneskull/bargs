@@ -338,6 +338,7 @@ import { opt } from '@boneskull/bargs';
 opt.string({ default: 'value' }); // --name value
 opt.number({ default: 42 }); // --count 42
 opt.boolean({ aliases: ['v'] }); // --verbose, -v
+opt.boolean({ aliases: ['v', 'verb'] }); // --verbose, --verb, -v
 opt.enum(['a', 'b', 'c']); // --level a
 opt.array('string'); // --file x --file y
 opt.array(['low', 'medium', 'high']); // --priority low --priority high
@@ -346,14 +347,57 @@ opt.count(); // -vvv → 3
 
 ### Option Properties
 
-| Property      | Type       | Description                                      |
-| ------------- | ---------- | ------------------------------------------------ |
-| `aliases`     | `string[]` | Short flags (e.g., `['v']` for `-v`)             |
-| `default`     | varies     | Default value (makes the option non-nullable)    |
-| `description` | `string`   | Help text description                            |
-| `group`       | `string`   | Groups options under a custom section header     |
-| `hidden`      | `boolean`  | Hide from `--help` output                        |
-| `required`    | `boolean`  | Mark as required (makes the option non-nullable) |
+| Property      | Type       | Description                                                        |
+| ------------- | ---------- | ------------------------------------------------------------------ |
+| `aliases`     | `string[]` | Short (`['v']` for `-v`) or long aliases (`['verb']` for `--verb`) |
+| `default`     | varies     | Default value (makes the option non-nullable)                      |
+| `description` | `string`   | Help text description                                              |
+| `group`       | `string`   | Groups options under a custom section header                       |
+| `hidden`      | `boolean`  | Hide from `--help` output                                          |
+| `required`    | `boolean`  | Mark as required (makes the option non-nullable)                   |
+
+### Aliases
+
+Options can have both short (single-character) and long (multi-character) aliases:
+
+```typescript
+opt.options({
+  verbose: opt.boolean({ aliases: ['v', 'verb'] }),
+  output: opt.string({ aliases: ['o', 'out'] }),
+});
+```
+
+All of these are equivalent:
+
+```shell
+$ my-cli -v                # verbose: true
+$ my-cli --verb            # verbose: true
+$ my-cli --verbose         # verbose: true
+$ my-cli -o file.txt       # output: "file.txt"
+$ my-cli --out file.txt    # output: "file.txt"
+$ my-cli --output file.txt # output: "file.txt"
+```
+
+For non-array options, using both an alias and the canonical name throws an error:
+
+```shell
+$ my-cli --verb --verbose
+Error: Conflicting options: --verb and --verbose cannot both be specified
+```
+
+For array options, values from all aliases are merged. Single-character aliases and the canonical name are processed first (in command-line order), then multi-character aliases are appended:
+
+```typescript
+opt.options({
+  files: opt.array('string', { aliases: ['f', 'file'] }),
+});
+```
+
+```shell
+$ my-cli --file a.txt -f b.txt --files c.txt
+# files: ["b.txt", "c.txt", "a.txt"]
+# (-f and --files first, then --file appended)
+```
 
 ### Boolean Negation (`--no-<flag>`)
 

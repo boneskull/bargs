@@ -188,6 +188,9 @@ const getTypeLabel = (def: OptionDef): string => {
  * For boolean options with `default: true`, shows `--no-<name>` instead of
  * `--<name>` since that's how users would turn it off.
  *
+ * Displays aliases in order: short alias first (-v), then multi-char aliases
+ * sorted by length (--verb), then the canonical name (--verbose).
+ *
  * @function
  */
 const formatOptionHelp = (
@@ -202,17 +205,33 @@ const formatOptionHelp = (
   const displayName =
     def.type === 'boolean' && def.default === true ? `no-${name}` : name;
 
-  // Build flag string: -v, --verbose (or --no-verbose for default:true booleans)
+  // Separate short and long aliases
   const shortAlias = def.aliases?.find((a) => a.length === 1);
+  const longAliases = (def.aliases ?? [])
+    .filter((a) => a.length > 1)
+    .sort((a, b) => a.length - b.length);
+
+  // Build flag string: -v, --verb, --verbose
   // Don't show short alias for negated booleans
+  const flagParts: string[] = [];
+  if (shortAlias && displayName === name) {
+    flagParts.push(`-${shortAlias}`);
+  }
+  for (const alias of longAliases) {
+    flagParts.push(`--${alias}`);
+  }
+  flagParts.push(`--${displayName}`);
+
+  // If no short alias and no long aliases, add padding
   const flagText =
-    shortAlias && displayName === name
-      ? `-${shortAlias}, --${displayName}`
-      : `    --${displayName}`;
+    flagParts.length === 1 && !shortAlias
+      ? `    ${flagParts[0]}`
+      : flagParts.join(', ');
   parts.push(`  ${styler.flag(flagText)}`);
 
-  // Pad to align descriptions
-  const padding = Math.max(0, 24 - flagText.length - 2);
+  // Pad to align descriptions (increase base padding for longer alias chains)
+  const basePadding = Math.max(24, flagText.length + 4);
+  const padding = Math.max(0, basePadding - flagText.length - 2);
   parts.push(' '.repeat(padding));
 
   // Description
