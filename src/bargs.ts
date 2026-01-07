@@ -709,7 +709,42 @@ const parseCore = (
 
     if (commandIndex >= 0 && commandIndex < helpIndex && commands.size > 0) {
       const commandName = args[commandIndex]!;
-      if (commands.has(commandName)) {
+      const commandEntry = commands.get(commandName);
+
+      if (commandEntry) {
+        // For nested commands, check if there are more args to delegate
+        if (commandEntry.type === 'nested') {
+          // Get args after the command name (e.g., ['list', '--help'] from ['history', 'list', '--help'])
+          const nestedArgs = args.slice(commandIndex + 1);
+
+          // If there are more args (subcommand or --help), delegate to nested builder
+          if (nestedArgs.length > 0) {
+            // Delegate to nested builder's help handling
+            const internalNestedBuilder =
+              commandEntry.builder as InternalCliBuilder<
+                unknown,
+                readonly unknown[]
+              >;
+            // Create a minimal parent globals result for help generation
+            const emptyGlobals: ParseResult<unknown, readonly unknown[]> = {
+              positionals: [],
+              values: {},
+            };
+            // This will trigger the nested builder's help handling
+            // and call process.exit(0) if --help is handled
+            void internalNestedBuilder.__parseWithParentGlobals(
+              nestedArgs,
+              emptyGlobals,
+              true,
+            );
+          }
+
+          // If no more args, show help for this nested command group
+          showNestedCommandHelp(state, commandName);
+          // showNestedCommandHelp calls process.exit(0)
+        }
+
+        // Regular command help
         console.log(generateCommandHelpNew(state, commandName, theme));
         process.exit(0);
       }
@@ -735,6 +770,39 @@ const parseCore = (
 };
 
 /**
+ * Show help for a nested command group by delegating to the nested builder.
+ *
+ * @function
+ */
+const showNestedCommandHelp = (
+  state: InternalCliState,
+  commandName: string,
+): void => {
+  const commandEntry = state.commands.get(commandName);
+  if (!commandEntry || commandEntry.type !== 'nested') {
+    console.log(`Unknown command group: ${commandName}`);
+    process.exit(1);
+  }
+
+  // Delegate to nested builder with --help
+  const internalNestedBuilder = commandEntry.builder as InternalCliBuilder<
+    unknown,
+    readonly unknown[]
+  >;
+  const emptyGlobals: ParseResult<unknown, readonly unknown[]> = {
+    positionals: [],
+    values: {},
+  };
+
+  // This will show the nested builder's help and call process.exit(0)
+  void internalNestedBuilder.__parseWithParentGlobals(
+    ['--help'],
+    emptyGlobals,
+    true,
+  );
+};
+
+/**
  * Generate command-specific help.
  *
  * @function
@@ -749,13 +817,14 @@ const generateCommandHelpNew = (
     return `Unknown command: ${commandName}`;
   }
 
-  // Handle nested commands - show their subcommand list
+  // Handle nested commands - this shouldn't be reached as nested commands
+  // delegate to showNestedCommandHelp in parseCore, but handle it gracefully
   if (commandEntry.type === 'nested') {
-    // TODO: Generate proper help for nested command groups
-    return `${commandName} is a command group. Run '${state.name} ${commandName} --help' for subcommands.`;
+    showNestedCommandHelp(state, commandName);
+    return ''; // Never reached, showNestedCommandHelp calls process.exit
   }
 
-  // TODO: Implement proper command help generation
+  // Regular command help
   const config = {
     commands: {
       [commandName]: {
