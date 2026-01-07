@@ -514,3 +514,126 @@ describe('nested commands (subcommands)', () => {
     expect(cli, 'to be defined');
   });
 });
+
+describe('nested commands via factory pattern', () => {
+  it('supports nested commands via factory function', async () => {
+    let result: unknown;
+
+    const cli = bargs('git').command(
+      'remote',
+      (remote) =>
+        remote.command(
+          'add',
+          pos.positionals(
+            pos.string({ name: 'name', required: true }),
+            pos.string({ name: 'url', required: true }),
+          ),
+          ({ positionals }) => {
+            result = { command: 'remote add', positionals };
+          },
+          'Add a remote',
+        ),
+      'Manage remotes',
+    );
+
+    await cli.parseAsync(['remote', 'add', 'origin', 'https://github.com/...']);
+
+    expect(result, 'to satisfy', {
+      command: 'remote add',
+      positionals: ['origin', 'https://github.com/...'],
+    });
+  });
+
+  it('passes parent globals to factory-created nested command handlers', async () => {
+    let result: unknown;
+
+    const cli = bargs('git')
+      .globals(opt.options({ verbose: opt.boolean({ aliases: ['v'] }) }))
+      .command('remote', (remote) =>
+        remote.command(
+          'add',
+          pos.positionals(pos.string({ name: 'name', required: true })),
+          ({ positionals, values }) => {
+            result = { positionals, values };
+          },
+        ),
+      );
+
+    await cli.parseAsync(['--verbose', 'remote', 'add', 'origin']);
+
+    expect(result, 'to satisfy', {
+      positionals: ['origin'],
+      values: { verbose: true },
+    });
+  });
+
+  it('supports deeply nested commands via factory', async () => {
+    let result: unknown;
+
+    const cli = bargs('git').command('remote', (remote) =>
+      remote.command('origin', (origin) =>
+        origin.command(
+          'set',
+          pos.positionals(pos.string({ name: 'url', required: true })),
+          ({ positionals }) => {
+            result = { command: 'remote origin set', positionals };
+          },
+        ),
+      ),
+    );
+
+    await cli.parseAsync(['remote', 'origin', 'set', 'https://new.url']);
+
+    expect(result, 'to satisfy', {
+      command: 'remote origin set',
+      positionals: ['https://new.url'],
+    });
+  });
+
+  it('supports default subcommand in factory-created nested commands', async () => {
+    let result: unknown;
+
+    const cli = bargs('git').command('remote', (remote) =>
+      remote
+        .command(
+          'list',
+          opt.options({}),
+          () => {
+            result = 'list called';
+          },
+          'List remotes',
+        )
+        .command('add', opt.options({}), () => {
+          result = 'add called';
+        })
+        .defaultCommand('list'),
+    );
+
+    await cli.parseAsync(['remote']);
+
+    expect(result, 'to be', 'list called');
+  });
+
+  it('merges command-local options with parent globals in factory', async () => {
+    let result: unknown;
+
+    const cli = bargs('git')
+      .globals(opt.options({ verbose: opt.boolean() }))
+      .command('remote', (remote) =>
+        remote.command(
+          'add',
+          opt.options({ force: opt.boolean() }),
+          ({ values }) => {
+            result = values;
+          },
+        ),
+      );
+
+    await cli.parseAsync(['--verbose', 'remote', 'add', '--force']);
+
+    expect(result, 'to satisfy', {
+      force: true,
+      verbose: true,
+    });
+  });
+});

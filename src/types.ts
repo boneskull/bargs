@@ -97,6 +97,36 @@ export interface CliBuilder<
   ): CliBuilder<TGlobalValues, TGlobalPositionals>;
 
   /**
+   * Register a nested command group using a factory function.
+   *
+   * This form provides full type inference - the factory receives a builder
+   * that already has parent globals typed, so all nested command handlers see
+   * the merged types.
+   *
+   * @example
+   *
+   * ```typescript
+   * bargs('main')
+   *   .globals(opt.options({ verbose: opt.boolean() }))
+   *   .command(
+   *     'remote',
+   *     (remote) =>
+   *       remote.command('add', addParser, ({ values }) => {
+   *         // values.verbose is typed correctly!
+   *       }),
+   *     'Manage remotes',
+   *   );
+   * ```
+   */
+  command<CV, CP extends readonly unknown[]>(
+    name: string,
+    factory: (
+      builder: CliBuilder<TGlobalValues, TGlobalPositionals>,
+    ) => CliBuilder<CV, CP>,
+    description?: string,
+  ): CliBuilder<TGlobalValues, TGlobalPositionals>;
+
+  /**
    * Set the default command by name (must be registered first).
    */
   defaultCommand(name: string): CliBuilder<TGlobalValues, TGlobalPositionals>;
