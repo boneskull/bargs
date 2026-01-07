@@ -630,10 +630,12 @@ import { ansi } from '@boneskull/bargs';
 
 bargs('my-cli', {
   theme: {
-    command: ansi.bold,
-    flag: ansi.brightCyan,
-    positional: ansi.magenta,
-    // ...
+    colors: {
+      command: ansi.bold,
+      flag: ansi.brightCyan,
+      positional: ansi.magenta,
+      // ...
+    },
   },
 });
 ```
