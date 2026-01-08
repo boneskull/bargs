@@ -75,6 +75,8 @@ export type {
   CliResult,
   Command,
   CommandDef,
+  // Command configuration
+  CommandOptions,
   CountOption,
   CreateOptions,
   EnumArrayOption,

@@ -676,3 +676,158 @@ describe('nested commands via factory pattern', () => {
     });
   });
 });
+
+describe('command aliases', () => {
+  describe('leaf commands', () => {
+    it('resolves alias to canonical command (string alias)', async () => {
+      let executed = false;
+      const cli = bargs('test-cli').command(
+        'add',
+        opt.options({}),
+        () => {
+          executed = true;
+        },
+        { aliases: ['a', 'new'], description: 'Add an item' },
+      );
+
+      await cli.parseAsync(['a']);
+      expect(executed, 'to be', true);
+    });
+
+    it('resolves multiple aliases', async () => {
+      const calls: string[] = [];
+      const cli = bargs('test-cli').command(
+        'list',
+        opt.options({}),
+        () => {
+          calls.push('list');
+        },
+        { aliases: ['ls', 'l'], description: 'List items' },
+      );
+
+      await cli.parseAsync(['ls']);
+      await cli.parseAsync(['l']);
+      await cli.parseAsync(['list']);
+
+      expect(calls, 'to have length', 3);
+    });
+
+    it('passes options through when using alias', async () => {
+      let result: unknown;
+      const cli = bargs('test-cli')
+        .globals(opt.options({ verbose: opt.boolean() }))
+        .command(
+          'remove',
+          opt.options({ force: opt.boolean() }),
+          ({ values }) => {
+            result = values;
+          },
+          { aliases: ['rm', 'del'] },
+        );
+
+      await cli.parseAsync(['--verbose', 'rm', '--force']);
+
+      expect(result, 'to satisfy', {
+        force: true,
+        verbose: true,
+      });
+    });
+
+    it('allows description-only string (backward compatible)', async () => {
+      let executed = false;
+      const cli = bargs('test-cli').command(
+        'greet',
+        opt.options({}),
+        () => {
+          executed = true;
+        },
+        'Say hello', // string description, no aliases
+      );
+
+      await cli.parseAsync(['greet']);
+      expect(executed, 'to be', true);
+    });
+  });
+
+  describe('nested commands', () => {
+    it('resolves alias for nested command group', async () => {
+      let executed = false;
+      const cli = bargs('test-cli').command(
+        'remote',
+        (remote) =>
+          remote.command(
+            'add',
+            opt.options({}),
+            () => {
+              executed = true;
+            },
+            'Add remote',
+          ),
+        { aliases: ['r'], description: 'Manage remotes' },
+      );
+
+      await cli.parseAsync(['r', 'add']);
+      expect(executed, 'to be', true);
+    });
+
+    it('resolves aliases at multiple levels', async () => {
+      let result: unknown;
+      const cli = bargs('test-cli')
+        .globals(opt.options({ verbose: opt.boolean() }))
+        .command(
+          'config',
+          (cfg) =>
+            cfg.command(
+              'get',
+              pos.positionals(pos.string({ name: 'key', required: true })),
+              ({ positionals, values }) => {
+                result = { key: positionals[0], values };
+              },
+              { aliases: ['g'] },
+            ),
+          { aliases: ['cfg', 'c'] },
+        );
+
+      await cli.parseAsync(['--verbose', 'c', 'g', 'user.name']);
+
+      expect(result, 'to satisfy', {
+        key: 'user.name',
+        values: { verbose: true },
+      });
+    });
+  });
+
+  describe('error handling', () => {
+    it('throws BargsError when alias conflicts with existing command', () => {
+      expect(
+        () =>
+          bargs('test-cli')
+            .command('add', opt.options({}), () => {}, { aliases: ['a'] })
+            .command(
+              'append',
+              opt.options({}),
+              () => {},
+              { aliases: ['a'] }, // Conflict!
+            ),
+        'to throw',
+        /alias "a" is already registered/,
+      );
+    });
+
+    it('throws BargsError when alias conflicts with command name', () => {
+      expect(
+        () =>
+          bargs('test-cli')
+            .command('add', opt.options({}), () => {})
+            .command(
+              'append',
+              opt.options({}),
+              () => {},
+              { aliases: ['add'] }, // Conflict with command name!
+            ),
+        'to throw',
+        /alias "add" is already registered/,
+      );
+    });
+  });
+});
