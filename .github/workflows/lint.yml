@@ -1,6 +1,15 @@
 permissions:
   contents: read
 
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint:
     env:
@@ -12,5 +21,3 @@ jobs:
       - run: npm run lint
 
 name: Lint
-
-on: [push, pull_request]
