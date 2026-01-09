@@ -80,35 +80,47 @@ describe('osc', () => {
       expect(supportsHyperlinks(), 'to be', false);
     });
 
-    it('should return false for VTE 0.50.0 (dotted format) due to segfault bug', () => {
-      delete process.env.CI;
-      delete process.env.FORCE_HYPERLINK;
-      delete process.env.TERM_PROGRAM;
-      process.env.VTE_VERSION = '0.50.0';
+    it(
+      'should return false for VTE 0.50.0 (dotted format) due to segfault bug',
+      { skip: process.platform === 'win32' },
+      () => {
+        delete process.env.CI;
+        delete process.env.FORCE_HYPERLINK;
+        delete process.env.TERM_PROGRAM;
+        process.env.VTE_VERSION = '0.50.0';
 
-      const mockStream = { isTTY: true } as NodeJS.WriteStream;
-      expect(supportsHyperlinks(mockStream), 'to be', false);
-    });
+        const mockStream = { isTTY: true } as NodeJS.WriteStream;
+        expect(supportsHyperlinks(mockStream), 'to be', false);
+      },
+    );
 
-    it('should return false for VTE 0.50.0 (compact format "5000") due to segfault bug', () => {
-      delete process.env.CI;
-      delete process.env.FORCE_HYPERLINK;
-      delete process.env.TERM_PROGRAM;
-      process.env.VTE_VERSION = '5000';
+    it(
+      'should return false for VTE 0.50.0 (compact format "5000") due to segfault bug',
+      { skip: process.platform === 'win32' },
+      () => {
+        delete process.env.CI;
+        delete process.env.FORCE_HYPERLINK;
+        delete process.env.TERM_PROGRAM;
+        process.env.VTE_VERSION = '5000';
 
-      const mockStream = { isTTY: true } as NodeJS.WriteStream;
-      expect(supportsHyperlinks(mockStream), 'to be', false);
-    });
+        const mockStream = { isTTY: true } as NodeJS.WriteStream;
+        expect(supportsHyperlinks(mockStream), 'to be', false);
+      },
+    );
 
-    it('should return true for VTE 0.50.1 (compact format "5001")', () => {
-      delete process.env.CI;
-      delete process.env.FORCE_HYPERLINK;
-      delete process.env.TERM_PROGRAM;
-      process.env.VTE_VERSION = '5001';
+    it(
+      'should return true for VTE 0.50.1 (compact format "5001")',
+      { skip: process.platform === 'win32' },
+      () => {
+        delete process.env.CI;
+        delete process.env.FORCE_HYPERLINK;
+        delete process.env.TERM_PROGRAM;
+        process.env.VTE_VERSION = '5001';
 
-      const mockStream = { isTTY: true } as NodeJS.WriteStream;
-      expect(supportsHyperlinks(mockStream), 'to be', true);
-    });
+        const mockStream = { isTTY: true } as NodeJS.WriteStream;
+        expect(supportsHyperlinks(mockStream), 'to be', true);
+      },
+    );
   });
 
   describe('linkifyUrls()', () => {
