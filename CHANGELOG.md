@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.6.2](https://github.com/boneskull/bargs/compare/bargs-v3.6.1...bargs-v3.6.2) (2026-01-09)
+
+
+### Bug Fixes
+
+* resolve symlinks when auto-detecting version from package.json ([5cab7f3](https://github.com/boneskull/bargs/commit/5cab7f349b1c97705d4eee1f6f7b15efc13398c6))
+
 ## [3.6.1](https://github.com/boneskull/bargs/compare/bargs-v3.6.0...bargs-v3.6.1) (2026-01-09)
 
 
