@@ -41,7 +41,7 @@ export type TransformFn<
 > = (
   result: ParseResult<V1, P1>,
 ) => ParseResult<V2, P2> | Promise<ParseResult<V2, P2>>;
-// A command entry can be either a leaf command or a nested builder
+/** A command entry can be either a leaf command or a nested builder. */
 type CommandEntry =
   | {
       aliases?: string[];
@@ -55,7 +55,7 @@ type CommandEntry =
       description?: string;
       type: 'command';
     };
-// Type for commands that may have transforms
+/** Type for commands that may have transforms. */
 type CommandWithTransform<V, P extends readonly unknown[]> = Command<V, P> & {
   __transform?: (
     r: ParseResult<unknown, readonly unknown[]>,
@@ -121,7 +121,14 @@ const registerAliases = (
     aliasMap.set(alias, canonicalName);
   }
 };
-// Type for parsers that may have transforms
+/** Async transform type for internal use. */
+type AsyncTransform = (
+  r: ParseResult<unknown, readonly unknown[]>,
+) =>
+  | ParseResult<unknown, readonly unknown[]>
+  | Promise<ParseResult<unknown, readonly unknown[]>>;
+
+/** Type for parsers that may have transforms. */
 type ParserWithTransform<V, P extends readonly unknown[]> = Parser<V, P> & {
   __transform?: (
     r: ParseResult<unknown, readonly unknown[]>,
@@ -352,12 +359,6 @@ export function merge(
     ];
 
     // Preserve transforms from both parsers (chain them)
-    type AsyncTransform = (
-      r: ParseResult<unknown, readonly unknown[]>,
-    ) =>
-      | ParseResult<unknown, readonly unknown[]>
-      | Promise<ParseResult<unknown, readonly unknown[]>>;
-
     const resultWithTransform = result as { __transform?: AsyncTransform };
     const nextWithTransform = next as { __transform?: AsyncTransform };
 
