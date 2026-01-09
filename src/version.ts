@@ -8,9 +8,49 @@
  * @packageDocumentation
  */
 
-import { readFileSync } from 'node:fs';
-import { readFile } from 'node:fs/promises';
+import { readFileSync, realpathSync } from 'node:fs';
+import { readFile, realpath } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
+
+/**
+ * Get the real path of the entry script, resolving symlinks. Falls back to cwd
+ * if process.argv[1] is unavailable.
+ *
+ * @function
+ */
+const getScriptDir = (): string => {
+  try {
+    // process.argv[1] is the script being executed
+    const scriptPath = process.argv[1];
+    if (scriptPath) {
+      // Resolve symlinks to find the real location
+      const realPath = realpathSync(scriptPath);
+      return dirname(realPath);
+    }
+  } catch {
+    // Fall through to cwd
+  }
+  return process.cwd();
+};
+
+/**
+ * Get the real path of the entry script asynchronously, resolving symlinks.
+ * Falls back to cwd if process.argv[1] is unavailable.
+ *
+ * @function
+ */
+const getScriptDirAsync = async (): Promise<string> => {
+  try {
+    const scriptPath = process.argv[1];
+    if (scriptPath) {
+      const realPath = await realpath(scriptPath);
+      return dirname(realPath);
+    }
+  } catch {
+    // Fall through to cwd
+  }
+  return process.cwd();
+};
 
 /**
  * Package info extracted from `package.json` for epilog generation.
@@ -166,18 +206,21 @@ const readVersionFromPackageJsonSync = (
 
 /**
  * Detect version: use provided version or read from nearest package.json.
+ * Starts from the entry script's real location (resolving symlinks) by
+ * default.
  *
  * @function
  */
 export const detectVersion = async (
-  providedVersion: string | undefined,
-  startDir: string = process.cwd(),
+  providedVersion?: string,
+  startDir?: string,
 ): Promise<string | undefined> => {
   if (providedVersion) {
     return providedVersion;
   }
 
-  const pkgPath = await findPackageJson(startDir);
+  const dir = startDir ?? (await getScriptDirAsync());
+  const pkgPath = await findPackageJson(dir);
   if (!pkgPath) {
     return undefined;
   }
@@ -187,19 +230,21 @@ export const detectVersion = async (
 
 /**
  * Detect version synchronously: use provided version or read from nearest
- * package.json.
+ * package.json. Starts from the entry script's real location (resolving
+ * symlinks) by default.
  *
  * @function
  */
 export const detectVersionSync = (
-  providedVersion: string | undefined,
-  startDir: string = process.cwd(),
+  providedVersion?: string,
+  startDir?: string,
 ): string | undefined => {
   if (providedVersion) {
     return providedVersion;
   }
 
-  const pkgPath = findPackageJsonSync(startDir);
+  const dir = startDir ?? getScriptDir();
+  const pkgPath = findPackageJsonSync(dir);
   if (!pkgPath) {
     return undefined;
   }
