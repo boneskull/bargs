@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.6.1](https://github.com/boneskull/bargs/compare/bargs-v3.6.0...bargs-v3.6.1) (2026-01-09)
+
+
+### Bug Fixes
+
+* auto-detect version from package.json when not provided ([2ec0eb3](https://github.com/boneskull/bargs/commit/2ec0eb3eedcb7687a16901c869a8b794053f7cc5))
+
 ## [3.6.0](https://github.com/boneskull/bargs/compare/bargs-v3.5.2...bargs-v3.6.0) (2026-01-09)
 
 
