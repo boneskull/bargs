@@ -20,7 +20,6 @@ jobs:
     name: Release Please
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Release Please is disabled"
       - name: Create Release
         id: release
         uses: googleapis/release-please-action@16a9c90856f42705d54a6fda1823352bdc62cf38 # v4.4.0
@@ -30,3 +29,9 @@ jobs:
         uses: ./.github/actions/publish
         with:
           token: ${{ secrets.NPM_TOKEN }}
+        name: Publish to npm
+      - if: ${{ steps.release.outputs.release_created }}
+        name: Deploy Documentation
+        run: gh workflow run docs.yml --ref main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

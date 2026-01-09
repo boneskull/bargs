@@ -13,8 +13,7 @@ on:
       - 'README.md'
       - 'site/**'
       - '.github/workflows/docs.yml'
-  release:
-    types: [published]
+
   # Allow manual triggering
   workflow_dispatch:
 
@@ -61,7 +60,7 @@ jobs:
   # Deployment job
   deploy:
     # Only deploy on main branch pushes (not PRs) or releases
-    if: (github.ref == 'refs/heads/main' && github.event_name == 'push') || github.event_name == 'release'
+    if: (github.ref == 'refs/heads/main' && github.event_name == 'push')
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
