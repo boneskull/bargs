@@ -11,6 +11,7 @@ jobs:
     strategy:
       matrix:
         include:
+          - node-version: '20'
           - node-version: '22'
           - node-version: '24'
     steps:
@@ -19,5 +20,10 @@ jobs:
       - uses: ./.github/actions/prepare
         with:
           node-version: ${{ matrix.node-version }}
+      - name: Test (Node v20.x)
+        if: matrix.node-version == '20'
+        # CAUTION: this only works in POSIX environments
+        run: npm run test:node20
       - name: Test
+        if: matrix.node-version != '20'
         run: npm test

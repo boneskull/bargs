@@ -59,8 +59,10 @@
     "lint:types": "tsc --noEmit",
     "prepare": "husky; run-s -s build",
     "test": "run-s test:runtime",
-    "test:runtime": "node --import tsx --test --test-reporter=spec \"test/**/*.test.ts\"",
-    "test:watch": "node --import tsx --test --test-reporter=spec --watch \"test/**/*.test.ts\""
+    "test:base": "node --import tsx --test --test-reporter=spec",
+    "test:node20": "node --import tsx --test --test-reporter=spec test/*.test.ts",
+    "test:runtime": "npm run test:base -- \"test/*.test.ts\"",
+    "test:watch": "npm run test:base -- --watch \"test/*.test.ts\""
   },
   "devDependencies": {
     "@commitlint/cli": "20.2.0",
