@@ -4,18 +4,25 @@
  *
  * A git-like CLI that demonstrates:
  *
- * - Nested command groups (e.g., `git remote add`)
+ * - Nested command groups with aliases (e.g., `git r add` for `git remote add`)
  * - Factory pattern for full type inference of parent globals
  * - Unlimited nesting depth
  * - Parent globals flowing to nested handlers
  * - Default subcommands
+ * - Command aliases at both parent and nested levels
  *
- * Usage: npx tsx examples/nested-commands.ts remote add origin
- * https://github.com/... npx tsx examples/nested-commands.ts remote remove
- * origin npx tsx examples/nested-commands.ts config get user.name npx tsx
- * examples/nested-commands.ts --verbose remote add origin https://... npx tsx
- * examples/nested-commands.ts --help npx tsx examples/nested-commands.ts remote
- * --help
+ * @example
+ *
+ * ```sh
+ * npx tsx examples/nested-commands.ts remote add origin https://github.com/...
+ * npx tsx examples/nested-commands.ts r add origin https://...  # 'r' alias
+ * npx tsx examples/nested-commands.ts remote rm origin  # 'rm' alias
+ * npx tsx examples/nested-commands.ts config get user.name
+ * npx tsx examples/nested-commands.ts cfg get user.name  # 'cfg' alias
+ * npx tsx examples/nested-commands.ts --verbose remote add origin https://...
+ * npx tsx examples/nested-commands.ts --help
+ * npx tsx examples/nested-commands.ts remote --help
+ * ```
  */
 import { bargs, opt, pos } from '../src/index.js';
 
@@ -53,6 +60,7 @@ await bargs('git-like', {
   // ─────────────────────────────────────────────────────────────────────────────
   // FACTORY PATTERN: Full type inference for parent globals!
   // The factory receives a builder that already has parent globals typed.
+  // Nested command groups can have aliases too (e.g., 'r' for 'remote')
   // ─────────────────────────────────────────────────────────────────────────────
   .command(
     'remote',
@@ -95,7 +103,8 @@ await bargs('git-like', {
               console.log(`Removed remote '${name}'`);
             }
           },
-          'Remove a remote',
+          // Subcommands can have aliases too
+          { aliases: ['rm', 'del'], description: 'Remove a remote' },
         )
         .command(
           'list',
@@ -114,10 +123,11 @@ await bargs('git-like', {
               }
             }
           },
-          'List remotes',
+          { aliases: ['ls'], description: 'List remotes' },
         )
         .defaultCommand('list'),
-    'Manage remotes',
+    // Parent command group has aliases
+    { aliases: ['r'], description: 'Manage remotes' },
   )
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -139,7 +149,7 @@ await bargs('git-like', {
             }
             console.log(value);
           },
-          'Get a config value',
+          { aliases: ['g'], description: 'Get a config value' },
         )
         .command(
           'set',
@@ -155,9 +165,9 @@ await bargs('git-like', {
               console.log(`Set ${key} = ${value}`);
             }
           },
-          'Set a config value',
+          { aliases: ['s'], description: 'Set a config value' },
         ),
-    'Manage configuration',
+    { aliases: ['cfg', 'c'], description: 'Manage configuration' },
   )
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -174,7 +184,7 @@ await bargs('git-like', {
         console.log(`Config entries: ${config.size}`);
       }
     },
-    'Show status',
+    { aliases: ['st', 's'], description: 'Show status' },
   )
   .defaultCommand('status')
   .parseAsync();

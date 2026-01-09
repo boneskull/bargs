@@ -4,15 +4,17 @@
  *
  * A task manager that demonstrates:
  *
- * - Multiple commands (add, list, done)
+ * - Multiple commands with aliases (add/a/new, list/ls, done/complete/x)
  * - Global options (--verbose, --file)
  * - Command-specific options (--priority for add)
  * - Command positionals (task text)
  * - Full type inference with the (Parser, handler) API
  *
  * Usage: npx tsx examples/tasks.ts add "Buy groceries" --priority high npx tsx
- * examples/tasks.ts list npx tsx examples/tasks.ts done 1 npx tsx
- * examples/tasks.ts --help npx tsx examples/tasks.ts add --help
+ * examples/tasks.ts a "Buy groceries" # same as 'add' npx tsx examples/tasks.ts
+ * list npx tsx examples/tasks.ts ls # same as 'list' npx tsx examples/tasks.ts
+ * done 1 npx tsx examples/tasks.ts x 1 # same as 'done' npx tsx
+ * examples/tasks.ts --help
  */
 import { bargs, opt, pos } from '../src/index.js';
 
@@ -77,6 +79,7 @@ await bargs('tasks', {
 })
   .globals(globalOptions)
   // The handler receives merged global + command types
+  // Use { description, aliases } for command aliases
   .command(
     'add',
     addParser,
@@ -98,7 +101,7 @@ await bargs('tasks', {
         console.log(`Added task #${task.id}: ${text}`);
       }
     },
-    'Add a new task',
+    { aliases: ['a', 'new'], description: 'Add a new task' },
   )
   .command(
     'list',
@@ -131,7 +134,7 @@ await bargs('tasks', {
         }
       }
     },
-    'List all tasks',
+    { aliases: ['ls'], description: 'List all tasks' },
   )
   .command(
     'done',
@@ -156,7 +159,7 @@ await bargs('tasks', {
         console.log(`Completed task #${id}: ${task.text}`);
       }
     },
-    'Mark a task as complete',
+    { aliases: ['complete', 'x'], description: 'Mark a task as complete' },
   )
   .defaultCommand('list')
   .parseAsync();

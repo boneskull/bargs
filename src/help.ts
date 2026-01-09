@@ -34,6 +34,8 @@ export interface HelpConfig {
   commands?: Record<
     string,
     {
+      /** Alternative names for this command */
+      aliases?: string[];
       description: string;
       options?: OptionsSchema;
       positionals?: PositionalsSchema;
@@ -313,9 +315,18 @@ export const generateHelp = (
   if (hasCommands(config)) {
     lines.push(styler.sectionHeader('COMMANDS'));
     for (const [name, cmd] of Object.entries(config.commands)) {
-      const padding = Math.max(0, 14 - name.length);
+      // Build command name with aliases: "add, a, new" or just "add"
+      // Calculate raw length for padding (without ANSI codes)
+      const rawAliasStr =
+        cmd.aliases && cmd.aliases.length > 0
+          ? `${name}, ${cmd.aliases.join(', ')}`
+          : name;
+      const padding = Math.max(2, 20 - rawAliasStr.length);
+      const styledCmd = cmd.aliases?.length
+        ? `${styler.command(name)}, ${styler.commandAlias(cmd.aliases.join(', '))}`
+        : styler.command(name);
       lines.push(
-        `  ${styler.command(name)}${' '.repeat(padding)}${styler.description(cmd.description)}`,
+        `  ${styledCmd}${' '.repeat(padding)}${styler.description(cmd.description)}`,
       );
     }
     lines.push('');

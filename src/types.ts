@@ -68,7 +68,7 @@ export interface CliBuilder<
   command<CV, CP extends readonly unknown[]>(
     name: string,
     cmd: Command<CV, CP>,
-    description?: string,
+    options?: CommandOptions | string,
   ): CliBuilder<TGlobalValues, TGlobalPositionals>;
 
   /**
@@ -81,7 +81,7 @@ export interface CliBuilder<
     name: string,
     parser: Parser<CV, CP>,
     handler: HandlerFn<CV & TGlobalValues, CP>,
-    description?: string,
+    options?: CommandOptions | string,
   ): CliBuilder<TGlobalValues, TGlobalPositionals>;
 
   /**
@@ -93,7 +93,7 @@ export interface CliBuilder<
   command<CV, CP extends readonly unknown[]>(
     name: string,
     nestedBuilder: CliBuilder<CV, CP>,
-    description?: string,
+    options?: CommandOptions | string,
   ): CliBuilder<TGlobalValues, TGlobalPositionals>;
 
   /**
@@ -123,7 +123,7 @@ export interface CliBuilder<
     factory: (
       builder: CliBuilder<TGlobalValues, TGlobalPositionals>,
     ) => CliBuilder<CV, CP>,
-    description?: string,
+    options?: CommandOptions | string,
   ): CliBuilder<TGlobalValues, TGlobalPositionals>;
 
   /**
@@ -226,6 +226,36 @@ export interface CommandDef<
   readonly description?: string;
   /** Command name */
   readonly name: string;
+}
+
+/**
+ * Options for command registration.
+ *
+ * Used as an alternative to a simple string description when registering
+ * commands, allowing additional configuration like aliases.
+ *
+ * @example
+ *
+ * ```typescript
+ * .command('add', addParser, handler, {
+ *   description: 'Add a new item',
+ *   aliases: ['a', 'new']
+ * })
+ * ```
+ */
+export interface CommandOptions {
+  /**
+   * Alternative names for this command.
+   *
+   * @example
+   *
+   * ```typescript
+   * { "aliases": ["co", "sw"] } // 'checkout' can be invoked as 'co' or 'sw'
+   * ```
+   */
+  aliases?: string[];
+  /** Command description displayed in help text */
+  description?: string;
 }
 
 /**

@@ -33,6 +33,8 @@ export interface Theme {
 export interface ThemeColors {
   /** Command names (e.g., "init", "build") */
   command: string;
+  /** Command aliases (e.g., "a", "ls") - shown dimmer than command names */
+  commandAlias: string;
   /** The "default: " label text */
   defaultText: string;
   /** Default value annotations (e.g., "false", ""hello"") */
@@ -125,6 +127,7 @@ export const ansi = {
  */
 const defaultColors: ThemeColors = {
   command: ansi.bold,
+  commandAlias: ansi.dim,
   defaultText: ansi.dim,
   defaultValue: ansi.white,
   description: ansi.white,
@@ -152,6 +155,7 @@ export const themes = {
   mono: {
     colors: {
       command: '',
+      commandAlias: '',
       defaultText: '',
       defaultValue: '',
       description: '',
@@ -171,6 +175,7 @@ export const themes = {
   ocean: {
     colors: {
       command: ansi.bold + ansi.brightCyan,
+      commandAlias: ansi.cyan,
       defaultText: ansi.blue,
       defaultValue: ansi.green,
       description: ansi.white,
@@ -190,6 +195,7 @@ export const themes = {
   warm: {
     colors: {
       command: ansi.bold + ansi.yellow,
+      commandAlias: ansi.dim + ansi.yellow,
       defaultText: ansi.dim + ansi.yellow,
       defaultValue: ansi.brightYellow,
       description: ansi.white,
@@ -237,6 +243,7 @@ export type StyleFn = (text: string) => string;
  */
 export interface Styler {
   command: StyleFn;
+  commandAlias: StyleFn;
   defaultText: StyleFn;
   defaultValue: StyleFn;
   description: StyleFn;
@@ -279,6 +286,7 @@ export const createStyler = (theme: Theme): Styler => {
   const resolved = getTheme(theme as ThemeInput);
   return {
     command: makeStyleFn(resolved.colors.command),
+    commandAlias: makeStyleFn(resolved.colors.commandAlias),
     defaultText: makeStyleFn(resolved.colors.defaultText),
     defaultValue: makeStyleFn(resolved.colors.defaultValue),
     description: makeStyleFn(resolved.colors.description),

@@ -11,6 +11,7 @@ import type {
   CamelCaseKeys,
   CliBuilder,
   Command,
+  CommandOptions,
   CreateOptions,
   HandlerFn,
   Parser,
@@ -42,11 +43,13 @@ export type TransformFn<
 // A command entry can be either a leaf command or a nested builder
 type CommandEntry =
   | {
+      aliases?: string[];
       builder: CliBuilder<unknown, readonly unknown[]>;
       description?: string;
       type: 'nested';
     }
   | {
+      aliases?: string[];
       cmd: Command<unknown, readonly unknown[]>;
       description?: string;
       type: 'command';
@@ -59,6 +62,8 @@ type CommandWithTransform<V, P extends readonly unknown[]> = Command<V, P> & {
 };
 
 interface InternalCliState {
+  /** Alias-to-canonical-name lookup map */
+  aliasMap: Map<string, string>;
   commands: Map<string, CommandEntry>;
   defaultCommandName?: string;
   globalParser?: Parser<unknown, readonly unknown[]>;
@@ -67,6 +72,54 @@ interface InternalCliState {
   parentGlobals?: ParseResult<unknown, readonly unknown[]>;
   theme: Theme;
 }
+
+/**
+ * Parse a command options parameter (string or CommandOptions object).
+ *
+ * @function
+ */
+const parseCommandOptions = (
+  options: CommandOptions | string | undefined,
+): { aliases?: string[]; description?: string } => {
+  if (options === undefined) {
+    return {};
+  }
+  if (typeof options === 'string') {
+    return { description: options };
+  }
+  return { aliases: options.aliases, description: options.description };
+};
+
+/**
+ * Register command aliases in the alias map.
+ *
+ * @function
+ */
+const registerAliases = (
+  aliasMap: Map<string, string>,
+  commands: Map<string, CommandEntry>,
+  canonicalName: string,
+  aliases?: string[],
+): void => {
+  if (!aliases) {
+    return;
+  }
+  for (const alias of aliases) {
+    // Check if alias conflicts with an existing alias
+    if (aliasMap.has(alias)) {
+      throw new BargsError(
+        `Command alias "${alias}" is already registered for command "${aliasMap.get(alias)}"`,
+      );
+    }
+    // Check if alias conflicts with an existing command name
+    if (commands.has(alias)) {
+      throw new BargsError(
+        `Command alias "${alias}" conflicts with existing command name "${alias}"`,
+      );
+    }
+    aliasMap.set(alias, canonicalName);
+  }
+};
 // Type for parsers that may have transforms
 type ParserWithTransform<V, P extends readonly unknown[]> = Parser<V, P> & {
   __transform?: (
@@ -419,6 +472,7 @@ export const bargs = (
   const theme = options.theme ? getTheme(options.theme) : defaultTheme;
 
   return createCliBuilder<Record<string, never>, readonly []>({
+    aliasMap: new Map(),
     commands: new Map(),
     name,
     options,
@@ -473,8 +527,8 @@ const createCliBuilder = <V, P extends readonly unknown[]>(
         | Promise<ParseResult<V, P> & { command?: string }>;
     },
 
-    // Overloaded command(): accepts (name, factory, desc?), (name, CliBuilder, desc?),
-    // (name, Command, desc?), or (name, Parser, handler, desc?)
+    // Overloaded command(): accepts (name, factory, options?), (name, CliBuilder, options?),
+    // (name, Command, options?), or (name, Parser, handler, options?)
     command<CV, CP extends readonly unknown[]>(
       name: string,
       cmdOrParserOrBuilderOrFactory:
@@ -482,10 +536,10 @@ const createCliBuilder = <V, P extends readonly unknown[]>(
         | CliBuilder<CV, CP>
         | Command<CV, CP>
         | Parser<CV, CP>,
-      handlerOrDesc?: HandlerFn<CV & V, CP> | string,
-      maybeDesc?: string,
+      handlerOrDescOrOpts?: CommandOptions | HandlerFn<CV & V, CP> | string,
+      maybeDescOrOpts?: CommandOptions | string,
     ): CliBuilder<V, P> {
-      // Form 4: command(name, factory, description?) - factory for nested commands with parent globals
+      // Form 4: command(name, factory, options?) - factory for nested commands with parent globals
       // Check this FIRST before isCliBuilder/isParser since those check for __brand which a plain function won't have
       if (
         typeof cmdOrParserOrBuilderOrFactory === 'function' &&
@@ -496,12 +550,15 @@ const createCliBuilder = <V, P extends readonly unknown[]>(
         const factory = cmdOrParserOrBuilderOrFactory as (
           b: CliBuilder<V, P>,
         ) => CliBuilder<CV, CP>;
-        const description = handlerOrDesc as string | undefined;
+        const { aliases, description } = parseCommandOptions(
+          handlerOrDescOrOpts as CommandOptions | string | undefined,
+        );
 
         // Create a child builder with parent global TYPES (for type inference)
         // but NOT the globalParser (parent globals are passed via parentGlobals at runtime,
         // not re-parsed from args)
         const childBuilder = createCliBuilder<V, P>({
+          aliasMap: new Map(),
           commands: new Map(),
           globalParser: undefined, // Parent globals come via parentGlobals, not re-parsing
           name,
@@ -513,37 +570,50 @@ const createCliBuilder = <V, P extends readonly unknown[]>(
         const nestedBuilder = factory(childBuilder);
 
         state.commands.set(name, {
+          aliases,
           builder: nestedBuilder as CliBuilder<unknown, readonly unknown[]>,
           description,
           type: 'nested',
         });
+        registerAliases(state.aliasMap, state.commands, name, aliases);
         return this;
       }
 
-      // Form 3: command(name, CliBuilder, description?) - nested commands
+      // Form 3: command(name, CliBuilder, options?) - nested commands
       if (isCliBuilder(cmdOrParserOrBuilderOrFactory)) {
         const builder = cmdOrParserOrBuilderOrFactory;
-        const description = handlerOrDesc as string | undefined;
+        const { aliases, description } = parseCommandOptions(
+          handlerOrDescOrOpts as CommandOptions | string | undefined,
+        );
         state.commands.set(name, {
+          aliases,
           builder: builder as CliBuilder<unknown, readonly unknown[]>,
           description,
           type: 'nested',
         });
+        registerAliases(state.aliasMap, state.commands, name, aliases);
         return this;
       }
 
       let cmd: Command<unknown, readonly unknown[]>;
+      let aliases: string[] | undefined;
       let description: string | undefined;
 
       if (isCommand(cmdOrParserOrBuilderOrFactory)) {
-        // Form 1: command(name, Command, description?)
+        // Form 1: command(name, Command, options?)
         cmd = cmdOrParserOrBuilderOrFactory;
-        description = handlerOrDesc as string | undefined;
+        const opts = parseCommandOptions(
+          handlerOrDescOrOpts as CommandOptions | string | undefined,
+        );
+        aliases = opts.aliases;
+        description = opts.description;
       } else if (isParser(cmdOrParserOrBuilderOrFactory)) {
-        // Form 2: command(name, Parser, handler, description?)
+        // Form 2: command(name, Parser, handler, options?)
         const parser = cmdOrParserOrBuilderOrFactory;
-        const handler = handlerOrDesc as HandlerFn<CV & V, CP>;
-        description = maybeDesc;
+        const handler = handlerOrDescOrOpts as HandlerFn<CV & V, CP>;
+        const opts = parseCommandOptions(maybeDescOrOpts);
+        aliases = opts.aliases;
+        description = opts.description;
 
         // Create Command from Parser + handler
         const parserWithTransform = parser as ParserWithTransform<CV, CP>;
@@ -566,7 +636,8 @@ const createCliBuilder = <V, P extends readonly unknown[]>(
         );
       }
 
-      state.commands.set(name, { cmd, description, type: 'command' });
+      state.commands.set(name, { aliases, cmd, description, type: 'command' });
+      registerAliases(state.aliasMap, state.commands, name, aliases);
       return this;
     },
 
@@ -699,7 +770,7 @@ const parseCore = (
   | Promise<
       ParseResult<unknown, readonly unknown[]> & { command?: string }
     > => {
-  const { commands, options, theme } = state;
+  const { aliasMap, commands, options, theme } = state;
 
   // Handle --help
   if (args.includes('--help') || args.includes('-h')) {
@@ -708,7 +779,9 @@ const parseCore = (
     const commandIndex = args.findIndex((a) => !a.startsWith('-'));
 
     if (commandIndex >= 0 && commandIndex < helpIndex && commands.size > 0) {
-      const commandName = args[commandIndex]!;
+      const rawCommandName = args[commandIndex]!;
+      // Resolve alias to canonical name if needed
+      const commandName = aliasMap.get(rawCommandName) ?? rawCommandName;
       const commandEntry = commands.get(commandName);
 
       if (commandEntry) {
@@ -848,14 +921,15 @@ const generateCommandHelpNew = (
  * @function
  */
 const generateHelpNew = (state: InternalCliState, theme: Theme): string => {
-  // TODO: Implement proper help generation for new structure
-  // For now, delegate to existing help generator with minimal config
+  // Delegate to existing help generator with config including aliases
   const config = {
     commands: Object.fromEntries(
-      Array.from(state.commands.entries()).map(([name, { description }]) => [
-        name,
-        { description: description ?? '' },
-      ]),
+      Array.from(state.commands.entries()).map(
+        ([name, { aliases, description }]) => [
+          name,
+          { aliases, description: description ?? '' },
+        ],
+      ),
     ),
     description: state.options.description,
     name: state.name,
@@ -1018,20 +1092,25 @@ const runWithCommands = (
   | Promise<
       ParseResult<unknown, readonly unknown[]> & { command?: string }
     > => {
-  const { commands, defaultCommandName, globalParser } = state;
+  const { aliasMap, commands, defaultCommandName, globalParser } = state;
 
   // Find command name (first non-flag argument)
   const commandIndex = args.findIndex((arg) => !arg.startsWith('-'));
   const potentialCommandName =
     commandIndex >= 0 ? args[commandIndex] : undefined;
 
-  // Check if it's a known command
+  // Check if it's a known command or alias
   let commandName: string | undefined;
   let remainingArgs: string[];
 
-  if (potentialCommandName && commands.has(potentialCommandName)) {
-    // It's a known command - remove it from args
-    commandName = potentialCommandName;
+  // Resolve alias to canonical name if needed
+  const resolvedName = potentialCommandName
+    ? (aliasMap.get(potentialCommandName) ?? potentialCommandName)
+    : undefined;
+
+  if (resolvedName && commands.has(resolvedName)) {
+    // It's a known command (or resolved alias) - remove it from args
+    commandName = resolvedName;
     remainingArgs = [
       ...args.slice(0, commandIndex),
       ...args.slice(commandIndex + 1),
@@ -1230,7 +1309,10 @@ const runWithCommands = (
     const handlerResult = cmd.handler(result);
     checkAsync(handlerResult, 'handler');
     if (handlerResult instanceof Promise) {
-      return handlerResult.then(() => ({ ...result, command: commandName }));
+      return handlerResult.then(() => ({
+        ...result,
+        command: commandName,
+      }));
     }
     return { ...result, command: commandName };
   };
