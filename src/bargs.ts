@@ -22,6 +22,7 @@ import { BargsError, HelpError } from './errors.js';
 import { generateCommandHelp, generateHelp } from './help.js';
 import { parseSimple } from './parser.js';
 import { defaultTheme, getTheme, type Theme } from './theme.js';
+import { detectVersionSync } from './version.js';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // INTERNAL TYPES
@@ -828,9 +829,12 @@ const parseCore = (
   }
 
   // Handle --version
-  if (args.includes('--version') && options.version) {
-    console.log(options.version);
-    process.exit(0);
+  if (args.includes('--version')) {
+    const version = detectVersionSync(options.version);
+    if (version) {
+      console.log(version);
+      process.exit(0);
+    }
   }
 
   // If we have commands, dispatch to the appropriate one

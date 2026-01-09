@@ -148,6 +148,23 @@ const readVersionFromPackageJson = async (
 };
 
 /**
+ * Read version from package.json (sync).
+ *
+ * @function
+ */
+const readVersionFromPackageJsonSync = (
+  pkgPath: string,
+): string | undefined => {
+  try {
+    const content = readFileSync(pkgPath, 'utf-8');
+    const pkg = JSON.parse(content) as RawPackageJson;
+    return pkg.version;
+  } catch {
+    return undefined;
+  }
+};
+
+/**
  * Detect version: use provided version or read from nearest package.json.
  *
  * @function
@@ -166,6 +183,28 @@ export const detectVersion = async (
   }
 
   return readVersionFromPackageJson(pkgPath);
+};
+
+/**
+ * Detect version synchronously: use provided version or read from nearest
+ * package.json.
+ *
+ * @function
+ */
+export const detectVersionSync = (
+  providedVersion: string | undefined,
+  startDir: string = process.cwd(),
+): string | undefined => {
+  if (providedVersion) {
+    return providedVersion;
+  }
+
+  const pkgPath = findPackageJsonSync(startDir);
+  if (!pkgPath) {
+    return undefined;
+  }
+
+  return readVersionFromPackageJsonSync(pkgPath);
 };
 
 /**
