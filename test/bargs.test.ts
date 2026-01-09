@@ -826,7 +826,7 @@ describe('command aliases', () => {
               { aliases: ['add'] }, // Conflict with command name!
             ),
         'to throw',
-        /alias "add" is already registered/,
+        /alias "add" conflicts with existing command name/,
       );
     });
   });

@@ -114,7 +114,7 @@ const registerAliases = (
     // Check if alias conflicts with an existing command name
     if (commands.has(alias)) {
       throw new BargsError(
-        `Command alias "${alias}" is already registered for command "${alias}"`,
+        `Command alias "${alias}" conflicts with existing command name "${alias}"`,
       );
     }
     aliasMap.set(alias, canonicalName);
@@ -550,8 +550,9 @@ const createCliBuilder = <V, P extends readonly unknown[]>(
         const factory = cmdOrParserOrBuilderOrFactory as (
           b: CliBuilder<V, P>,
         ) => CliBuilder<CV, CP>;
-        const { aliases, description } =
-          parseCommandOptions(handlerOrDescOrOpts);
+        const { aliases, description } = parseCommandOptions(
+          handlerOrDescOrOpts as CommandOptions | string | undefined,
+        );
 
         // Create a child builder with parent global TYPES (for type inference)
         // but NOT the globalParser (parent globals are passed via parentGlobals at runtime,
@@ -581,8 +582,9 @@ const createCliBuilder = <V, P extends readonly unknown[]>(
       // Form 3: command(name, CliBuilder, options?) - nested commands
       if (isCliBuilder(cmdOrParserOrBuilderOrFactory)) {
         const builder = cmdOrParserOrBuilderOrFactory;
-        const { aliases, description } =
-          parseCommandOptions(handlerOrDescOrOpts);
+        const { aliases, description } = parseCommandOptions(
+          handlerOrDescOrOpts as CommandOptions | string | undefined,
+        );
         state.commands.set(name, {
           aliases,
           builder: builder as CliBuilder<unknown, readonly unknown[]>,
@@ -600,7 +602,9 @@ const createCliBuilder = <V, P extends readonly unknown[]>(
       if (isCommand(cmdOrParserOrBuilderOrFactory)) {
         // Form 1: command(name, Command, options?)
         cmd = cmdOrParserOrBuilderOrFactory;
-        const opts = parseCommandOptions(handlerOrDescOrOpts);
+        const opts = parseCommandOptions(
+          handlerOrDescOrOpts as CommandOptions | string | undefined,
+        );
         aliases = opts.aliases;
         description = opts.description;
       } else if (isParser(cmdOrParserOrBuilderOrFactory)) {
