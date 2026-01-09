@@ -11,16 +11,18 @@
  * - Default subcommands
  * - Command aliases at both parent and nested levels
  *
- * Usage: npx tsx examples/nested-commands.ts remote add origin
- * https://github.com/... npx tsx examples/nested-commands.ts r add origin
- * https://... # 'r' alias npx tsx examples/nested-commands.ts remote rm origin
+ * @example
  *
- * # 'rm' alias npx tsx examples/nested-commands.ts config get user.name npx tsx
- *
- * Examples/nested-commands.ts cfg get user.name # 'cfg' alias npx tsx
- * examples/nested-commands.ts --verbose remote add origin https://... npx tsx
- * examples/nested-commands.ts --help npx tsx examples/nested-commands.ts remote
- * --help
+ * ```sh
+ * npx tsx examples/nested-commands.ts remote add origin https://github.com/...
+ * npx tsx examples/nested-commands.ts r add origin https://...  # 'r' alias
+ * npx tsx examples/nested-commands.ts remote rm origin  # 'rm' alias
+ * npx tsx examples/nested-commands.ts config get user.name
+ * npx tsx examples/nested-commands.ts cfg get user.name  # 'cfg' alias
+ * npx tsx examples/nested-commands.ts --verbose remote add origin https://...
+ * npx tsx examples/nested-commands.ts --help
+ * npx tsx examples/nested-commands.ts remote --help
+ * ```
  */
 import { bargs, opt, pos } from '../src/index.js';
 
