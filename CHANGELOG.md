@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.6.0](https://github.com/boneskull/bargs/compare/bargs-v3.5.2...bargs-v3.6.0) (2026-01-09)
+
+
+### Features
+
+* add command alias support ([#24](https://github.com/boneskull/bargs/issues/24)) ([ece5b81](https://github.com/boneskull/bargs/commit/ece5b8119f976dee4e6dea5fad7e99402313ae58))
+
 ## [3.5.2](https://github.com/boneskull/bargs/compare/bargs-v3.5.1...bargs-v3.5.2) (2026-01-07)
 
 
