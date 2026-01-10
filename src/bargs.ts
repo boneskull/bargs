@@ -25,6 +25,27 @@ import { defaultTheme, getTheme, type Theme } from './theme.js';
 import { detectVersionSync } from './version.js';
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// UTILITY FUNCTIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Type guard to check if a value is a thenable (has a `.then` method).
+ *
+ * This is more robust than `instanceof Promise` because it catches any
+ * Promise-like object per the Promises/A+ specification, not just native
+ * Promises.
+ *
+ * @function
+ * @param value - The value to check
+ * @returns `true` if the value is thenable
+ */
+const isThenable = <T>(value: unknown): value is PromiseLike<T> =>
+  value !== null &&
+  typeof value === 'object' &&
+  'then' in value &&
+  typeof value.then === 'function';
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // INTERNAL TYPES
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -240,7 +261,7 @@ export function map<
     // Chain: existing transform first, then new transform
     return (r: ParseResult<unknown, readonly unknown[]>) => {
       const r1 = existing(r);
-      if (r1 instanceof Promise) {
+      if (isThenable(r1)) {
         return r1.then(fn);
       }
       return fn(r1);
@@ -369,7 +390,7 @@ export function merge(
       const t2 = nextWithTransform.__transform;
       mergedTransform = (r) => {
         const r1 = t1(r);
-        if (r1 instanceof Promise) {
+        if (isThenable(r1)) {
           return r1.then(t2);
         }
         return t2(r1);
@@ -737,7 +758,7 @@ const createCliBuilder = <V, P extends readonly unknown[]>(
       args: string[] = process.argv.slice(2),
     ): ParseResult<V, P> & { command?: string } {
       const result = parseCore(state, args, false);
-      if (result instanceof Promise) {
+      if (isThenable(result)) {
         throw new BargsError(
           'Async transform or handler detected. Use parseAsync() instead of parse().',
         );
@@ -1023,7 +1044,7 @@ const runSimple = (
 
   if (transform) {
     const transformed = transform(result);
-    if (transformed instanceof Promise) {
+    if (isThenable(transformed)) {
       if (!allowAsync) {
         throw new BargsError(
           'Async transform detected. Use parseAsync() instead of parse().',
@@ -1170,7 +1191,7 @@ const runWithCommands = (
 
     if (globalTransform) {
       const transformed = globalTransform(globalResult);
-      if (transformed instanceof Promise) {
+      if (isThenable(transformed)) {
         if (!allowAsync) {
           throw new BargsError(
             'Async global transform detected. Use parseAsync() instead of parse().',
@@ -1223,8 +1244,8 @@ const runWithCommands = (
   /**
    * @function
    */
-  const checkAsync = (value: unknown, context: string): void => {
-    if (value instanceof Promise && !allowAsync) {
+  const assertSync = (value: unknown, context: string): void => {
+    if (isThenable(value) && !allowAsync) {
       throw new BargsError(
         `Async ${context} detected. Use parseAsync() instead of parse().`,
       );
@@ -1264,8 +1285,8 @@ const runWithCommands = (
     // Apply global transforms first
     if (globalTransform) {
       const transformed = globalTransform(result);
-      checkAsync(transformed, 'global transform');
-      if (transformed instanceof Promise) {
+      assertSync(transformed, 'global transform');
+      if (isThenable(transformed)) {
         return transformed.then(
           (r: ParseResult<unknown, readonly unknown[]>) => {
             result = r;
@@ -1289,8 +1310,8 @@ const runWithCommands = (
     // Apply command transforms
     if (commandTransform) {
       const transformed = commandTransform(result);
-      checkAsync(transformed, 'command transform');
-      if (transformed instanceof Promise) {
+      assertSync(transformed, 'command transform');
+      if (isThenable(transformed)) {
         return transformed.then(
           (r: ParseResult<unknown, readonly unknown[]>) => {
             result = r;
@@ -1312,8 +1333,8 @@ const runWithCommands = (
         ParseResult<unknown, readonly unknown[]> & { command?: string }
       > => {
     const handlerResult = cmd.handler(result);
-    checkAsync(handlerResult, 'handler');
-    if (handlerResult instanceof Promise) {
+    assertSync(handlerResult, 'handler');
+    if (isThenable(handlerResult)) {
       return handlerResult.then(() => ({
         ...result,
         command: commandName,

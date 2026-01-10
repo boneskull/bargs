@@ -329,6 +329,28 @@ describe('.parse() (sync)', () => {
       /Async.*handler.*Use parseAsync/,
     );
   });
+
+  it('throws on thenable handler (non-Promise)', () => {
+    // A thenable is any object with a .then() method - not necessarily a Promise.
+    // This tests that isThenable() correctly detects thenables, not just native Promises.
+    const thenable = {
+      then(onFulfilled: (value: void) => void) {
+        onFulfilled(undefined);
+        return this;
+      },
+    };
+
+    const cli = bargs('test-cli').command(
+      'greet',
+      handle(opt.options({}), () => thenable as Promise<void>),
+    );
+
+    expect(
+      () => cli.parse(['greet']),
+      'to throw',
+      /Async.*handler.*Use parseAsync/,
+    );
+  });
 });
 
 describe('positionals', () => {
