@@ -10,17 +10,16 @@ A TypeScript-first CLI argument parser wrapping Node.js `util.parseArgs()` with 
 
 ```bash
 npm test                    # Run all tests
-npm run test:watch          # Watch mode for tests
-npm run lint                # Run all linters (ESLint, Prettier, types, knip, spelling, markdown)
+npm run lint                # Run all linters (ESLint, Prettier, types, knip, spelling, markdown, typedoc)
 npm run fix                 # Auto-fix lint issues
 npm run build               # Build with zshy (dual CJS/ESM)
 npm run lint:types          # TypeScript check only
 
 # Run a single test file
-node --import tsx --test "test/parser.test.ts"
+npm run test:base -- "test/parser.test.ts"
 
 # Run tests matching a pattern
-node --import tsx --test --test-name-pattern="parses string" "test/**/*.test.ts"
+npm run test:base -- --test-name-pattern="parses string" "test/**/*.test.ts"
 ```
 
 ## Architecture
@@ -70,7 +69,8 @@ The library uses several TypeScript patterns for type inference:
 
 ## Testing
 
-Tests use Node.js built-in test runner (`node:test`) with `node:assert/strict`. Test files are in `test/` with `.test.ts` extension.
+- Tests use Node.js built-in test runner (`node:test`) with `node:assert/strict`. Test files are in `test/` with `.test.ts` extension.
+- To check the test results or coverage, query the WallabyJS MCP server, if running. If not running, refer to the [commands](#commands) section for how to run tests.
 
 ## Examples
 
@@ -78,6 +78,8 @@ Working examples in `examples/`:
 
 - `greeter.ts` - Simple CLI with options and positionals
 - `tasks.ts` - Command-based CLI with global options, subcommands, and handlers
+- `transforms.ts` - Command-based CLI with global options, subcommands, and transforms
+- `nested-commands.ts` - Command-based CLI with nested commands
 
 ## Workflow
 
