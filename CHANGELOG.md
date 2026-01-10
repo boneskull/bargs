@@ -1,5 +1,22 @@
 # Changelog
 
+## [4.0.0](https://github.com/boneskull/bargs/compare/bargs-v3.6.2...bargs-v4.0.0) (2026-01-10)
+
+
+### ⚠ BREAKING CHANGES
+
+* The `.command(name, cliBuilder, options?)` overload has been removed. Users must migrate to the factory pattern as detailed in README.md.
+
+### Features
+
+* **docs:** add custom mermaid diagram plugin for TypeDoc ([9ef6cc6](https://github.com/boneskull/bargs/commit/9ef6cc61b43f9439405af4c162ce0e1449547922))
+* remove direct CliBuilder pattern for nested commands ([88c0251](https://github.com/boneskull/bargs/commit/88c02519ca91fb752810ec74d0f57ead4e4b8f67))
+
+
+### Bug Fixes
+
+* throw when encountering a thenable in parse() ([74ace9c](https://github.com/boneskull/bargs/commit/74ace9ceb9312ea559c0144717b6ecbc1a24de76))
+
 ## [3.6.2](https://github.com/boneskull/bargs/compare/bargs-v3.6.1...bargs-v3.6.2) (2026-01-09)
 
 
