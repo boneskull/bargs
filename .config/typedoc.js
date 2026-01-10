@@ -48,6 +48,7 @@ export default {
     'Type Utilities',
     '*',
   ],
+  ignoredHighlightLanguages: ['mermaid'],
   kindSortOrder: [
     'Reference',
     'Project',
