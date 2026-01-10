@@ -33,6 +33,21 @@ export default {
   favicon: '../site/media/favicon.svg',
   // @ts-expect-error from extras plugin
   footerLastModified: true,
+  groupOrder: [
+    'Documents',
+    'Core API',
+    'Combinators',
+    'Transforms',
+    'Help',
+    'Theming',
+    'Terminal',
+    'Errors',
+    'Option Types',
+    'Positional Types',
+    'Parser Types',
+    'Type Utilities',
+    '*',
+  ],
   kindSortOrder: [
     'Reference',
     'Project',
@@ -44,6 +59,9 @@ export default {
   lightHighlightTheme: 'vitesse-light',
   markdownLinkExternal: true,
   name: 'BARGS',
+  navigation: {
+    includeGroups: true,
+  },
   navigationLinks: {
     GitHub: 'https://github.com/boneskull/bargs',
     npm: 'https://www.npmjs.com/package/@boneskull/bargs',
@@ -55,6 +73,7 @@ export default {
     'typedoc-plugin-extras',
   ],
   preserveWatchOutput: true,
+  router: 'kind-dir',
   searchInComments: true,
   searchInDocuments: true,
   tsconfig: '../tsconfig.json',

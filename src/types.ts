@@ -20,6 +20,8 @@ import type { ThemeInput } from './theme.js';
 
 /**
  * Array option definition (--flag value --flag value2).
+ *
+ * @group Option Types
  */
 export interface ArrayOption extends OptionBase {
   default?: number[] | string[];
@@ -30,6 +32,8 @@ export interface ArrayOption extends OptionBase {
 
 /**
  * Boolean option definition.
+ *
+ * @group Option Types
  */
 export interface BooleanOption extends OptionBase {
   default?: boolean;
@@ -47,6 +51,8 @@ export interface BooleanOption extends OptionBase {
  * type Original = { 'output-dir': string; 'dry-run': boolean };
  * type Camel = CamelCaseKeys<Original>; // { outputDir: string; dryRun: boolean }
  * ```
+ *
+ * @group Type Utilities
  */
 export type CamelCaseKeys<T> = {
   [K in keyof T as KebabToCamel<K & string>]: T[K];
@@ -54,6 +60,8 @@ export type CamelCaseKeys<T> = {
 
 /**
  * CLI builder for fluent configuration.
+ *
+ * @group Parser Types
  */
 export interface CliBuilder<
   TGlobalValues = Record<string, never>,
@@ -173,6 +181,8 @@ export interface CliBuilder<
 
 /**
  * Result from CLI execution (extends ParseResult with command name).
+ *
+ * @group Parser Types
  */
 export interface CliResult<
   TValues = Record<string, unknown>,
@@ -184,6 +194,8 @@ export interface CliResult<
 
 /**
  * Command with handler attached (terminal in the pipeline).
+ *
+ * @group Parser Types
  */
 export interface Command<
   TValues = Record<string, unknown>,
@@ -203,6 +215,8 @@ export interface Command<
 
 /**
  * Registered command definition.
+ *
+ * @group Parser Types
  */
 export interface CommandDef<
   TValues = Record<string, unknown>,
@@ -230,6 +244,8 @@ export interface CommandDef<
  *   aliases: ['a', 'new']
  * })
  * ```
+ *
+ * @group Parser Types
  */
 export interface CommandOptions {
   /**
@@ -248,6 +264,8 @@ export interface CommandOptions {
 
 /**
  * Count option definition (--verbose --verbose = 2).
+ *
+ * @group Option Types
  */
 export interface CountOption extends OptionBase {
   default?: number;
@@ -256,6 +274,8 @@ export interface CountOption extends OptionBase {
 
 /**
  * Options for bargs().
+ *
+ * @group Core API
  */
 export interface CreateOptions {
   /** Description shown in help */
@@ -270,6 +290,8 @@ export interface CreateOptions {
 
 /**
  * Enum array option definition (--flag a --flag b with limited choices).
+ *
+ * @group Option Types
  */
 export interface EnumArrayOption<T extends string = string> extends OptionBase {
   /** Valid choices for array elements */
@@ -284,6 +306,8 @@ export interface EnumArrayOption<T extends string = string> extends OptionBase {
 
 /**
  * Enum option definition with string choices.
+ *
+ * @group Option Types
  */
 export interface EnumOption<T extends string = string> extends OptionBase {
   choices: readonly T[];
@@ -293,6 +317,8 @@ export interface EnumOption<T extends string = string> extends OptionBase {
 
 /**
  * Enum positional definition with string choices.
+ *
+ * @group Positional Types
  */
 export interface EnumPositional<
   T extends string = string,
@@ -304,6 +330,8 @@ export interface EnumPositional<
 
 /**
  * Handler function signature.
+ *
+ * @group Parser Types
  */
 export type HandlerFn<TValues, TPositionals extends readonly unknown[]> = (
   result: ParseResult<TValues, TPositionals>,
@@ -311,6 +339,8 @@ export type HandlerFn<TValues, TPositionals extends readonly unknown[]> = (
 
 /**
  * Infer the TypeScript type from an option definition.
+ *
+ * @group Type Utilities
  */
 export type InferOption<T extends OptionDef> = T extends BooleanOption
   ? T['required'] extends true
@@ -352,6 +382,8 @@ export type InferOption<T extends OptionDef> = T extends BooleanOption
 
 /**
  * Infer values type from an options schema.
+ *
+ * @group Type Utilities
  */
 export type InferOptions<T extends OptionsSchema> = {
   [K in keyof T]: InferOption<T[K]>;
@@ -359,6 +391,8 @@ export type InferOptions<T extends OptionsSchema> = {
 
 /**
  * Infer a single positional's type.
+ *
+ * @group Type Utilities
  */
 export type InferPositional<T extends PositionalDef> =
   T extends NumberPositional
@@ -387,6 +421,8 @@ export type InferPositional<T extends PositionalDef> =
 
 /**
  * Recursively build a tuple type from a positionals schema array.
+ *
+ * @group Type Utilities
  */
 export type InferPositionals<T extends PositionalsSchema> = T extends readonly [
   infer First,
@@ -407,6 +443,8 @@ export type InferPositionals<T extends PositionalsSchema> = T extends readonly [
 
 /**
  * Infer the output positionals type from a transforms config.
+ *
+ * @group Type Utilities
  */
 export type InferTransformedPositionals<
   TPositionalsIn extends readonly unknown[],
@@ -419,6 +457,8 @@ export type InferTransformedPositionals<
 
 /**
  * Infer the output values type from a transforms config.
+ *
+ * @group Type Utilities
  */
 export type InferTransformedValues<TValuesIn, TTransforms> =
   TTransforms extends { values: ValuesTransformFn<any, infer TOut> }
@@ -438,6 +478,8 @@ export type InferTransformedValues<TValuesIn, TTransforms> =
  * type Result = KebabToCamel<'output-dir'>; // 'outputDir'
  * type Nested = KebabToCamel<'my-long-option'>; // 'myLongOption'
  * ```
+ *
+ * @group Type Utilities
  */
 export type KebabToCamel<S extends string> = S extends `${infer T}-${infer U}`
   ? `${T}${Capitalize<KebabToCamel<U>>}`
@@ -445,6 +487,8 @@ export type KebabToCamel<S extends string> = S extends `${infer T}-${infer U}`
 
 /**
  * Number option definition.
+ *
+ * @group Option Types
  */
 export interface NumberOption extends OptionBase {
   default?: number;
@@ -453,6 +497,8 @@ export interface NumberOption extends OptionBase {
 
 /**
  * Number positional.
+ *
+ * @group Positional Types
  */
 export interface NumberPositional extends PositionalBase {
   default?: number;
@@ -461,6 +507,8 @@ export interface NumberPositional extends PositionalBase {
 
 /**
  * Union of all option definitions.
+ *
+ * @group Option Types
  */
 export type OptionDef =
   | ArrayOption
@@ -477,12 +525,16 @@ export type OptionDef =
 
 /**
  * Options schema: a record of option names to their definitions.
+ *
+ * @group Option Types
  */
 export type OptionsSchema = Record<string, OptionDef>;
 
 /**
  * Parser represents accumulated parse state with options and positionals
  * schemas. This is a branded type for type-level tracking.
+ *
+ * @group Parser Types
  */
 export interface Parser<
   TValues = Record<string, unknown>,
@@ -502,6 +554,8 @@ export interface Parser<
 
 /**
  * Core parse result shape flowing through the pipeline.
+ *
+ * @group Parser Types
  */
 export interface ParseResult<
   TValues = Record<string, unknown>,
@@ -513,6 +567,8 @@ export interface ParseResult<
 
 /**
  * Union of positional definitions.
+ *
+ * @group Positional Types
  */
 export type PositionalDef =
   | EnumPositional<string>
@@ -522,6 +578,8 @@ export type PositionalDef =
 
 /**
  * Positionals can be a tuple (ordered) or a single variadic.
+ *
+ * @group Positional Types
  */
 export type PositionalsSchema = readonly PositionalDef[];
 
@@ -531,6 +589,8 @@ export type PositionalsSchema = readonly PositionalDef[];
 
 /**
  * Positionals transform function.
+ *
+ * @group Parser Types
  */
 export type PositionalsTransformFn<
   TIn extends readonly unknown[],
@@ -539,6 +599,8 @@ export type PositionalsTransformFn<
 
 /**
  * String option definition.
+ *
+ * @group Option Types
  */
 export interface StringOption extends OptionBase {
   default?: string;
@@ -547,6 +609,8 @@ export interface StringOption extends OptionBase {
 
 /**
  * String positional.
+ *
+ * @group Positional Types
  */
 export interface StringPositional extends PositionalBase {
   default?: string;
@@ -555,6 +619,8 @@ export interface StringPositional extends PositionalBase {
 
 /**
  * Transforms configuration for modifying parsed results.
+ *
+ * @group Parser Types
  */
 export interface TransformsConfig<
   TValuesIn,
@@ -570,6 +636,8 @@ export interface TransformsConfig<
 
 /**
  * Values transform function.
+ *
+ * @group Parser Types
  */
 export type ValuesTransformFn<TIn, TOut> = (
   values: TIn,
@@ -581,6 +649,8 @@ export type ValuesTransformFn<TIn, TOut> = (
 
 /**
  * Variadic positional (rest args).
+ *
+ * @group Positional Types
  */
 export interface VariadicPositional extends PositionalBase {
   items: 'number' | 'string';

@@ -85,6 +85,7 @@ const parseVersion = (
  * supports-hyperlinks package but implemented inline without dependencies.
  *
  * @function
+ * @group Terminal
  */
 export const supportsHyperlinks = (
   stream: NodeJS.WriteStream = process.stdout,
@@ -209,6 +210,7 @@ export const supportsHyperlinks = (
  * the URL in supported terminals.
  *
  * @function
+ * @group Terminal
  */
 export const link = (text: string, url: string): string => {
   const openLink = wrapOsc(`${OSC}8${SEP}${SEP}${url}${BEL}`);
@@ -227,6 +229,7 @@ const URL_PATTERN = /https?:\/\/[^\s<>"\])}]+/g;
  * clickable. Otherwise, text is returned unchanged.
  *
  * @function
+ * @group Terminal
  */
 export const linkifyUrls = (
   text: string,

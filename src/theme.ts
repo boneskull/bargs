@@ -14,13 +14,15 @@ import { stripVTControlCharacters } from 'node:util';
 /**
  * Strip all ANSI escape codes from a string.
  *
- * @function
+ * @group Terminal
  */
 export const stripAnsi = stripVTControlCharacters;
 
 /**
  * A bargs color theme. All color properties are optional and fall back to the
  * default theme.
+ *
+ * @group Theming
  */
 export interface Theme {
   colors?: Partial<ThemeColors>;
@@ -29,6 +31,8 @@ export interface Theme {
 /**
  * Color codes for each semantic element in help output. Empty string means no
  * color (passthrough).
+ *
+ * @group Theming
  */
 export interface ThemeColors {
   /** Command names (e.g., "init", "build") */
@@ -63,6 +67,8 @@ export interface ThemeColors {
 
 /**
  * Theme input - either a theme name or a custom Theme object.
+ *
+ * @group Theming
  */
 export type ThemeInput = keyof typeof themes | Theme;
 
@@ -78,6 +84,8 @@ interface ResolvedTheme {
  *
  * Includes text styles (bold, italic, underline, etc.), foreground colors,
  * bright foreground colors, background colors, and bright background colors.
+ *
+ * @group Theming
  */
 export const ansi = {
   bgBlack: '\x1b[40m',
@@ -144,6 +152,8 @@ const defaultColors: ThemeColors = {
 
 /**
  * Built-in themes.
+ *
+ * @group Theming
  */
 export const themes = {
   /** Default colorful theme */
@@ -214,6 +224,8 @@ export const themes = {
 
 /**
  * Default theme export for convenience.
+ *
+ * @group Theming
  */
 export const defaultTheme = themes.default;
 
@@ -235,11 +247,15 @@ export const getTheme = (input: ThemeInput): ResolvedTheme => {
 
 /**
  * Style function that wraps text with ANSI codes.
+ *
+ * @group Theming
  */
 export type StyleFn = (text: string) => string;
 
 /**
  * Styler object with methods for each semantic element.
+ *
+ * @group Theming
  */
 export interface Styler {
   command: StyleFn;
@@ -281,6 +297,7 @@ const makeStyleFn = (color: string): StyleFn => {
  * to the default theme.
  *
  * @function
+ * @group Theming
  */
 export const createStyler = (theme: Theme): Styler => {
   const resolved = getTheme(theme as ThemeInput);

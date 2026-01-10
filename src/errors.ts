@@ -12,6 +12,8 @@
 
 /**
  * Custom error class for bargs errors.
+ *
+ * @group Errors
  */
 export class BargsError extends Error {
   constructor(message: string) {
@@ -26,6 +28,7 @@ export class BargsError extends Error {
  * @param message - Error message to show before help text
  * @param command - Command name for command-specific help, undefined for
  *   general help
+ * @group Errors
  */
 export class HelpError extends BargsError {
   readonly command?: string;
@@ -43,6 +46,7 @@ export class HelpError extends BargsError {
  * @param message - Description of what's invalid
  * @param path - Dot-notation path to the invalid property (e.g.,
  *   "options.verbose.aliases[0]")
+ * @group Errors
  */
 export class ValidationError extends BargsError {
   readonly path: string;

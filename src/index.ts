@@ -19,6 +19,46 @@
  *   .parseAsync();
  * ```
  *
+ * @groupDescription Core API
+ * The essential building blocks for creating CLIs with bargs.
+ * Start here: `bargs()` creates a CLI, `opt` defines options, `pos` defines positionals.
+ *
+ * @groupDescription Combinators
+ * Functions for composing and transforming parsers.
+ * Use `map()` to transform results, `merge()` to combine parsers, and `handle()` to attach handlers.
+ *
+ * @groupDescription Transforms
+ * Built-in transform functions for modifying parsed results.
+ *
+ * @groupDescription Help
+ * Help text generation for CLI applications.
+ * Customize help output with themes and formatting options.
+ *
+ * @groupDescription Theming
+ * Styling and color customization for help output.
+ * Includes ANSI codes, built-in themes, and custom theme support.
+ *
+ * @groupDescription Terminal
+ * Terminal feature detection and utilities.
+ * Includes hyperlink support detection and URL linkification.
+ *
+ * @groupDescription Errors
+ * Custom error classes for bargs.
+ *
+ * @groupDescription Option Types
+ * Type definitions for CLI option configurations.
+ *
+ * @groupDescription Positional Types
+ * Type definitions for positional argument configurations.
+ *
+ * @groupDescription Parser Types
+ * Core parser and result types for the combinator pipeline.
+ *
+ * @groupDescription Type Utilities
+ * Advanced TypeScript utilities for type inference and transformation.
+ *
+ * @document ../site/content/architecture.md
+ * @document ../site/content/changelog.md
  * @packageDocumentation
  */
 

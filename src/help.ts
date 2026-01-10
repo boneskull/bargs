@@ -28,6 +28,7 @@ import { readPackageInfoSync } from './version.js';
 /**
  * Minimal config shape for help generation.
  *
+ * @group Help
  * @knipignore
  */
 export interface HelpConfig {
@@ -270,6 +271,7 @@ const hasCommands = (
  * Generate help text for a bargs config.
  *
  * @function
+ * @group Help
  */
 export const generateHelp = (
   config: HelpConfig,
@@ -412,6 +414,7 @@ export const generateHelp = (
  * Generate help text for a specific command.
  *
  * @function
+ * @group Help
  */
 export const generateCommandHelp = (
   config: HelpConfig,

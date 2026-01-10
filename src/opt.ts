@@ -94,6 +94,7 @@ const validateAliasConflicts = (schema: OptionsSchema): void => {
  * - First arg in pipe: used directly as a Parser
  * - Later arg in pipe: called as function to merge with incoming Parser
  *
+ * @group Type Utilities
  * @knipignore
  */
 export type CallableOptionsParser<V> = (<V2, P2 extends readonly unknown[]>(
@@ -118,6 +119,8 @@ export type CallableOptionsParser<V> = (<V2, P2 extends readonly unknown[]>(
  * type GlobalOpts = InferParserValues<typeof globalOptions>;
  * // { verbose: boolean | undefined; 'output-dir': string | undefined }
  * ```
+ *
+ * @group Type Utilities
  */
 export type InferParserValues<T> =
   T extends CallableOptionsParser<infer V>
@@ -197,6 +200,8 @@ const optionsImpl = <T extends OptionsSchema>(
  *   level: opt.enum(['low', 'medium', 'high']),
  * });
  * ```
+ *
+ * @group Core API
  */
 export const opt = {
   // ─── Option Builders ───────────────────────────────────────────────
@@ -408,6 +413,7 @@ export const opt = {
  *
  * For positionals, we DON'T intersect values - we just pass through V2.
  *
+ * @group Type Utilities
  * @knipignore
  */
 export type CallablePositionalsParser<P extends readonly unknown[]> = (<
@@ -434,6 +440,8 @@ export type CallablePositionalsParser<P extends readonly unknown[]> = (<
  * type Positionals = InferParserPositionals<typeof positionals>;
  * // readonly [string, string]
  * ```
+ *
+ * @group Type Utilities
  */
 export type InferParserPositionals<T> =
   T extends CallablePositionalsParser<infer P>
@@ -508,6 +516,8 @@ const positionalsImpl = <T extends PositionalsSchema>(
  *   pos.string({ name: 'output' }),
  * );
  * ```
+ *
+ * @group Core API
  */
 export const pos = {
   /**

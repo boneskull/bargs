@@ -52,6 +52,7 @@ const isThenable = <T>(value: unknown): value is PromiseLike<T> =>
 /**
  * Transform fn type - can be sync or async.
  *
+ * @group Combinators
  * @knipignore
  */
 export type TransformFn<
@@ -162,6 +163,8 @@ type ParserWithTransform<V, P extends readonly unknown[]> = Parser<V, P> & {
 
 /**
  * Create a command with a handler (terminal in the pipeline).
+ *
+ * @group Combinators
  */
 export function handle<V, P extends readonly unknown[]>(
   fn: HandlerFn<V, P>,
@@ -215,6 +218,8 @@ export function handle<V, P extends readonly unknown[]>(
 
 /**
  * Transform parse result in the pipeline.
+ *
+ * @group Combinators
  */
 export function map<
   V1,
@@ -310,6 +315,8 @@ export function map<
  *   pos.positionals(pos.string({ name: 'file', required: true })),
  * );
  * ```
+ *
+ * @group Combinators
  */
 export function merge<
   V1,
@@ -448,6 +455,7 @@ const kebabToCamel = (s: string): string =>
  * ```
  *
  * @function
+ * @group Transforms
  */
 export const camelCaseValues = <V, P extends readonly unknown[]>(
   result: ParseResult<V, P>,
@@ -487,6 +495,7 @@ export const camelCaseValues = <V, P extends readonly unknown[]>(
  * ```
  *
  * @function
+ * @group Core API
  */
 export const bargs = (
   name: string,
