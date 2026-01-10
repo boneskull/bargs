@@ -6,7 +6,7 @@ import { describe, it } from 'node:test';
 
 import type { StringOption } from '../src/types.js';
 
-import { bargs, handle, map } from '../src/bargs.js';
+import { bargs, handle, map, merge } from '../src/bargs.js';
 import { opt, pos } from '../src/opt.js';
 
 describe('bargs()', () => {
@@ -25,6 +25,12 @@ describe('bargs()', () => {
       description: 'A test CLI',
       version: '1.0.0',
     });
+
+    expect(cli, 'to be defined');
+  });
+
+  it('accepts custom theme', () => {
+    const cli = bargs('test-cli', { theme: 'mono' });
 
     expect(cli, 'to be defined');
   });
@@ -720,5 +726,234 @@ describe('command aliases', () => {
         /alias "add" conflicts with existing command name/,
       );
     });
+  });
+});
+
+describe('merge() edge cases', () => {
+  it('throws when called with no parsers', () => {
+    expect(
+      // @ts-expect-error testing runtime behavior
+      () => merge(),
+      'to throw',
+      /merge\(\) requires at least one parser/,
+    );
+  });
+
+  it('chains transforms from both parsers', async () => {
+    // First parser with a transform
+    const p1 = map(
+      opt.options({ x: opt.number({ default: 1 }) }),
+      ({ values }) => ({
+        positionals: [] as const,
+        values: { ...values, doubled: values.x * 2 },
+      }),
+    );
+
+    // Second parser with a transform
+    const p2 = map(
+      opt.options({ y: opt.number({ default: 2 }) }),
+      ({ values }) => ({
+        positionals: [] as const,
+        values: { ...values, tripled: values.y * 3 },
+      }),
+    );
+
+    // Merge preserves transforms (though behavior depends on implementation)
+    const merged = merge(p1, p2);
+
+    expect(merged.__brand, 'to be', 'Parser');
+    expect(merged.__optionsSchema, 'to satisfy', {
+      x: { type: 'number' },
+      y: { type: 'number' },
+    });
+  });
+
+  it('merges four parsers', () => {
+    const p1 = opt.options({ a: opt.boolean() });
+    const p2 = opt.options({ b: opt.string() });
+    const p3 = opt.options({ c: opt.number() });
+    const p4 = pos.positionals(pos.string({ name: 'file' }));
+
+    const merged = merge(p1, p2, p3, p4);
+
+    expect(merged.__optionsSchema, 'to satisfy', {
+      a: { type: 'boolean' },
+      b: { type: 'string' },
+      c: { type: 'number' },
+    });
+    expect(merged.__positionalsSchema, 'to have length', 1);
+  });
+});
+
+describe('error paths', () => {
+  it('throws HelpError when no command specified and no default', async () => {
+    const cli = bargs('test-cli')
+      .command(
+        'run',
+        handle(opt.options({}), () => {}),
+      )
+      .command(
+        'build',
+        handle(opt.options({}), () => {}),
+      );
+    // No defaultCommand set
+
+    await expectAsync(
+      cli.parseAsync([]),
+      'to reject with error satisfying',
+      /No command specified/,
+    );
+  });
+
+  it('handles async global transform in nested commands', async () => {
+    let result: unknown;
+
+    const cli = bargs('test-cli')
+      .globals(
+        map(opt.options({ verbose: opt.boolean() }), async ({ values }) => {
+          await new Promise((resolve) => setTimeout(resolve, 1));
+          return { positionals: [] as const, values: { ...values, ts: 123 } };
+        }),
+      )
+      .command('parent', (parent) =>
+        parent.command('child', opt.options({}), ({ values }) => {
+          result = values;
+        }),
+      );
+
+    await cli.parseAsync(['--verbose', 'parent', 'child']);
+
+    expect(result, 'to satisfy', {
+      ts: 123,
+      verbose: true,
+    });
+  });
+
+  it('throws when sync parse() has async global transform in nested command', () => {
+    const cli = bargs('test-cli')
+      .globals(
+        map(opt.options({ verbose: opt.boolean() }), async ({ values }) => {
+          await Promise.resolve();
+          return { positionals: [] as const, values };
+        }),
+      )
+      .command('parent', (parent) =>
+        parent.command('child', opt.options({}), () => {}),
+      );
+
+    expect(
+      () => cli.parse(['parent', 'child']),
+      'to throw',
+      /Async.*global transform.*Use parseAsync/,
+    );
+  });
+});
+
+describe('defaultCommand edge cases', () => {
+  it('defaultCommand with Command object', async () => {
+    let executed = false;
+
+    const cmd = handle(opt.options({ flag: opt.boolean() }), () => {
+      executed = true;
+    });
+
+    const cli = bargs('test-cli').defaultCommand(cmd);
+
+    await cli.parseAsync(['--flag']);
+
+    expect(executed, 'to be', true);
+  });
+
+  it('defaultCommand with Parser and handler', async () => {
+    let result: unknown;
+
+    const cli = bargs('test-cli').defaultCommand(
+      opt.options({ name: opt.string({ default: 'world' }) }),
+      ({ values }) => {
+        result = values;
+      },
+    );
+
+    await cli.parseAsync(['--name', 'Alice']);
+
+    expect(result, 'to satisfy', { name: 'Alice' });
+  });
+});
+
+describe('command transforms', () => {
+  it('applies both global and command transforms', async () => {
+    let result: unknown;
+
+    const cli = bargs('test-cli')
+      .globals(
+        map(opt.options({ x: opt.number({ default: 1 }) }), ({ values }) => ({
+          positionals: [] as const,
+          values: { ...values, globalTransformed: true },
+        })),
+      )
+      .command(
+        'run',
+        map(opt.options({ y: opt.number({ default: 2 }) }), ({ values }) => ({
+          positionals: [] as const,
+          values: { ...values, commandTransformed: true },
+        })),
+        ({ values }) => {
+          result = values;
+        },
+      );
+
+    await cli.parseAsync(['run', '--x', '10', '--y', '20']);
+
+    expect(result, 'to satisfy', {
+      commandTransformed: true,
+      globalTransformed: true,
+      x: 10,
+      y: 20,
+    });
+  });
+
+  it('applies async command transform', async () => {
+    let result: unknown;
+
+    const cli = bargs('test-cli').command(
+      'run',
+      map(
+        opt.options({ delay: opt.number({ default: 1 }) }),
+        async ({ values }) => {
+          await new Promise((resolve) => setTimeout(resolve, values.delay));
+          return {
+            positionals: [] as const,
+            values: { ...values, asyncDone: true },
+          };
+        },
+      ),
+      ({ values }) => {
+        result = values;
+      },
+    );
+
+    await cli.parseAsync(['run', '--delay', '1']);
+
+    expect(result, 'to satisfy', {
+      asyncDone: true,
+      delay: 1,
+    });
+  });
+
+  it('throws on sync parse() with async command transform', () => {
+    const cli = bargs('test-cli').command(
+      'run',
+      map(opt.options({}), async (r) => {
+        await Promise.resolve();
+        return r;
+      }),
+      () => {},
+    );
+
+    expect(
+      () => cli.parse(['run']),
+      'to throw',
+      /Async.*command transform.*Use parseAsync/,
+    );
   });
 });

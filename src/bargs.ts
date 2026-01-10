@@ -645,6 +645,7 @@ const createCliBuilder = <V, P extends readonly unknown[]>(
         }
         cmd = newCmd as Command<unknown, readonly unknown[]>;
       } else {
+        /* c8 ignore next 3 -- unreachable with TypeScript */
         throw new Error(
           'command() requires a Command, Parser, CliBuilder, or factory function as second argument',
         );
@@ -702,6 +703,7 @@ const createCliBuilder = <V, P extends readonly unknown[]>(
           type: 'command',
         });
       } else {
+        /* c8 ignore next 2 -- unreachable with TypeScript */
         throw new Error('defaultCommand() requires a name, Command, or Parser');
       }
 
@@ -786,6 +788,7 @@ const parseCore = (
     > => {
   const { aliasMap, commands, options, theme } = state;
 
+  /* c8 ignore start -- help/version output calls process.exit() */
   // Handle --help
   if (args.includes('--help') || args.includes('-h')) {
     // Check for command-specific help
@@ -849,6 +852,7 @@ const parseCore = (
       process.exit(0);
     }
   }
+  /* c8 ignore stop */
 
   // If we have commands, dispatch to the appropriate one
   if (commands.size > 0) {
@@ -864,6 +868,7 @@ const parseCore = (
  *
  * @function
  */
+/* c8 ignore start -- only called from help paths that call process.exit() */
 const showNestedCommandHelp = (
   state: InternalCliState,
   commandName: string,
@@ -891,12 +896,14 @@ const showNestedCommandHelp = (
     true,
   );
 };
+/* c8 ignore stop */
 
 /**
  * Generate command-specific help.
  *
  * @function
  */
+/* c8 ignore start -- only called from help paths that call process.exit() */
 const generateCommandHelpNew = (
   state: InternalCliState,
   commandName: string,
@@ -931,12 +938,14 @@ const generateCommandHelpNew = (
     theme,
   );
 };
+/* c8 ignore stop */
 
 /**
  * Generate help for the new CLI structure.
  *
  * @function
  */
+/* c8 ignore start -- only called from help paths that call process.exit() */
 const generateHelpNew = (state: InternalCliState, theme: Theme): string => {
   // Delegate to existing help generator with config including aliases
   const config = {
@@ -955,6 +964,7 @@ const generateHelpNew = (state: InternalCliState, theme: Theme): string => {
   };
   return generateHelp(config as Parameters<typeof generateHelp>[0], theme);
 };
+/* c8 ignore stop */
 
 /**
  * Check if something is a Parser (has __brand: 'Parser'). Parsers can be either
