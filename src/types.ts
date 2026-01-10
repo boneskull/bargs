@@ -85,18 +85,6 @@ export interface CliBuilder<
   ): CliBuilder<TGlobalValues, TGlobalPositionals>;
 
   /**
-   * Register a nested command group (subcommands).
-   *
-   * The nested CliBuilder's commands become subcommands of this command. Parent
-   * globals are passed down to nested command handlers.
-   */
-  command<CV, CP extends readonly unknown[]>(
-    name: string,
-    nestedBuilder: CliBuilder<CV, CP>,
-    options?: CommandOptions | string,
-  ): CliBuilder<TGlobalValues, TGlobalPositionals>;
-
-  /**
    * Register a nested command group using a factory function.
    *
    * This form provides full type inference - the factory receives a builder

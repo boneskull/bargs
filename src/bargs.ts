@@ -550,27 +550,25 @@ const createCliBuilder = <V, P extends readonly unknown[]>(
         | Promise<ParseResult<V, P> & { command?: string }>;
     },
 
-    // Overloaded command(): accepts (name, factory, options?), (name, CliBuilder, options?),
+    // Overloaded command(): accepts (name, factory, options?),
     // (name, Command, options?), or (name, Parser, handler, options?)
     command<CV, CP extends readonly unknown[]>(
       name: string,
-      cmdOrParserOrBuilderOrFactory:
+      cmdOrParserOrFactory:
         | ((builder: CliBuilder<V, P>) => CliBuilder<CV, CP>)
-        | CliBuilder<CV, CP>
         | Command<CV, CP>
         | Parser<CV, CP>,
       handlerOrDescOrOpts?: CommandOptions | HandlerFn<CV & V, CP> | string,
       maybeDescOrOpts?: CommandOptions | string,
     ): CliBuilder<V, P> {
-      // Form 4: command(name, factory, options?) - factory for nested commands with parent globals
-      // Check this FIRST before isCliBuilder/isParser since those check for __brand which a plain function won't have
+      // Form 3: command(name, factory, options?) - factory for nested commands with parent globals
+      // Check this FIRST before isParser since that checks for __brand which a plain function won't have
       if (
-        typeof cmdOrParserOrBuilderOrFactory === 'function' &&
-        !isParser(cmdOrParserOrBuilderOrFactory) &&
-        !isCommand(cmdOrParserOrBuilderOrFactory) &&
-        !isCliBuilder(cmdOrParserOrBuilderOrFactory)
+        typeof cmdOrParserOrFactory === 'function' &&
+        !isParser(cmdOrParserOrFactory) &&
+        !isCommand(cmdOrParserOrFactory)
       ) {
-        const factory = cmdOrParserOrBuilderOrFactory as (
+        const factory = cmdOrParserOrFactory as (
           b: CliBuilder<V, P>,
         ) => CliBuilder<CV, CP>;
         const { aliases, description } = parseCommandOptions(
@@ -602,37 +600,21 @@ const createCliBuilder = <V, P extends readonly unknown[]>(
         return this;
       }
 
-      // Form 3: command(name, CliBuilder, options?) - nested commands
-      if (isCliBuilder(cmdOrParserOrBuilderOrFactory)) {
-        const builder = cmdOrParserOrBuilderOrFactory;
-        const { aliases, description } = parseCommandOptions(
-          handlerOrDescOrOpts as CommandOptions | string | undefined,
-        );
-        state.commands.set(name, {
-          aliases,
-          builder: builder as CliBuilder<unknown, readonly unknown[]>,
-          description,
-          type: 'nested',
-        });
-        registerAliases(state.aliasMap, state.commands, name, aliases);
-        return this;
-      }
-
       let cmd: Command<unknown, readonly unknown[]>;
       let aliases: string[] | undefined;
       let description: string | undefined;
 
-      if (isCommand(cmdOrParserOrBuilderOrFactory)) {
+      if (isCommand(cmdOrParserOrFactory)) {
         // Form 1: command(name, Command, options?)
-        cmd = cmdOrParserOrBuilderOrFactory;
+        cmd = cmdOrParserOrFactory;
         const opts = parseCommandOptions(
           handlerOrDescOrOpts as CommandOptions | string | undefined,
         );
         aliases = opts.aliases;
         description = opts.description;
-      } else if (isParser(cmdOrParserOrBuilderOrFactory)) {
+      } else if (isParser(cmdOrParserOrFactory)) {
         // Form 2: command(name, Parser, handler, options?)
-        const parser = cmdOrParserOrBuilderOrFactory;
+        const parser = cmdOrParserOrFactory;
         const handler = handlerOrDescOrOpts as HandlerFn<CV & V, CP>;
         const opts = parseCommandOptions(maybeDescOrOpts);
         aliases = opts.aliases;
@@ -978,27 +960,6 @@ const isParser = (x: unknown): x is Parser<unknown, readonly unknown[]> => {
   // Handle both plain objects and functions with Parser properties
   const obj = x as Record<string, unknown>;
   return '__brand' in obj && obj.__brand === 'Parser';
-};
-
-/**
- * Check if something is a CliBuilder (has command, globals, parse, parseAsync
- * methods).
- *
- * @function
- */
-const isCliBuilder = (
-  x: unknown,
-): x is CliBuilder<unknown, readonly unknown[]> => {
-  if (x === null || x === undefined || typeof x !== 'object') {
-    return false;
-  }
-  const obj = x as Record<string, unknown>;
-  return (
-    typeof obj.command === 'function' &&
-    typeof obj.globals === 'function' &&
-    typeof obj.parse === 'function' &&
-    typeof obj.parseAsync === 'function'
-  );
 };
 
 /**

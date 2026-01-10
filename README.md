@@ -220,9 +220,7 @@ Adding origin: https://github.com/...
 $ git remote remove origin
 ```
 
-The factory function receives a `CliBuilder` that already has parent globals typed, so all nested command handlers get full type inference for merged `global + command` options.
-
-You can also pass a pre-built `CliBuilder` directly (see [.command(name, cliBuilder)](#commandname-clibuilder-description)), but handlers won't have parent globals typed at compile time. See `examples/nested-commands.ts` for a full example.
+The factory function receives a `CliBuilder` that already has parent globals typed, so all nested command handlers get full type inference for merged `global + command` options. See `examples/nested-commands.ts` for a full example.
 
 ## API
 
@@ -262,24 +260,9 @@ Register a command. The handler receives merged global + command types.
 )
 ```
 
-### .command(name, cliBuilder, description?)
-
-Register a nested command group. The `cliBuilder` is another `CliBuilder` whose commands become subcommands. Parent globals are passed down to nested handlers at runtime, but **handlers won't have parent globals typed** at compile time.
-
-```typescript
-const subCommands = bargs('sub').command('foo', ...).command('bar', ...);
-
-bargs('main')
-  .command('nested', subCommands, 'Nested commands')  // nested group
-  .parseAsync();
-
-// $ main nested foo
-// $ main nested bar
-```
-
 ### .command(name, factory, description?)
 
-Register a nested command group using a factory function. **This is the recommended form** because the factory receives a builder that already has parent globals typed, giving full type inference in nested handlers.
+Register a nested command group using a factory function. The factory receives a builder that already has parent globals typed, giving full type inference in nested handlers.
 
 ```typescript
 bargs('main')
