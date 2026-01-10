@@ -83,8 +83,14 @@ Working examples in `examples/`:
 
 ## Workflow
 
+### Worktrees
+
 When asked to perform work in a worktree:
 
 1. Create the Git worktree under `.worktrees/`, creating a new feature branch for it
 2. Navigate to the new worktree directory.
 3. Execute `npm install` in the worktreedirectory.
+
+### Plans
+
+When asked to create a plan document, place it in the `.plans/` directory.
