@@ -71,6 +71,7 @@ export default {
     './typedoc-plugin-bargs.js',
     'typedoc-plugin-mdn-links',
     'typedoc-plugin-extras',
+    './typedoc-plugin-mermaid.js',
   ],
   preserveWatchOutput: true,
   router: 'kind-dir',
