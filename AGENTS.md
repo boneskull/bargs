@@ -24,6 +24,8 @@ npm run test:base -- --test-name-pattern="parses string" "test/**/*.test.ts"
 
 ## Architecture
 
+> For comprehensive architecture documentation including design philosophy, type inference flow diagrams, and the division of responsibilities between bargs and Node's `parseArgs()`, see [`ARCHITECTURE.md`](ARCHITECTURE.md).
+
 ### Entry Point Pattern
 
 `src/index.ts` exports `bargs` as a function with builder methods attached via `Object.assign(parseAsync, opt)`. This allows:
