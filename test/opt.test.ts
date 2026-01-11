@@ -257,3 +257,100 @@ describe('legacy opt positional builders', () => {
     });
   });
 });
+
+describe('callable parser merging', () => {
+  it('opt.options() as callable merges with existing parser', () => {
+    // First create a parser with positionals
+    const posParser = pos.positionals(
+      pos.string({ name: 'input', required: true }),
+    );
+
+    // Use opt.options as callable to merge in options
+    const merged = opt.options({ verbose: opt.boolean() })(posParser);
+
+    expect(merged.__brand, 'to be', 'Parser');
+    expect(merged.__optionsSchema, 'to satisfy', {
+      verbose: { type: 'boolean' },
+    });
+    expect(merged.__positionalsSchema, 'to satisfy', [
+      { name: 'input', type: 'string' },
+    ]);
+  });
+
+  it('pos.positionals() as callable merges with existing parser', () => {
+    // First create a parser with options
+    const optParser = opt.options({ verbose: opt.boolean() });
+
+    // Use pos.positionals as callable to merge in positionals
+    const merged = pos.positionals(
+      pos.string({ name: 'file', required: true }),
+    )(optParser);
+
+    expect(merged.__brand, 'to be', 'Parser');
+    expect(merged.__optionsSchema, 'to satisfy', {
+      verbose: { type: 'boolean' },
+    });
+    expect(merged.__positionalsSchema, 'to satisfy', [
+      { name: 'file', type: 'string' },
+    ]);
+  });
+
+  it('opt.options() preserves transforms from incoming parser', async () => {
+    const { map } = await import('../src/bargs.js');
+
+    // Create a parser with a transform
+    const parserWithTransform = map(
+      pos.positionals(pos.string({ name: 'input', required: true })),
+      ({ positionals, values }) => ({
+        positionals: [positionals[0].toUpperCase()] as const,
+        values,
+      }),
+    );
+
+    // Merge with options - should preserve the transform
+    const merged = opt.options({ verbose: opt.boolean() })(parserWithTransform);
+
+    // The __transform should be preserved
+    const withTransform = merged as typeof merged & {
+      __transform?: (r: unknown) => unknown;
+    };
+    expect(withTransform.__transform, 'to be a', 'function');
+  });
+
+  it('pos.positionals() preserves transforms from incoming parser', async () => {
+    const { map } = await import('../src/bargs.js');
+
+    // Create a parser with a transform
+    const parserWithTransform = map(
+      opt.options({ count: opt.number({ default: 1 }) }),
+      ({ positionals, values }) => ({
+        positionals,
+        values: { ...values, doubled: values.count * 2 },
+      }),
+    );
+
+    // Merge with positionals - should preserve the transform
+    const merged = pos.positionals(pos.string({ name: 'file' }))(
+      parserWithTransform,
+    );
+
+    // The __transform should be preserved
+    const withTransform = merged as typeof merged & {
+      __transform?: (r: unknown) => unknown;
+    };
+    expect(withTransform.__transform, 'to be a', 'function');
+  });
+
+  it('validates alias conflicts when merging', () => {
+    const p1 = opt.options({ verbose: opt.boolean({ aliases: ['v'] }) });
+
+    expect(
+      () =>
+        opt.options({ version: opt.string({ aliases: ['v'] }) })(
+          p1 as ReturnType<typeof opt.options>,
+        ),
+      'to throw',
+      /Alias conflict.*-v/,
+    );
+  });
+});
