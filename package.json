@@ -36,7 +36,20 @@
     "typescript",
     "terminal",
     "options",
-    "parseArgs"
+    "parseArgs",
+    "yargs",
+    "commander",
+    "minimist",
+    "meow",
+    "cac",
+    "arg",
+    "oclif",
+    "optionator",
+    "clipanion",
+    "command-line-args",
+    "getopts",
+    "console",
+    "flags"
   ],
   "scripts": {
     "build": "zshy",
