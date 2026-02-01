@@ -72,7 +72,7 @@ export default {
     './typedoc-plugin-bargs.js',
     'typedoc-plugin-mdn-links',
     'typedoc-plugin-extras',
-    './typedoc-plugin-mermaid.js',
+    '@boneskull/typedoc-plugin-mermaid',
   ],
   preserveWatchOutput: true,
   router: 'kind-dir',

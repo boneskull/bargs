@@ -100,7 +100,7 @@ flowchart TD
     end
 
     subgraph parsers [Parser Layer]
-        D["Parser&lt;V, P&gt;"]
+        D["Parser#lt;V, P#gt;"]
         E["map(parser, transformFn)"]
         F["merge(parser1, parser2)"]
     end
@@ -282,7 +282,7 @@ flowchart TD
     end
 
     subgraph output [Output]
-        J["ParseResult&lt;V, P&gt;"]
+        J["ParseResult#lt;V, P#gt;"]
         K["Handler execution"]
     end
 

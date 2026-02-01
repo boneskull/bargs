@@ -78,6 +78,7 @@
     "test:watch": "npm run test:base -- --watch \"test/*.test.ts\""
   },
   "devDependencies": {
+    "@boneskull/typedoc-plugin-mermaid": "0.2.1",
     "@commitlint/cli": "20.2.0",
     "@commitlint/config-conventional": "20.2.0",
     "@eslint/js": "9.39.2",
