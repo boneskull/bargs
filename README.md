@@ -180,7 +180,7 @@ All tasks
 
 ### Nested Commands (Subcommands)
 
-Commands can be nested to arbitrary depth. Use the **factory pattern** for full type inference of parent globals:
+Commands can be nested to arbitrary depth. _The only limit is your contempt for your users._ Use the **factory pattern**:
 
 ```typescript
 import { bargs, opt, pos } from '@boneskull/bargs';
@@ -220,7 +220,7 @@ Adding origin: https://github.com/...
 $ git remote remove origin
 ```
 
-The factory function receives a `CliBuilder` that already has parent globals typed, so all nested command handlers get full type inference for merged `global + command` options. See `examples/nested-commands.ts` for a full example.
+The factory function receives a `CliBuilder` that already has parent globals typed, so all nested command handlers get full type inference for merged `global + command` options. See [`examples/nested-commands.ts`](./examples/nested-commands.ts) for a full example.
 
 ## API
 
