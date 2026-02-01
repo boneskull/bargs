@@ -382,7 +382,7 @@ $ my-cli --file a.txt -f b.txt --files c.txt
 # (-f and --files first, then --file appended)
 ```
 
-### Boolean Negation (`--no-<flag>`)
+### Boolean Negation (--no-<flag>)
 
 All boolean options automatically support a negated form `--no-<flag>` to explicitly set the option to `false`:
 
@@ -408,7 +408,7 @@ opt.options({
 // Help output shows: --no-colors  Use colors  [boolean] default: true
 ```
 
-### `opt.options(schema)`
+### opt.options(schema)
 
 Create a parser from an options schema:
 
@@ -440,7 +440,7 @@ pos.variadic('string'); // [files...]
 | `name`        | `string`  | Display name in help (defaults to `arg0`, `arg1`, ...) |
 | `required`    | `boolean` | Mark as required (shown as `<name>` vs `[name]`)       |
 
-### `pos.positionals(...defs)`
+### pos.positionals(...defs)
 
 Create a parser from positional definitions:
 
