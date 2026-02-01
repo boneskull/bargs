@@ -90,8 +90,8 @@ describe('createStyler', () => {
   it('applies epilog styling with default theme', () => {
     const styler = createStyler(themes.default);
     const result = styler.epilog('Homepage: https://example.com');
-    // Default epilog color is dim
-    expect(result, 'to contain', '\x1b[2m'); // dim
+    // Default epilog color is yellow
+    expect(result, 'to contain', '\x1b[33m'); // yellow
     expect(result, 'to contain', 'Homepage: https://example.com');
   });
 
