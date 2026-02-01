@@ -1,6 +1,6 @@
 {
   "name": "@boneskull/bargs",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "type": "module",
   "description": "A TypeScript-first CLI argument parser wrapping util.parseArgs() with full type inference",
   "repository": {
