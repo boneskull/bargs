@@ -278,6 +278,27 @@ export interface CountOption extends OptionBase {
  * @group Core API
  */
 export interface CreateOptions {
+  /**
+   * Enable shell completion support.
+   *
+   * When `true`, the CLI will respond to:
+   *
+   * - `--completion-script <shell>` - Output shell completion script
+   * - `--get-bargs-completions <shell> <...words>` - Return completion candidates
+   *
+   * Supported shells: bash, zsh, fish
+   *
+   * @example
+   *
+   * ```typescript
+   * bargs('mytool', { completion: true })
+   *   .command('build', ...)
+   *   .parseAsync();
+   *
+   * // Then run: mytool --completion-script bash >> ~/.bashrc
+   * ```
+   */
+  completion?: boolean;
   /** Description shown in help */
   description?: string;
   /** Epilog text shown after help output */
