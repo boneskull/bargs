@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.0.1](https://github.com/boneskull/bargs/compare/bargs-v4.0.0...bargs-v4.0.1) (2026-02-01)
+
+
+### Bug Fixes
+
+* default color theme changes for popular schemes ([c6198d5](https://github.com/boneskull/bargs/commit/c6198d5a23666f96939cee9be81c8e928159c40d))
+
 ## [4.0.0](https://github.com/boneskull/bargs/compare/bargs-v3.6.2...bargs-v4.0.0) (2026-01-10)
 
 
