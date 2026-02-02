@@ -107,7 +107,7 @@ const lintParser = opt.options({
 // CLI
 // ═══════════════════════════════════════════════════════════════════════════════
 
-await bargs('completion-demo', {
+await bargs('completion', {
   // Enable shell completion support!
   completion: true,
   description: 'Example CLI with shell completion support',

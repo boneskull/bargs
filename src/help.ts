@@ -186,6 +186,54 @@ const getTypeLabel = (def: OptionDef): string => {
 };
 
 /**
+ * Get the flag text for an option (used for width calculation and display).
+ *
+ * @function
+ */
+const getOptionFlagText = (name: string, def: OptionDef): string => {
+  // For boolean options with default: true, show --no-<name>
+  const displayName =
+    def.type === 'boolean' && def.default === true ? `no-${name}` : name;
+
+  // Separate short and long aliases
+  const shortAlias = def.aliases?.find((a) => a.length === 1);
+  const longAliases = (def.aliases ?? [])
+    .filter((a) => a.length > 1)
+    .sort((a, b) => a.length - b.length);
+
+  // Build flag string: -v, --verb, --verbose
+  const flagParts: string[] = [];
+  if (shortAlias && displayName === name) {
+    flagParts.push(`-${shortAlias}`);
+  }
+  for (const alias of longAliases) {
+    flagParts.push(`--${alias}`);
+  }
+  flagParts.push(`--${displayName}`);
+
+  // If no short alias and no long aliases, add padding
+  return flagParts.length === 1 && !shortAlias
+    ? `    ${flagParts[0]}`
+    : flagParts.join(', ');
+};
+
+/**
+ * Calculate the max flag width for a set of options.
+ *
+ * @function
+ */
+const calculateMaxFlagWidth = (
+  options: Array<{ def: OptionDef; name: string }>,
+): number => {
+  let maxWidth = 0;
+  for (const { def, name } of options) {
+    const flagText = getOptionFlagText(name, def);
+    maxWidth = Math.max(maxWidth, flagText.length);
+  }
+  return maxWidth;
+};
+
+/**
  * Format a single option for help output.
  *
  * For boolean options with `default: true`, shows `--no-<name>` instead of
@@ -200,40 +248,15 @@ const formatOptionHelp = (
   name: string,
   def: OptionDef,
   styler: Styler,
+  maxFlagWidth?: number,
 ): string => {
   const parts: string[] = [];
 
-  // For boolean options with default: true, show --no-<name>
-  // since that's how users would turn it off
-  const displayName =
-    def.type === 'boolean' && def.default === true ? `no-${name}` : name;
-
-  // Separate short and long aliases
-  const shortAlias = def.aliases?.find((a) => a.length === 1);
-  const longAliases = (def.aliases ?? [])
-    .filter((a) => a.length > 1)
-    .sort((a, b) => a.length - b.length);
-
-  // Build flag string: -v, --verb, --verbose
-  // Don't show short alias for negated booleans
-  const flagParts: string[] = [];
-  if (shortAlias && displayName === name) {
-    flagParts.push(`-${shortAlias}`);
-  }
-  for (const alias of longAliases) {
-    flagParts.push(`--${alias}`);
-  }
-  flagParts.push(`--${displayName}`);
-
-  // If no short alias and no long aliases, add padding
-  const flagText =
-    flagParts.length === 1 && !shortAlias
-      ? `    ${flagParts[0]}`
-      : flagParts.join(', ');
+  const flagText = getOptionFlagText(name, def);
   parts.push(`  ${styler.flag(flagText)}`);
 
-  // Pad to align descriptions (increase base padding for longer alias chains)
-  const basePadding = Math.max(24, flagText.length + 4);
+  // Pad to align descriptions using provided maxFlagWidth or calculate dynamically
+  const basePadding = Math.max(24, (maxFlagWidth ?? flagText.length) + 4);
   const padding = Math.max(0, basePadding - flagText.length - 2);
   parts.push(' '.repeat(padding));
 
@@ -354,11 +377,15 @@ export const generateHelp = (
       }
     }
 
+    // Calculate max flag width across all visible options for alignment
+    const allOptions = [...ungrouped, ...Array.from(groups.values()).flat()];
+    const maxFlagWidth = calculateMaxFlagWidth(allOptions);
+
     // Print grouped options
     for (const [groupName, options] of Array.from(groups.entries())) {
       lines.push(styler.sectionHeader(groupName.toUpperCase()));
       for (const opt of options) {
-        lines.push(formatOptionHelp(opt.name, opt.def, styler));
+        lines.push(formatOptionHelp(opt.name, opt.def, styler, maxFlagWidth));
       }
       lines.push('');
     }
@@ -368,7 +395,7 @@ export const generateHelp = (
       const label = hasCommands(config) ? 'GLOBAL OPTIONS' : 'OPTIONS';
       lines.push(styler.sectionHeader(label));
       for (const opt of ungrouped) {
-        lines.push(formatOptionHelp(opt.name, opt.def, styler));
+        lines.push(formatOptionHelp(opt.name, opt.def, styler, maxFlagWidth));
       }
       lines.push('');
     }
@@ -451,6 +478,24 @@ export const generateCommandHelp = (
   lines.push(styler.usage(`  ${usageParts}`));
   lines.push('');
 
+  // Collect all visible options for alignment calculation
+  const allOptions: Array<{ def: OptionDef; name: string }> = [];
+  if (command.options) {
+    for (const [name, def] of Object.entries(command.options)) {
+      if (!def.hidden) {
+        allOptions.push({ def, name });
+      }
+    }
+  }
+  if (config.options) {
+    for (const [name, def] of Object.entries(config.options)) {
+      if (!def.hidden) {
+        allOptions.push({ def, name });
+      }
+    }
+  }
+  const maxFlagWidth = calculateMaxFlagWidth(allOptions);
+
   // Command options
   if (command.options && Object.keys(command.options).length > 0) {
     lines.push(styler.sectionHeader('OPTIONS'));
@@ -458,7 +503,7 @@ export const generateCommandHelp = (
       if (def.hidden) {
         continue;
       }
-      lines.push(formatOptionHelp(name, def, styler));
+      lines.push(formatOptionHelp(name, def, styler, maxFlagWidth));
     }
     lines.push('');
   }
@@ -470,7 +515,7 @@ export const generateCommandHelp = (
       if (def.hidden) {
         continue;
       }
-      lines.push(formatOptionHelp(name, def, styler));
+      lines.push(formatOptionHelp(name, def, styler, maxFlagWidth));
     }
     lines.push('');
   }

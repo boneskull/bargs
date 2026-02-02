@@ -685,7 +685,7 @@ my-cli --completion-script fish > ~/.config/fish/completions/my-cli.fish
 
 ### What Gets Completed
 
-Once installed, pressing <kbd>Tab</kbd> will complete:
+Once installed, pressing `Tab` will complete:
 
 - **Commands and subcommands** (including nested commands and aliases)
 - **Options** (`--verbose`, `-v`, `--no-verbose` for booleans)
