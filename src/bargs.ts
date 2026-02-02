@@ -1004,6 +1004,18 @@ const generateCommandHelpNew = (
  */
 /* c8 ignore start -- only called from help paths that call process.exit() */
 const generateHelpNew = (state: InternalCliState, theme: Theme): string => {
+  // Build options schema, adding --completion-script if completion is enabled
+  let options = state.globalParser?.__optionsSchema;
+  if (state.options.completion) {
+    options = {
+      ...options,
+      'completion-script': {
+        description: 'Output shell completion script (bash, zsh, fish)',
+        type: 'string' as const,
+      },
+    };
+  }
+
   // Delegate to existing help generator with config including aliases
   const config = {
     commands: Object.fromEntries(
@@ -1016,7 +1028,7 @@ const generateHelpNew = (state: InternalCliState, theme: Theme): string => {
     ),
     description: state.options.description,
     name: state.name,
-    options: state.globalParser?.__optionsSchema,
+    options,
     version: state.options.version,
   };
   return generateHelp(config as Parameters<typeof generateHelp>[0], theme);
