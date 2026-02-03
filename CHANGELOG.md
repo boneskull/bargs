@@ -1,5 +1,17 @@
 # Changelog
 
+## [4.1.0](https://github.com/boneskull/bargs/compare/bargs-v4.0.1...bargs-v4.1.0) (2026-02-03)
+
+
+### Features
+
+* add shell completion generation for bash, zsh, and fish ([#32](https://github.com/boneskull/bargs/issues/32)) ([d651732](https://github.com/boneskull/bargs/commit/d651732a5f4d29b12407b7b247950c5d7f1e9844))
+
+
+### Bug Fixes
+
+* show built-in options in help output ([#33](https://github.com/boneskull/bargs/issues/33)) ([37c20e2](https://github.com/boneskull/bargs/commit/37c20e201538e21de9012a8dc79dfbbcbdb37ff3))
+
 ## [4.0.1](https://github.com/boneskull/bargs/compare/bargs-v4.0.0...bargs-v4.0.1) (2026-02-01)
 
 
