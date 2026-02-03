@@ -860,8 +860,9 @@ const parseCore = (
     const version = detectVersionSync(options.version);
     if (version) {
       console.log(version);
+    } else {
+      console.log('Version information not available');
     }
-    // Always exit when --version is passed (even if version unavailable)
     process.exit(0);
   }
 
@@ -1008,9 +1009,14 @@ const generateHelpNew = (state: InternalCliState, theme: Theme): string => {
   // Build options schema, adding built-in options
   let options = state.globalParser?.__optionsSchema;
 
-  // Always add --version (it's always available, even if detection might fail)
+  // Always add --help and --version (they're always available)
   options = {
     ...options,
+    help: {
+      aliases: ['h'],
+      description: 'Show help information',
+      type: 'boolean' as const,
+    },
     version: {
       description: 'Show version number',
       type: 'boolean' as const,
