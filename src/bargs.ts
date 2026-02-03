@@ -18,6 +18,11 @@ import type {
   ParseResult,
 } from './types.js';
 
+import {
+  generateCompletionScript,
+  getCompletionCandidates,
+  validateShell,
+} from './completion.js';
 import { BargsError, HelpError } from './errors.js';
 import { generateCommandHelp, generateHelp } from './help.js';
 import { parseSimple } from './parser.js';
@@ -527,6 +532,7 @@ const isCommand = (x: unknown): x is Command<unknown, readonly unknown[]> => {
 
 // Internal type for CliBuilder with internal methods
 type InternalCliBuilder<V, P extends readonly unknown[]> = CliBuilder<V, P> & {
+  __getState: () => InternalCliState;
   __parseWithParentGlobals: (
     args: string[],
     parentGlobals: ParseResult<unknown, readonly unknown[]>,
@@ -545,6 +551,11 @@ const createCliBuilder = <V, P extends readonly unknown[]>(
   state: InternalCliState,
 ): CliBuilder<V, P> => {
   const builder: InternalCliBuilder<V, P> = {
+    // Internal method for completion support - not part of public API
+    __getState(): InternalCliState {
+      return state;
+    },
+
     // Internal method for nested command support - not part of public API
     __parseWithParentGlobals(
       args: string[],
@@ -852,6 +863,52 @@ const parseCore = (
       process.exit(0);
     }
   }
+
+  // Handle shell completion (when enabled)
+  if (options.completion) {
+    // Handle --completion-script <shell>
+    const completionScriptIndex = args.indexOf('--completion-script');
+    if (completionScriptIndex >= 0) {
+      const shellArg = args[completionScriptIndex + 1];
+      if (!shellArg) {
+        console.error(
+          'Error: --completion-script requires a shell argument (bash, zsh, or fish)',
+        );
+        process.exit(1);
+      }
+      try {
+        const shell = validateShell(shellArg);
+        console.log(generateCompletionScript(state.name, shell));
+        process.exit(0);
+      } catch (err) {
+        console.error(`Error: ${(err as Error).message}`);
+        process.exit(1);
+      }
+    }
+
+    // Handle --get-bargs-completions <shell> <...words>
+    const getCompletionsIndex = args.indexOf('--get-bargs-completions');
+    if (getCompletionsIndex >= 0) {
+      const shellArg = args[getCompletionsIndex + 1];
+      if (!shellArg) {
+        // No shell specified, output nothing
+        process.exit(0);
+      }
+      try {
+        const shell = validateShell(shellArg);
+        // Words are everything after the shell argument
+        const words = args.slice(getCompletionsIndex + 2);
+        const candidates = getCompletionCandidates(state, shell, words);
+        if (candidates.length > 0) {
+          console.log(candidates.join('\n'));
+        }
+        process.exit(0);
+      } catch {
+        // Invalid shell, output nothing
+        process.exit(0);
+      }
+    }
+  }
   /* c8 ignore stop */
 
   // If we have commands, dispatch to the appropriate one
@@ -947,6 +1004,18 @@ const generateCommandHelpNew = (
  */
 /* c8 ignore start -- only called from help paths that call process.exit() */
 const generateHelpNew = (state: InternalCliState, theme: Theme): string => {
+  // Build options schema, adding --completion-script if completion is enabled
+  let options = state.globalParser?.__optionsSchema;
+  if (state.options.completion) {
+    options = {
+      ...options,
+      'completion-script': {
+        description: 'Output shell completion script (bash, zsh, fish)',
+        type: 'string' as const,
+      },
+    };
+  }
+
   // Delegate to existing help generator with config including aliases
   const config = {
     commands: Object.fromEntries(
@@ -959,7 +1028,7 @@ const generateHelpNew = (state: InternalCliState, theme: Theme): string => {
     ),
     description: state.options.description,
     name: state.name,
-    options: state.globalParser?.__optionsSchema,
+    options,
     version: state.options.version,
   };
   return generateHelp(config as Parameters<typeof generateHelp>[0], theme);

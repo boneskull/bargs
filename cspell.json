@@ -48,6 +48,7 @@
     "msuccess",
     "mwarning",
     "mycli",
+    "mytool",
     "barg",
     "argumentis",
     "mhello",
@@ -62,7 +63,10 @@
     "realfavicongenerator",
     "frickin",
     "TSES",
-    "ghostty"
+    "ghostty",
+    "CWORD",
+    "fpath",
+    "compdef"
   ],
   "words": [
     "bupkis",

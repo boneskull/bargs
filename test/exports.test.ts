@@ -8,6 +8,9 @@ import type { CreateOptions, Theme, ThemeColors } from '../src/index.js';
 
 import { createStyler, defaultTheme, themes } from '../src/index.js';
 
+// TODO: Add tests for each exported function and type.
+// TODO: rename as "contract.test.js" or something
+
 describe('public exports', () => {
   it('exports theme utilities', () => {
     expect(themes, 'to be defined');
@@ -16,16 +19,14 @@ describe('public exports', () => {
   });
 
   it('exports theme types (compiles = passes)', () => {
-    // Type-only test - if this compiles, types are exported
-    const _theme: Theme = themes.default;
-    const _colors: ThemeColors = themes.default.colors;
-    expect(_theme, 'to be defined');
-    expect(_colors, 'to be defined');
+    const theme: Theme = themes.default;
+    const colors: ThemeColors = themes.default.colors;
+    expect(theme, 'to be defined');
+    expect(colors, 'to be defined');
   });
 
   it('exports CreateOptions type (compiles = passes)', () => {
-    // Type-only test - if this compiles, CreateOptions is exported
-    const _opts: CreateOptions = { theme: 'mono', version: '1.0.0' };
-    expect(_opts, 'to be defined');
+    const opts: CreateOptions = { theme: 'mono', version: '1.0.0' };
+    expect(opts, 'to be defined');
   });
 });

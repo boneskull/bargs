@@ -644,6 +644,67 @@ Available theme color slots:
 > [!TIP]
 > You don't need to specify all color slots. Missing colors fall back to the default theme.
 
+## Shell Completion
+
+**bargs** can generate shell completion scripts for bash, zsh, and fish. Enable it with the `completion` option:
+
+```typescript
+bargs('my-cli', {
+  completion: true,
+  version: '1.0.0',
+});
+```
+
+Then generate and install the completion script for your shell:
+
+### Bash
+
+```bash
+# Add to ~/.bashrc (or ~/.bash_profile on macOS)
+my-cli --completion-script bash >> ~/.bashrc
+source ~/.bashrc
+```
+
+### Zsh
+
+```bash
+# Add to ~/.zshrc
+my-cli --completion-script zsh >> ~/.zshrc
+source ~/.zshrc
+
+# Or save to a file in your $fpath
+my-cli --completion-script zsh > ~/.zsh/completions/_my-cli
+```
+
+### Fish
+
+```bash
+# Save to completions directory
+my-cli --completion-script fish > ~/.config/fish/completions/my-cli.fish
+```
+
+### What Gets Completed
+
+Once installed, pressing `Tab` will complete:
+
+- **Commands and subcommands** (including nested commands and aliases)
+- **Options** (`--verbose`, `-v`, `--no-verbose` for booleans)
+- **Enum values** for options and positionals with defined choices
+- **Global options** at any command level
+
+```shell
+$ my-cli <TAB>
+build  test  lint
+
+$ my-cli build --target <TAB>
+dev  staging  prod
+
+$ my-cli --<TAB>
+--verbose  --config  --help  --version
+```
+
+See `examples/completion.ts` for a complete example.
+
 ## Advanced Usage
 
 ### Error Handling
