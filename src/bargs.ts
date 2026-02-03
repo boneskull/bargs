@@ -860,8 +860,10 @@ const parseCore = (
     const version = detectVersionSync(options.version);
     if (version) {
       console.log(version);
-      process.exit(0);
+    } else {
+      console.log('Version information not available');
     }
+    process.exit(0);
   }
 
   // Handle shell completion (when enabled)
@@ -1004,8 +1006,24 @@ const generateCommandHelpNew = (
  */
 /* c8 ignore start -- only called from help paths that call process.exit() */
 const generateHelpNew = (state: InternalCliState, theme: Theme): string => {
-  // Build options schema, adding --completion-script if completion is enabled
+  // Build options schema, adding built-in options
   let options = state.globalParser?.__optionsSchema;
+
+  // Always add --help and --version (they're always available)
+  options = {
+    ...options,
+    help: {
+      aliases: ['h'],
+      description: 'Show help information',
+      type: 'boolean' as const,
+    },
+    version: {
+      description: 'Show version number',
+      type: 'boolean' as const,
+    },
+  };
+
+  // Add --completion-script if completion is enabled
   if (state.options.completion) {
     options = {
       ...options,
