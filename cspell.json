@@ -73,6 +73,7 @@
     "subcommand",
     "subcommands",
     "navigations",
-    "dogg"
+    "dogg",
+    "llms"
   ]
 }
