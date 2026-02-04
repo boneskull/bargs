@@ -9,6 +9,63 @@ import type { StringOption } from '../src/types.js';
 import { bargs, handle, map, merge } from '../src/bargs.js';
 import { opt, pos } from '../src/opt.js';
 
+/**
+ * Helper to capture stderr output and process.exitCode during tests. Returns
+ * the captured output, result, and exitCode.
+ *
+ * @function
+ */
+const withCapturedStderr = <T>(
+  fn: () => Promise<T> | T,
+): Promise<{
+  exitCode: typeof process.exitCode;
+  output: string;
+  result: T;
+}> => {
+  const originalExitCode = process.exitCode;
+  const stderrWrites: string[] = [];
+  const originalStderrWrite = process.stderr.write.bind(process.stderr);
+
+  process.stderr.write = ((chunk: unknown) => {
+    stderrWrites.push(String(chunk));
+    return true;
+  }) as typeof process.stderr.write;
+
+  /**
+   * @function
+   */
+  const createResult = (result: T) => ({
+    exitCode: process.exitCode,
+    output: stderrWrites.join(''),
+    result,
+  });
+
+  /**
+   * @function
+   */
+  const cleanup = () => {
+    process.stderr.write = originalStderrWrite;
+    process.exitCode = originalExitCode;
+  };
+
+  try {
+    const maybePromise = fn();
+    if (maybePromise instanceof Promise) {
+      return maybePromise.then((result) => {
+        const capturedResult = createResult(result);
+        cleanup();
+        return capturedResult;
+      });
+    }
+    const capturedResult = createResult(maybePromise);
+    cleanup();
+    return Promise.resolve(capturedResult);
+  } catch (error) {
+    cleanup();
+    throw error;
+  }
+};
+
 describe('bargs()', () => {
   it('creates a CLI builder', () => {
     const cli = bargs('test-cli');
@@ -190,30 +247,18 @@ describe('.parseAsync()', () => {
   });
 
   it('handles unknown command by showing help and setting exitCode', async () => {
-    const originalExitCode = process.exitCode;
-    const stderrWrites: string[] = [];
-    const originalStderrWrite = process.stderr.write.bind(process.stderr);
+    const cli = bargs('test-cli').command(
+      'greet',
+      handle(opt.options({}), () => {}),
+    );
 
-    process.stderr.write = ((chunk: unknown) => {
-      stderrWrites.push(String(chunk));
-      return true;
-    }) as typeof process.stderr.write;
+    const { exitCode, output, result } = await withCapturedStderr(() =>
+      cli.parseAsync(['unknown']),
+    );
 
-    try {
-      const cli = bargs('test-cli').command(
-        'greet',
-        handle(opt.options({}), () => {}),
-      );
-
-      const result = await cli.parseAsync(['unknown']);
-
-      expect(result.helpShown, 'to be true');
-      expect(process.exitCode, 'to equal', 1);
-      expect(stderrWrites.join(''), 'to contain', 'Unknown command: unknown');
-    } finally {
-      process.stderr.write = originalStderrWrite;
-      process.exitCode = originalExitCode;
-    }
+    expect(result.earlyExit, 'to be true');
+    expect(exitCode, 'to equal', 1);
+    expect(output, 'to contain', 'Unknown command: unknown');
   });
 
   it('returns parsed result with command name', async () => {
@@ -802,105 +847,63 @@ describe('merge() edge cases', () => {
 describe('error paths', () => {
   describe('HelpError handling', () => {
     it('catches HelpError on no command, displays help, and sets exitCode', async () => {
-      const originalExitCode = process.exitCode;
-      const stderrWrites: string[] = [];
-      const originalStderrWrite = process.stderr.write.bind(process.stderr);
+      const cli = bargs('test-cli')
+        .command(
+          'run',
+          handle(opt.options({}), () => {}),
+        )
+        .command(
+          'build',
+          handle(opt.options({}), () => {}),
+        );
 
-      // Capture stderr
-      process.stderr.write = ((chunk: unknown) => {
-        stderrWrites.push(String(chunk));
-        return true;
-      }) as typeof process.stderr.write;
+      const { exitCode, output, result } = await withCapturedStderr(() =>
+        cli.parseAsync([]),
+      );
 
-      try {
-        const cli = bargs('test-cli')
-          .command(
-            'run',
-            handle(opt.options({}), () => {}),
-          )
-          .command(
-            'build',
-            handle(opt.options({}), () => {}),
-          );
+      // Verify exitCode was set to 1
+      expect(exitCode, 'to equal', 1);
 
-        // This should NOT throw - it should catch HelpError and handle it
-        const result = await cli.parseAsync([]);
+      // Verify error message was shown
+      expect(output, 'to contain', 'No command specified');
 
-        // Verify exitCode was set to 1
-        expect(process.exitCode, 'to equal', 1);
+      // Verify help was displayed
+      expect(output, 'to contain', 'USAGE');
+      expect(output, 'to contain', 'COMMANDS');
 
-        // Verify error message was shown
-        const output = stderrWrites.join('');
-        expect(output, 'to contain', 'No command specified');
-
-        // Verify help was displayed
-        expect(output, 'to contain', 'USAGE');
-        expect(output, 'to contain', 'COMMANDS');
-
-        // Verify result indicates help was shown
-        expect(result.helpShown, 'to be true');
-      } finally {
-        process.stderr.write = originalStderrWrite;
-        process.exitCode = originalExitCode;
-      }
+      // Verify result indicates early exit
+      expect(result.earlyExit, 'to be true');
     });
 
     it('catches HelpError on unknown command, displays help, and sets exitCode', async () => {
-      const originalExitCode = process.exitCode;
-      const stderrWrites: string[] = [];
-      const originalStderrWrite = process.stderr.write.bind(process.stderr);
+      const cli = bargs('test-cli').command(
+        'run',
+        handle(opt.options({}), () => {}),
+      );
 
-      process.stderr.write = ((chunk: unknown) => {
-        stderrWrites.push(String(chunk));
-        return true;
-      }) as typeof process.stderr.write;
+      const { exitCode, output, result } = await withCapturedStderr(() =>
+        cli.parseAsync(['unknown-command']),
+      );
 
-      try {
-        const cli = bargs('test-cli').command(
-          'run',
-          handle(opt.options({}), () => {}),
-        );
-
-        const result = await cli.parseAsync(['unknown-command']);
-
-        expect(process.exitCode, 'to equal', 1);
-
-        const output = stderrWrites.join('');
-        expect(output, 'to contain', 'Unknown command: unknown-command');
-        expect(output, 'to contain', 'USAGE');
-
-        expect(result.helpShown, 'to be true');
-      } finally {
-        process.stderr.write = originalStderrWrite;
-        process.exitCode = originalExitCode;
-      }
+      expect(exitCode, 'to equal', 1);
+      expect(output, 'to contain', 'Unknown command: unknown-command');
+      expect(output, 'to contain', 'USAGE');
+      expect(result.earlyExit, 'to be true');
     });
 
-    it('catches HelpError in sync parse() as well', () => {
-      const originalExitCode = process.exitCode;
-      const stderrWrites: string[] = [];
-      const originalStderrWrite = process.stderr.write.bind(process.stderr);
+    it('catches HelpError in sync parse() as well', async () => {
+      const cli = bargs('test-cli').command(
+        'run',
+        handle(opt.options({}), () => {}),
+      );
 
-      process.stderr.write = ((chunk: unknown) => {
-        stderrWrites.push(String(chunk));
-        return true;
-      }) as typeof process.stderr.write;
+      const { exitCode, output, result } = await withCapturedStderr(() =>
+        cli.parse([]),
+      );
 
-      try {
-        const cli = bargs('test-cli').command(
-          'run',
-          handle(opt.options({}), () => {}),
-        );
-
-        const result = cli.parse([]);
-
-        expect(process.exitCode, 'to equal', 1);
-        expect(stderrWrites.join(''), 'to contain', 'No command specified');
-        expect(result.helpShown, 'to be true');
-      } finally {
-        process.stderr.write = originalStderrWrite;
-        process.exitCode = originalExitCode;
-      }
+      expect(exitCode, 'to equal', 1);
+      expect(output, 'to contain', 'No command specified');
+      expect(result.earlyExit, 'to be true');
     });
   });
 

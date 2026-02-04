@@ -10,6 +10,63 @@ import { describe, it } from 'node:test';
 import { bargs, handle } from '../src/bargs.js';
 import { opt, pos } from '../src/opt.js';
 
+/**
+ * Helper to capture stderr output and process.exitCode during tests. Returns
+ * the captured output, result, and exitCode.
+ *
+ * @function
+ */
+const withCapturedStderr = <T>(
+  fn: () => Promise<T> | T,
+): Promise<{
+  exitCode: typeof process.exitCode;
+  output: string;
+  result: T;
+}> => {
+  const originalExitCode = process.exitCode;
+  const stderrWrites: string[] = [];
+  const originalStderrWrite = process.stderr.write.bind(process.stderr);
+
+  process.stderr.write = ((chunk: unknown) => {
+    stderrWrites.push(String(chunk));
+    return true;
+  }) as typeof process.stderr.write;
+
+  /**
+   * @function
+   */
+  const createResult = (result: T) => ({
+    exitCode: process.exitCode,
+    output: stderrWrites.join(''),
+    result,
+  });
+
+  /**
+   * @function
+   */
+  const cleanup = () => {
+    process.stderr.write = originalStderrWrite;
+    process.exitCode = originalExitCode;
+  };
+
+  try {
+    const maybePromise = fn();
+    if (maybePromise instanceof Promise) {
+      return maybePromise.then((result) => {
+        const capturedResult = createResult(result);
+        cleanup();
+        return capturedResult;
+      });
+    }
+    const capturedResult = createResult(maybePromise);
+    cleanup();
+    return Promise.resolve(capturedResult);
+  } catch (error) {
+    cleanup();
+    throw error;
+  }
+};
+
 describe('command parsing', () => {
   it('parses a command with options', async () => {
     let result: unknown;
@@ -97,35 +154,23 @@ describe('command parsing', () => {
   });
 
   it('handles unknown command by showing help and setting exitCode', async () => {
-    const originalExitCode = process.exitCode;
-    const stderrWrites: string[] = [];
-    const originalStderrWrite = process.stderr.write.bind(process.stderr);
+    const cli = bargs('test-cli')
+      .command(
+        'add',
+        handle(opt.options({}), () => {}),
+      )
+      .command(
+        'remove',
+        handle(opt.options({}), () => {}),
+      );
 
-    process.stderr.write = ((chunk: unknown) => {
-      stderrWrites.push(String(chunk));
-      return true;
-    }) as typeof process.stderr.write;
+    const { exitCode, output, result } = await withCapturedStderr(() =>
+      cli.parseAsync(['unknown']),
+    );
 
-    try {
-      const cli = bargs('test-cli')
-        .command(
-          'add',
-          handle(opt.options({}), () => {}),
-        )
-        .command(
-          'remove',
-          handle(opt.options({}), () => {}),
-        );
-
-      const result = await cli.parseAsync(['unknown']);
-
-      expect(result.helpShown, 'to be true');
-      expect(process.exitCode, 'to equal', 1);
-      expect(stderrWrites.join(''), 'to contain', 'Unknown command: unknown');
-    } finally {
-      process.stderr.write = originalStderrWrite;
-      process.exitCode = originalExitCode;
-    }
+    expect(result.earlyExit, 'to be true');
+    expect(exitCode, 'to equal', 1);
+    expect(output, 'to contain', 'Unknown command: unknown');
   });
 
   it('merges global and command options', async () => {

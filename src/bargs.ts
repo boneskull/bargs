@@ -557,17 +557,46 @@ const createCliBuilder = <V, P extends readonly unknown[]>(
     },
 
     // Internal method for nested command support - not part of public API
+    // Handles HelpError here so nested builders can render their own help
     __parseWithParentGlobals(
       args: string[],
       parentGlobals: ParseResult<unknown, readonly unknown[]>,
       allowAsync: boolean,
     ):
-      | (ParseResult<V, P> & { command?: string })
-      | Promise<ParseResult<V, P> & { command?: string }> {
+      | (ParseResult<V, P> & { command?: string; earlyExit?: boolean })
+      | Promise<ParseResult<V, P> & { command?: string; earlyExit?: boolean }> {
       const stateWithGlobals = { ...state, parentGlobals };
-      return parseCore(stateWithGlobals, args, allowAsync) as
-        | (ParseResult<V, P> & { command?: string })
-        | Promise<ParseResult<V, P> & { command?: string }>;
+      try {
+        const result = parseCore(stateWithGlobals, args, allowAsync);
+        if (isThenable(result)) {
+          return result.catch((error: unknown) => {
+            if (error instanceof HelpError) {
+              return handleHelpError(error, stateWithGlobals) as ParseResult<
+                V,
+                P
+              > & {
+                command?: string;
+                earlyExit: true;
+              };
+            }
+            throw error;
+          }) as Promise<
+            ParseResult<V, P> & { command?: string; earlyExit?: boolean }
+          >;
+        }
+        return result as ParseResult<V, P> & { command?: string };
+      } catch (error) {
+        if (error instanceof HelpError) {
+          return handleHelpError(error, stateWithGlobals) as ParseResult<
+            V,
+            P
+          > & {
+            command?: string;
+            earlyExit: true;
+          };
+        }
+        throw error;
+      }
     },
 
     // Overloaded command(): accepts (name, factory, options?),
@@ -760,7 +789,7 @@ const createCliBuilder = <V, P extends readonly unknown[]>(
 
     parse(
       args: string[] = process.argv.slice(2),
-    ): ParseResult<V, P> & { command?: string; helpShown?: boolean } {
+    ): ParseResult<V, P> & { command?: string; earlyExit?: boolean } {
       try {
         const result = parseCore(state, args, false);
         if (isThenable(result)) {
@@ -773,7 +802,7 @@ const createCliBuilder = <V, P extends readonly unknown[]>(
         if (error instanceof HelpError) {
           return handleHelpError(error, state) as ParseResult<V, P> & {
             command?: string;
-            helpShown: true;
+            earlyExit: true;
           };
         }
         throw error;
@@ -782,7 +811,7 @@ const createCliBuilder = <V, P extends readonly unknown[]>(
 
     async parseAsync(
       args: string[] = process.argv.slice(2),
-    ): Promise<ParseResult<V, P> & { command?: string; helpShown?: boolean }> {
+    ): Promise<ParseResult<V, P> & { command?: string; earlyExit?: boolean }> {
       try {
         return (await parseCore(state, args, true)) as ParseResult<V, P> & {
           command?: string;
@@ -791,7 +820,7 @@ const createCliBuilder = <V, P extends readonly unknown[]>(
         if (error instanceof HelpError) {
           return handleHelpError(error, state) as ParseResult<V, P> & {
             command?: string;
-            helpShown: true;
+            earlyExit: true;
           };
         }
         throw error;
@@ -821,18 +850,18 @@ const parseCore = (
 
   /**
    * Helper to create an early-exit result (for help, version, completions).
-   * Sets process.exitCode and returns a result with helpShown: true.
+   * Sets process.exitCode and returns a result with earlyExit: true.
    *
    * @function
    */
-  const earlyExit = (
+  const createEarlyExitResult = (
     exitCode: number,
   ): ParseResult<unknown, readonly unknown[]> & {
     command?: string;
-    helpShown: true;
+    earlyExit: true;
   } => {
     process.exitCode = exitCode;
-    return { command: undefined, helpShown: true, positionals: [], values: {} };
+    return { command: undefined, earlyExit: true, positionals: [], values: {} };
   };
 
   // Handle --help
@@ -880,12 +909,12 @@ const parseCore = (
 
         // Regular command help
         console.log(generateCommandHelpNew(state, commandName, theme));
-        return earlyExit(0);
+        return createEarlyExitResult(0);
       }
     }
 
     console.log(generateHelpNew(state, theme));
-    return earlyExit(0);
+    return createEarlyExitResult(0);
   }
 
   // Handle --version
@@ -896,7 +925,7 @@ const parseCore = (
     } else {
       console.log('Version information not available');
     }
-    return earlyExit(0);
+    return createEarlyExitResult(0);
   }
 
   // Handle shell completion (when enabled)
@@ -909,15 +938,15 @@ const parseCore = (
         console.error(
           'Error: --completion-script requires a shell argument (bash, zsh, or fish)',
         );
-        return earlyExit(1);
+        return createEarlyExitResult(1);
       }
       try {
         const shell = validateShell(shellArg);
         console.log(generateCompletionScript(state.name, shell));
-        return earlyExit(0);
+        return createEarlyExitResult(0);
       } catch (err) {
         console.error(`Error: ${(err as Error).message}`);
-        return earlyExit(1);
+        return createEarlyExitResult(1);
       }
     }
 
@@ -927,7 +956,7 @@ const parseCore = (
       const shellArg = args[getCompletionsIndex + 1];
       if (!shellArg) {
         // No shell specified, output nothing
-        return earlyExit(0);
+        return createEarlyExitResult(0);
       }
       try {
         const shell = validateShell(shellArg);
@@ -937,10 +966,10 @@ const parseCore = (
         if (candidates.length > 0) {
           console.log(candidates.join('\n'));
         }
-        return earlyExit(0);
+        return createEarlyExitResult(0);
       } catch {
         // Invalid shell, output nothing
-        return earlyExit(0);
+        return createEarlyExitResult(0);
       }
     }
   }
@@ -965,19 +994,19 @@ const showNestedCommandHelp = (
 ):
   | (ParseResult<unknown, readonly unknown[]> & {
       command?: string;
-      helpShown?: boolean;
+      earlyExit?: boolean;
     })
   | Promise<
       ParseResult<unknown, readonly unknown[]> & {
         command?: string;
-        helpShown?: boolean;
+        earlyExit?: boolean;
       }
     > => {
   const commandEntry = state.commands.get(commandName);
   if (!commandEntry || commandEntry.type !== 'nested') {
     console.error(`Unknown command group: ${commandName}`);
     process.exitCode = 1;
-    return { command: undefined, helpShown: true, positionals: [], values: {} };
+    return { command: undefined, earlyExit: true, positionals: [], values: {} };
   }
 
   // Delegate to nested builder with --help
@@ -1107,7 +1136,7 @@ const handleHelpError = (
   state: InternalCliState,
 ): ParseResult<unknown, readonly unknown[]> & {
   command?: string;
-  helpShown: true;
+  earlyExit: true;
 } => {
   const { theme } = state;
 
@@ -1125,7 +1154,7 @@ const handleHelpError = (
   // Return a result indicating help was shown
   return {
     command: error.command,
-    helpShown: true,
+    earlyExit: true,
     positionals: [],
     values: {},
   };

@@ -163,13 +163,13 @@ export interface CliBuilder<
    *
    * Throws if any transform or handler returns a Promise.
    *
-   * When a HelpError occurs (e.g., unknown command, no command specified), help
-   * text is displayed to stderr, process.exitCode is set to 1, and a result
-   * with `helpShown: true` is returned instead of throwing.
+   * When an early exit occurs (--help, --version, --completion-script, or
+   * HelpError), output is displayed, process.exitCode is set appropriately, and
+   * a result with `earlyExit: true` is returned instead of throwing.
    */
   parse(args?: string[]): ParseResult<TGlobalValues, TGlobalPositionals> & {
     command?: string;
-    helpShown?: boolean;
+    earlyExit?: boolean;
   };
 
   /**
@@ -177,14 +177,14 @@ export interface CliBuilder<
    *
    * Supports async transforms and handlers.
    *
-   * When a HelpError occurs (e.g., unknown command, no command specified), help
-   * text is displayed to stderr, process.exitCode is set to 1, and a result
-   * with `helpShown: true` is returned instead of rejecting.
+   * When an early exit occurs (--help, --version, --completion-script, or
+   * HelpError), output is displayed, process.exitCode is set appropriately, and
+   * a result with `earlyExit: true` is returned instead of rejecting.
    */
   parseAsync(args?: string[]): Promise<
     ParseResult<TGlobalValues, TGlobalPositionals> & {
       command?: string;
-      helpShown?: boolean;
+      earlyExit?: boolean;
     }
   >;
 }
