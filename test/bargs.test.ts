@@ -1,13 +1,14 @@
 /**
  * Tests for the main bargs API.
  */
-import { expect, expectAsync } from 'bupkis';
+import { expect } from 'bupkis';
 import { describe, it } from 'node:test';
 
 import type { StringOption } from '../src/types.js';
 
 import { bargs, handle, map, merge } from '../src/bargs.js';
 import { opt, pos } from '../src/opt.js';
+import { withMockedExit } from './helpers/mock-exit.js';
 
 describe('bargs()', () => {
   it('creates a CLI builder', () => {
@@ -189,17 +190,18 @@ describe('.parseAsync()', () => {
     expect(handlerCalled, 'to be', true);
   });
 
-  it('throws on unknown command', async () => {
+  it('handles unknown command by showing help and exiting', async () => {
     const cli = bargs('test-cli').command(
       'greet',
       handle(opt.options({}), () => {}),
     );
 
-    await expectAsync(
+    const { exitCode, output } = await withMockedExit(() =>
       cli.parseAsync(['unknown']),
-      'to reject with error satisfying',
-      /Unknown command/,
     );
+
+    expect(exitCode, 'to equal', 1);
+    expect(output, 'to contain', 'Unknown command: unknown');
   });
 
   it('returns parsed result with command name', async () => {
@@ -786,23 +788,59 @@ describe('merge() edge cases', () => {
 });
 
 describe('error paths', () => {
-  it('throws HelpError when no command specified and no default', async () => {
-    const cli = bargs('test-cli')
-      .command(
+  describe('HelpError handling', () => {
+    it('handles no command by displaying help and exiting', async () => {
+      const cli = bargs('test-cli')
+        .command(
+          'run',
+          handle(opt.options({}), () => {}),
+        )
+        .command(
+          'build',
+          handle(opt.options({}), () => {}),
+        );
+
+      const { exitCode, output } = await withMockedExit(() =>
+        cli.parseAsync([]),
+      );
+
+      // Verify process exits with code 1
+      expect(exitCode, 'to equal', 1);
+
+      // Verify error message was shown
+      expect(output, 'to contain', 'No command specified');
+
+      // Verify help was displayed
+      expect(output, 'to contain', 'USAGE');
+      expect(output, 'to contain', 'COMMANDS');
+    });
+
+    it('handles unknown command by displaying help and exiting', async () => {
+      const cli = bargs('test-cli').command(
         'run',
         handle(opt.options({}), () => {}),
-      )
-      .command(
-        'build',
+      );
+
+      const { exitCode, output } = await withMockedExit(() =>
+        cli.parseAsync(['unknown-command']),
+      );
+
+      expect(exitCode, 'to equal', 1);
+      expect(output, 'to contain', 'Unknown command: unknown-command');
+      expect(output, 'to contain', 'USAGE');
+    });
+
+    it('handles HelpError in sync parse() as well', async () => {
+      const cli = bargs('test-cli').command(
+        'run',
         handle(opt.options({}), () => {}),
       );
-    // No defaultCommand set
 
-    await expectAsync(
-      cli.parseAsync([]),
-      'to reject with error satisfying',
-      /No command specified/,
-    );
+      const { exitCode, output } = await withMockedExit(() => cli.parse([]));
+
+      expect(exitCode, 'to equal', 1);
+      expect(output, 'to contain', 'No command specified');
+    });
   });
 
   it('handles async global transform in nested commands', async () => {

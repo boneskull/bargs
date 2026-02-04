@@ -557,6 +557,7 @@ const createCliBuilder = <V, P extends readonly unknown[]>(
     },
 
     // Internal method for nested command support - not part of public API
+    // Handles HelpError here so nested builders can render their own help
     __parseWithParentGlobals(
       args: string[],
       parentGlobals: ParseResult<unknown, readonly unknown[]>,
@@ -565,9 +566,23 @@ const createCliBuilder = <V, P extends readonly unknown[]>(
       | (ParseResult<V, P> & { command?: string })
       | Promise<ParseResult<V, P> & { command?: string }> {
       const stateWithGlobals = { ...state, parentGlobals };
-      return parseCore(stateWithGlobals, args, allowAsync) as
-        | (ParseResult<V, P> & { command?: string })
-        | Promise<ParseResult<V, P> & { command?: string }>;
+      try {
+        const result = parseCore(stateWithGlobals, args, allowAsync);
+        if (isThenable(result)) {
+          return result.catch((error: unknown) => {
+            if (error instanceof HelpError) {
+              handleHelpError(error, stateWithGlobals); // exits process
+            }
+            throw error;
+          }) as Promise<ParseResult<V, P> & { command?: string }>;
+        }
+        return result as ParseResult<V, P> & { command?: string };
+      } catch (error) {
+        if (error instanceof HelpError) {
+          handleHelpError(error, stateWithGlobals); // exits process
+        }
+        throw error;
+      }
     },
 
     // Overloaded command(): accepts (name, factory, options?),
@@ -761,21 +776,35 @@ const createCliBuilder = <V, P extends readonly unknown[]>(
     parse(
       args: string[] = process.argv.slice(2),
     ): ParseResult<V, P> & { command?: string } {
-      const result = parseCore(state, args, false);
-      if (isThenable(result)) {
-        throw new BargsError(
-          'Async transform or handler detected. Use parseAsync() instead of parse().',
-        );
+      try {
+        const result = parseCore(state, args, false);
+        if (isThenable(result)) {
+          throw new BargsError(
+            'Async transform or handler detected. Use parseAsync() instead of parse().',
+          );
+        }
+        return result as ParseResult<V, P> & { command?: string };
+      } catch (error) {
+        if (error instanceof HelpError) {
+          handleHelpError(error, state); // exits process, never returns
+        }
+        throw error;
       }
-      return result as ParseResult<V, P> & { command?: string };
     },
 
     async parseAsync(
       args: string[] = process.argv.slice(2),
     ): Promise<ParseResult<V, P> & { command?: string }> {
-      return parseCore(state, args, true) as Promise<
-        ParseResult<V, P> & { command?: string }
-      >;
+      try {
+        return (await parseCore(state, args, true)) as ParseResult<V, P> & {
+          command?: string;
+        };
+      } catch (error) {
+        if (error instanceof HelpError) {
+          handleHelpError(error, state); // exits process, never returns
+        }
+        throw error;
+      }
     },
   };
 
@@ -799,7 +828,20 @@ const parseCore = (
     > => {
   const { aliasMap, commands, options, theme } = state;
 
-  /* c8 ignore start -- help/version output calls process.exit() */
+  /**
+   * Terminates the process for early-exit scenarios (--help, --version,
+   * --completion-script). This is standard CLI behavior - users expect these
+   * flags to print output and exit immediately.
+   *
+   * @remarks
+   * The return statement exists only to satisfy TypeScript. In practice,
+   * `process.exit()` terminates the process and this function never returns.
+   * @function
+   */
+  const exitProcess = (exitCode: number): never => {
+    process.exit(exitCode);
+  };
+
   // Handle --help
   if (args.includes('--help') || args.includes('-h')) {
     // Check for command-specific help
@@ -832,8 +874,7 @@ const parseCore = (
               values: {},
             };
             // This will trigger the nested builder's help handling
-            // and call process.exit(0) if --help is handled
-            void internalNestedBuilder.__parseWithParentGlobals(
+            return internalNestedBuilder.__parseWithParentGlobals(
               nestedArgs,
               emptyGlobals,
               true,
@@ -841,18 +882,17 @@ const parseCore = (
           }
 
           // If no more args, show help for this nested command group
-          showNestedCommandHelp(state, commandName);
-          // showNestedCommandHelp calls process.exit(0)
+          return showNestedCommandHelp(state, commandName);
         }
 
         // Regular command help
         console.log(generateCommandHelpNew(state, commandName, theme));
-        process.exit(0);
+        return exitProcess(0);
       }
     }
 
     console.log(generateHelpNew(state, theme));
-    process.exit(0);
+    return exitProcess(0);
   }
 
   // Handle --version
@@ -863,7 +903,7 @@ const parseCore = (
     } else {
       console.log('Version information not available');
     }
-    process.exit(0);
+    return exitProcess(0);
   }
 
   // Handle shell completion (when enabled)
@@ -876,15 +916,15 @@ const parseCore = (
         console.error(
           'Error: --completion-script requires a shell argument (bash, zsh, or fish)',
         );
-        process.exit(1);
+        return exitProcess(1);
       }
       try {
         const shell = validateShell(shellArg);
         console.log(generateCompletionScript(state.name, shell));
-        process.exit(0);
+        return exitProcess(0);
       } catch (err) {
         console.error(`Error: ${(err as Error).message}`);
-        process.exit(1);
+        return exitProcess(1);
       }
     }
 
@@ -894,7 +934,7 @@ const parseCore = (
       const shellArg = args[getCompletionsIndex + 1];
       if (!shellArg) {
         // No shell specified, output nothing
-        process.exit(0);
+        return exitProcess(0);
       }
       try {
         const shell = validateShell(shellArg);
@@ -904,14 +944,13 @@ const parseCore = (
         if (candidates.length > 0) {
           console.log(candidates.join('\n'));
         }
-        process.exit(0);
+        return exitProcess(0);
       } catch {
         // Invalid shell, output nothing
-        process.exit(0);
+        return exitProcess(0);
       }
     }
   }
-  /* c8 ignore stop */
 
   // If we have commands, dispatch to the appropriate one
   if (commands.size > 0) {
@@ -924,21 +963,22 @@ const parseCore = (
 
 /**
  * Show help for a nested command group by delegating to the nested builder.
+ * This function always terminates the process (either via the nested builder's
+ * help handling or via error exit).
  *
  * @function
  */
-/* c8 ignore start -- only called from help paths that call process.exit() */
 const showNestedCommandHelp = (
   state: InternalCliState,
   commandName: string,
-): void => {
+): never => {
   const commandEntry = state.commands.get(commandName);
   if (!commandEntry || commandEntry.type !== 'nested') {
-    console.log(`Unknown command group: ${commandName}`);
+    console.error(`Unknown command group: ${commandName}`);
     process.exit(1);
   }
 
-  // Delegate to nested builder with --help
+  // Delegate to nested builder with --help - this will exit the process
   const internalNestedBuilder = commandEntry.builder as InternalCliBuilder<
     unknown,
     readonly unknown[]
@@ -948,21 +988,26 @@ const showNestedCommandHelp = (
     values: {},
   };
 
-  // This will show the nested builder's help and call process.exit(0)
+  // This will show the nested builder's help and exit the process.
+  // The void operator explicitly marks this as intentionally unhandled since
+  // process.exit() inside will terminate before the promise resolves.
   void internalNestedBuilder.__parseWithParentGlobals(
     ['--help'],
     emptyGlobals,
     true,
   );
+
+  // This should never be reached since help handling calls process.exit()
+  // but TypeScript needs it for the never return type
+  process.exit(0);
 };
-/* c8 ignore stop */
 
 /**
  * Generate command-specific help.
  *
  * @function
  */
-/* c8 ignore start -- only called from help paths that call process.exit() */
+/* c8 ignore start -- only called from help paths */
 const generateCommandHelpNew = (
   state: InternalCliState,
   commandName: string,
@@ -973,11 +1018,10 @@ const generateCommandHelpNew = (
     return `Unknown command: ${commandName}`;
   }
 
-  // Handle nested commands - this shouldn't be reached as nested commands
-  // delegate to showNestedCommandHelp in parseCore, but handle it gracefully
+  // Nested commands are handled by showNestedCommandHelp in parseCore,
+  // so this function should never be called for nested commands
   if (commandEntry.type === 'nested') {
-    showNestedCommandHelp(state, commandName);
-    return ''; // Never reached, showNestedCommandHelp calls process.exit
+    return `${commandName} is a command group. Use --help after a subcommand.`;
   }
 
   // Regular command help
@@ -1004,7 +1048,7 @@ const generateCommandHelpNew = (
  *
  * @function
  */
-/* c8 ignore start -- only called from help paths that call process.exit() */
+/* c8 ignore start -- only called from help paths */
 const generateHelpNew = (state: InternalCliState, theme: Theme): string => {
   // Build options schema, adding built-in options
   let options = state.globalParser?.__optionsSchema;
@@ -1052,6 +1096,40 @@ const generateHelpNew = (state: InternalCliState, theme: Theme): string => {
   return generateHelp(config as Parameters<typeof generateHelp>[0], theme);
 };
 /* c8 ignore stop */
+
+/**
+ * Handle a HelpError by displaying the error message and help text to stderr,
+ * setting the exit code, and returning a result indicating help was shown.
+ *
+ * This prevents HelpError from bubbling up to global exception handlers while
+ * still providing useful feedback to the user.
+ *
+ * @function
+ */
+
+/**
+ * Handles a HelpError by displaying the error message and help text to stderr,
+ * then terminating the process with exit code 1. This is standard CLI behavior:
+ * when a user provides an unknown command or omits a required command, they see
+ * help and the process exits instead of allowing the error to bubble to a
+ * global exception handler. This function does not return.
+ *
+ * @function
+ */
+const handleHelpError = (error: HelpError, state: InternalCliState): never => {
+  const { theme } = state;
+
+  // Write error message to stderr
+  process.stderr.write(`Error: ${error.message}\n\n`);
+
+  // Generate and write help text to stderr
+  const helpText = generateHelpNew(state, theme);
+  process.stderr.write(helpText);
+  process.stderr.write('\n');
+
+  // Terminate with error exit code
+  process.exit(1);
+};
 
 /**
  * Check if something is a Parser (has __brand: 'Parser'). Parsers can be either

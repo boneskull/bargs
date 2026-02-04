@@ -4,11 +4,12 @@
  * These tests focus on command dispatching and parsing behaviors complementary
  * to the tests in bargs.test.ts.
  */
-import { expect, expectAsync } from 'bupkis';
+import { expect } from 'bupkis';
 import { describe, it } from 'node:test';
 
 import { bargs, handle } from '../src/bargs.js';
 import { opt, pos } from '../src/opt.js';
+import { withMockedExit } from './helpers/mock-exit.js';
 
 describe('command parsing', () => {
   it('parses a command with options', async () => {
@@ -96,7 +97,7 @@ describe('command parsing', () => {
     });
   });
 
-  it('throws on unknown command', async () => {
+  it('handles unknown command by showing help and exiting', async () => {
     const cli = bargs('test-cli')
       .command(
         'add',
@@ -107,11 +108,12 @@ describe('command parsing', () => {
         handle(opt.options({}), () => {}),
       );
 
-    await expectAsync(
+    const { exitCode, output } = await withMockedExit(() =>
       cli.parseAsync(['unknown']),
-      'to reject with error satisfying',
-      /Unknown command: unknown/,
     );
+
+    expect(exitCode, 'to equal', 1);
+    expect(output, 'to contain', 'Unknown command: unknown');
   });
 
   it('merges global and command options', async () => {

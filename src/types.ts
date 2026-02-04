@@ -162,20 +162,30 @@ export interface CliBuilder<
    * Parse arguments synchronously and run handlers.
    *
    * Throws if any transform or handler returns a Promise.
+   *
+   * @remarks
+   * Early exit scenarios (`--help`, `--version`, `--completion-script`, or
+   * invalid/missing commands) will call `process.exit()` and never return. This
+   * is standard CLI behavior.
    */
-  parse(
-    args?: string[],
-  ): ParseResult<TGlobalValues, TGlobalPositionals> & { command?: string };
+  parse(args?: string[]): ParseResult<TGlobalValues, TGlobalPositionals> & {
+    command?: string;
+  };
 
   /**
    * Parse arguments asynchronously and run handlers.
    *
    * Supports async transforms and handlers.
+   *
+   * @remarks
+   * Early exit scenarios (`--help`, `--version`, `--completion-script`, or
+   * invalid/missing commands) will call `process.exit()` and never return. This
+   * is standard CLI behavior.
    */
-  parseAsync(
-    args?: string[],
-  ): Promise<
-    ParseResult<TGlobalValues, TGlobalPositionals> & { command?: string }
+  parseAsync(args?: string[]): Promise<
+    ParseResult<TGlobalValues, TGlobalPositionals> & {
+      command?: string;
+    }
   >;
 }
 
