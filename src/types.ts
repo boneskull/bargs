@@ -163,13 +163,13 @@ export interface CliBuilder<
    *
    * Throws if any transform or handler returns a Promise.
    *
-   * When an early exit occurs (--help, --version, --completion-script, or
-   * HelpError), output is displayed, process.exitCode is set appropriately, and
-   * a result with `earlyExit: true` is returned instead of throwing.
+   * @remarks
+   * Early exit scenarios (`--help`, `--version`, `--completion-script`, or
+   * invalid/missing commands) will call `process.exit()` and never return. This
+   * is standard CLI behavior.
    */
   parse(args?: string[]): ParseResult<TGlobalValues, TGlobalPositionals> & {
     command?: string;
-    earlyExit?: boolean;
   };
 
   /**
@@ -177,14 +177,14 @@ export interface CliBuilder<
    *
    * Supports async transforms and handlers.
    *
-   * When an early exit occurs (--help, --version, --completion-script, or
-   * HelpError), output is displayed, process.exitCode is set appropriately, and
-   * a result with `earlyExit: true` is returned instead of rejecting.
+   * @remarks
+   * Early exit scenarios (`--help`, `--version`, `--completion-script`, or
+   * invalid/missing commands) will call `process.exit()` and never return. This
+   * is standard CLI behavior.
    */
   parseAsync(args?: string[]): Promise<
     ParseResult<TGlobalValues, TGlobalPositionals> & {
       command?: string;
-      earlyExit?: boolean;
     }
   >;
 }

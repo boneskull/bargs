@@ -707,17 +707,46 @@ See `examples/completion.ts` for a complete example.
 
 ## Advanced Usage
 
-### Error Handling
+### Process Termination
 
-**bargs** exports some `Error` subclasses:
+**bargs** automatically terminates the process (via `process.exit()`) in certain scenarios. This is standard CLI behavior—users expect these flags to print output and exit immediately:
+
+| Scenario                  | Exit Code | Output                            |
+| ------------------------- | --------- | --------------------------------- |
+| `--help` / `-h`           | 0         | Help text to stdout               |
+| `--version`               | 0         | Version string to stdout          |
+| `--completion-script`     | 0         | Shell completion script to stdout |
+| Unknown command           | 1         | Error + help text to stderr       |
+| Missing required command  | 1         | Error + help text to stderr       |
+| `--get-bargs-completions` | 0         | Completion candidates to stdout   |
+
+For testing, you can mock `process.exit` to capture the exit code:
 
 ```typescript
-import {
-  bargs,
-  BargsError,
-  HelpError,
-  ValidationError,
-} from '@boneskull/bargs';
+const originalExit = process.exit;
+let exitCode: number | undefined;
+
+process.exit = ((code?: number) => {
+  exitCode = code ?? 0;
+  throw new Error('process.exit called');
+}) as typeof process.exit;
+
+try {
+  cli.parse(['--help']);
+} catch {
+  // process.exit was called
+}
+
+process.exit = originalExit;
+console.log(exitCode); // 0
+```
+
+### Error Handling
+
+**bargs** exports some `Error` subclasses for errors that _don't_ cause automatic process termination:
+
+```typescript
+import { bargs, BargsError, ValidationError } from '@boneskull/bargs';
 
 try {
   await bargs('my-cli').parseAsync();
@@ -726,10 +755,6 @@ try {
     // Config validation failed (e.g., invalid schema)
     // i.e., "you screwed up"
     console.error(`Config error at "${error.path}": ${error.message}`);
-  } else if (error instanceof HelpError) {
-    // Likely invalid options, command or positionals;
-    // re-throw to trigger help display
-    throw error;
   } else if (error instanceof BargsError) {
     // General bargs error
     console.error(error.message);

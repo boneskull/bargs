@@ -563,37 +563,23 @@ const createCliBuilder = <V, P extends readonly unknown[]>(
       parentGlobals: ParseResult<unknown, readonly unknown[]>,
       allowAsync: boolean,
     ):
-      | (ParseResult<V, P> & { command?: string; earlyExit?: boolean })
-      | Promise<ParseResult<V, P> & { command?: string; earlyExit?: boolean }> {
+      | (ParseResult<V, P> & { command?: string })
+      | Promise<ParseResult<V, P> & { command?: string }> {
       const stateWithGlobals = { ...state, parentGlobals };
       try {
         const result = parseCore(stateWithGlobals, args, allowAsync);
         if (isThenable(result)) {
           return result.catch((error: unknown) => {
             if (error instanceof HelpError) {
-              return handleHelpError(error, stateWithGlobals) as ParseResult<
-                V,
-                P
-              > & {
-                command?: string;
-                earlyExit: true;
-              };
+              handleHelpError(error, stateWithGlobals); // exits process
             }
             throw error;
-          }) as Promise<
-            ParseResult<V, P> & { command?: string; earlyExit?: boolean }
-          >;
+          }) as Promise<ParseResult<V, P> & { command?: string }>;
         }
         return result as ParseResult<V, P> & { command?: string };
       } catch (error) {
         if (error instanceof HelpError) {
-          return handleHelpError(error, stateWithGlobals) as ParseResult<
-            V,
-            P
-          > & {
-            command?: string;
-            earlyExit: true;
-          };
+          handleHelpError(error, stateWithGlobals); // exits process
         }
         throw error;
       }
@@ -789,7 +775,7 @@ const createCliBuilder = <V, P extends readonly unknown[]>(
 
     parse(
       args: string[] = process.argv.slice(2),
-    ): ParseResult<V, P> & { command?: string; earlyExit?: boolean } {
+    ): ParseResult<V, P> & { command?: string } {
       try {
         const result = parseCore(state, args, false);
         if (isThenable(result)) {
@@ -800,10 +786,7 @@ const createCliBuilder = <V, P extends readonly unknown[]>(
         return result as ParseResult<V, P> & { command?: string };
       } catch (error) {
         if (error instanceof HelpError) {
-          return handleHelpError(error, state) as ParseResult<V, P> & {
-            command?: string;
-            earlyExit: true;
-          };
+          handleHelpError(error, state); // exits process, never returns
         }
         throw error;
       }
@@ -811,17 +794,14 @@ const createCliBuilder = <V, P extends readonly unknown[]>(
 
     async parseAsync(
       args: string[] = process.argv.slice(2),
-    ): Promise<ParseResult<V, P> & { command?: string; earlyExit?: boolean }> {
+    ): Promise<ParseResult<V, P> & { command?: string }> {
       try {
         return (await parseCore(state, args, true)) as ParseResult<V, P> & {
           command?: string;
         };
       } catch (error) {
         if (error instanceof HelpError) {
-          return handleHelpError(error, state) as ParseResult<V, P> & {
-            command?: string;
-            earlyExit: true;
-          };
+          handleHelpError(error, state); // exits process, never returns
         }
         throw error;
       }
@@ -849,19 +829,17 @@ const parseCore = (
   const { aliasMap, commands, options, theme } = state;
 
   /**
-   * Helper to create an early-exit result (for help, version, completions).
-   * Sets process.exitCode and returns a result with earlyExit: true.
+   * Terminates the process for early-exit scenarios (--help, --version,
+   * --completion-script). This is standard CLI behavior - users expect these
+   * flags to print output and exit immediately.
    *
+   * @remarks
+   * The return statement exists only to satisfy TypeScript. In practice,
+   * `process.exit()` terminates the process and this function never returns.
    * @function
    */
-  const createEarlyExitResult = (
-    exitCode: number,
-  ): ParseResult<unknown, readonly unknown[]> & {
-    command?: string;
-    earlyExit: true;
-  } => {
-    process.exitCode = exitCode;
-    return { command: undefined, earlyExit: true, positionals: [], values: {} };
+  const exitProcess = (exitCode: number): never => {
+    process.exit(exitCode);
   };
 
   // Handle --help
@@ -909,12 +887,12 @@ const parseCore = (
 
         // Regular command help
         console.log(generateCommandHelpNew(state, commandName, theme));
-        return createEarlyExitResult(0);
+        return exitProcess(0);
       }
     }
 
     console.log(generateHelpNew(state, theme));
-    return createEarlyExitResult(0);
+    return exitProcess(0);
   }
 
   // Handle --version
@@ -925,7 +903,7 @@ const parseCore = (
     } else {
       console.log('Version information not available');
     }
-    return createEarlyExitResult(0);
+    return exitProcess(0);
   }
 
   // Handle shell completion (when enabled)
@@ -938,15 +916,15 @@ const parseCore = (
         console.error(
           'Error: --completion-script requires a shell argument (bash, zsh, or fish)',
         );
-        return createEarlyExitResult(1);
+        return exitProcess(1);
       }
       try {
         const shell = validateShell(shellArg);
         console.log(generateCompletionScript(state.name, shell));
-        return createEarlyExitResult(0);
+        return exitProcess(0);
       } catch (err) {
         console.error(`Error: ${(err as Error).message}`);
-        return createEarlyExitResult(1);
+        return exitProcess(1);
       }
     }
 
@@ -956,7 +934,7 @@ const parseCore = (
       const shellArg = args[getCompletionsIndex + 1];
       if (!shellArg) {
         // No shell specified, output nothing
-        return createEarlyExitResult(0);
+        return exitProcess(0);
       }
       try {
         const shell = validateShell(shellArg);
@@ -966,10 +944,10 @@ const parseCore = (
         if (candidates.length > 0) {
           console.log(candidates.join('\n'));
         }
-        return createEarlyExitResult(0);
+        return exitProcess(0);
       } catch {
         // Invalid shell, output nothing
-        return createEarlyExitResult(0);
+        return exitProcess(0);
       }
     }
   }
@@ -985,31 +963,22 @@ const parseCore = (
 
 /**
  * Show help for a nested command group by delegating to the nested builder.
+ * This function always terminates the process (either via the nested builder's
+ * help handling or via error exit).
  *
  * @function
  */
 const showNestedCommandHelp = (
   state: InternalCliState,
   commandName: string,
-):
-  | (ParseResult<unknown, readonly unknown[]> & {
-      command?: string;
-      earlyExit?: boolean;
-    })
-  | Promise<
-      ParseResult<unknown, readonly unknown[]> & {
-        command?: string;
-        earlyExit?: boolean;
-      }
-    > => {
+): never => {
   const commandEntry = state.commands.get(commandName);
   if (!commandEntry || commandEntry.type !== 'nested') {
     console.error(`Unknown command group: ${commandName}`);
-    process.exitCode = 1;
-    return { command: undefined, earlyExit: true, positionals: [], values: {} };
+    process.exit(1);
   }
 
-  // Delegate to nested builder with --help
+  // Delegate to nested builder with --help - this will exit the process
   const internalNestedBuilder = commandEntry.builder as InternalCliBuilder<
     unknown,
     readonly unknown[]
@@ -1019,12 +988,18 @@ const showNestedCommandHelp = (
     values: {},
   };
 
-  // This will show the nested builder's help
-  return internalNestedBuilder.__parseWithParentGlobals(
+  // This will show the nested builder's help and exit the process.
+  // The void operator explicitly marks this as intentionally unhandled since
+  // process.exit() inside will terminate before the promise resolves.
+  void internalNestedBuilder.__parseWithParentGlobals(
     ['--help'],
     emptyGlobals,
     true,
   );
+
+  // This should never be reached since help handling calls process.exit()
+  // but TypeScript needs it for the never return type
+  process.exit(0);
 };
 
 /**
@@ -1131,13 +1106,15 @@ const generateHelpNew = (state: InternalCliState, theme: Theme): string => {
  *
  * @function
  */
-const handleHelpError = (
-  error: HelpError,
-  state: InternalCliState,
-): ParseResult<unknown, readonly unknown[]> & {
-  command?: string;
-  earlyExit: true;
-} => {
+/**
+ * Handles HelpError by displaying the error message, showing help, and
+ * terminating the process with exit code 1. This is standard CLI behavior -
+ * when a user provides an unknown command or forgets to specify a required
+ * command, they see help and the process exits.
+ *
+ * @function
+ */
+const handleHelpError = (error: HelpError, state: InternalCliState): never => {
   const { theme } = state;
 
   // Write error message to stderr
@@ -1148,16 +1125,8 @@ const handleHelpError = (
   process.stderr.write(helpText);
   process.stderr.write('\n');
 
-  // Set exit code to indicate error (don't call process.exit())
-  process.exitCode = 1;
-
-  // Return a result indicating help was shown
-  return {
-    command: error.command,
-    earlyExit: true,
-    positionals: [],
-    values: {},
-  };
+  // Terminate with error exit code
+  process.exit(1);
 };
 
 /**

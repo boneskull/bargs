@@ -11,59 +11,88 @@ import { bargs, handle } from '../src/bargs.js';
 import { opt, pos } from '../src/opt.js';
 
 /**
- * Helper to capture stderr output and process.exitCode during tests. Returns
- * the captured output, result, and exitCode.
+ * Custom error thrown when process.exit is mocked and called.
+ */
+class MockExitError extends Error {
+  readonly exitCode: number;
+
+  constructor(exitCode: number) {
+    super(`process.exit(${exitCode}) was called`);
+    this.name = 'MockExitError';
+    this.exitCode = exitCode;
+  }
+}
+
+/**
+ * Helper to capture stderr output and mock process.exit during tests. Returns
+ * the captured output and exit code.
  *
  * @function
  */
-const withCapturedStderr = <T>(
+const withMockedExit = <T>(
   fn: () => Promise<T> | T,
 ): Promise<{
-  exitCode: typeof process.exitCode;
+  exitCode: number;
   output: string;
-  result: T;
+  result?: T;
 }> => {
-  const originalExitCode = process.exitCode;
   const stderrWrites: string[] = [];
   const originalStderrWrite = process.stderr.write.bind(process.stderr);
+  const originalExit = process.exit;
 
   process.stderr.write = ((chunk: unknown) => {
     stderrWrites.push(String(chunk));
     return true;
   }) as typeof process.stderr.write;
 
-  /**
-   * @function
-   */
-  const createResult = (result: T) => ({
-    exitCode: process.exitCode,
-    output: stderrWrites.join(''),
-    result,
-  });
+  // Mock process.exit to throw instead of actually exiting
+  process.exit = ((code?: number) => {
+    throw new MockExitError(code ?? 0);
+  }) as typeof process.exit;
 
   /**
    * @function
    */
   const cleanup = () => {
     process.stderr.write = originalStderrWrite;
-    process.exitCode = originalExitCode;
+    process.exit = originalExit;
+  };
+
+  /**
+   * @function
+   */
+  const handleMockExit = (error: unknown) => {
+    if (error instanceof MockExitError) {
+      return {
+        exitCode: error.exitCode,
+        output: stderrWrites.join(''),
+        result: undefined,
+      };
+    }
+    throw error;
   };
 
   try {
     const maybePromise = fn();
     if (maybePromise instanceof Promise) {
-      return maybePromise.then((result) => {
-        const capturedResult = createResult(result);
-        cleanup();
-        return capturedResult;
-      });
+      return maybePromise
+        .then((result) => ({
+          exitCode: 0,
+          output: stderrWrites.join(''),
+          result,
+        }))
+        .catch(handleMockExit)
+        .finally(cleanup);
     }
-    const capturedResult = createResult(maybePromise);
     cleanup();
-    return Promise.resolve(capturedResult);
+    return Promise.resolve({
+      exitCode: 0,
+      output: stderrWrites.join(''),
+      result: maybePromise,
+    });
   } catch (error) {
     cleanup();
-    throw error;
+    return Promise.resolve(handleMockExit(error));
   }
 };
 
@@ -153,7 +182,7 @@ describe('command parsing', () => {
     });
   });
 
-  it('handles unknown command by showing help and setting exitCode', async () => {
+  it('handles unknown command by showing help and exiting', async () => {
     const cli = bargs('test-cli')
       .command(
         'add',
@@ -164,11 +193,10 @@ describe('command parsing', () => {
         handle(opt.options({}), () => {}),
       );
 
-    const { exitCode, output, result } = await withCapturedStderr(() =>
+    const { exitCode, output } = await withMockedExit(() =>
       cli.parseAsync(['unknown']),
     );
 
-    expect(result.earlyExit, 'to be true');
     expect(exitCode, 'to equal', 1);
     expect(output, 'to contain', 'Unknown command: unknown');
   });
