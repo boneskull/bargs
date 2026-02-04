@@ -1106,11 +1106,13 @@ const generateHelpNew = (state: InternalCliState, theme: Theme): string => {
  *
  * @function
  */
+
 /**
- * Handles HelpError by displaying the error message, showing help, and
- * terminating the process with exit code 1. This is standard CLI behavior -
- * when a user provides an unknown command or forgets to specify a required
- * command, they see help and the process exits.
+ * Handles a HelpError by displaying the error message and help text to stderr,
+ * then terminating the process with exit code 1. This is standard CLI behavior:
+ * when a user provides an unknown command or omits a required command, they see
+ * help and the process exits instead of allowing the error to bubble to a
+ * global exception handler. This function does not return.
  *
  * @function
  */

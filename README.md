@@ -723,21 +723,31 @@ See `examples/completion.ts` for a complete example.
 For testing, you can mock `process.exit` to capture the exit code:
 
 ```typescript
+// Sentinel error to distinguish process.exit from other errors
+class ProcessExitError extends Error {
+  constructor(public code: number) {
+    super(`process.exit(${code})`);
+  }
+}
+
 const originalExit = process.exit;
 let exitCode: number | undefined;
 
 process.exit = ((code?: number) => {
   exitCode = code ?? 0;
-  throw new Error('process.exit called');
+  throw new ProcessExitError(exitCode);
 }) as typeof process.exit;
 
 try {
   cli.parse(['--help']);
-} catch {
-  // process.exit was called
+} catch (err) {
+  if (!(err instanceof ProcessExitError)) {
+    throw err; // Re-throw unexpected errors
+  }
+} finally {
+  process.exit = originalExit; // Always restore
 }
 
-process.exit = originalExit;
 console.log(exitCode); // 0
 ```
 
