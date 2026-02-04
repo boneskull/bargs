@@ -819,7 +819,22 @@ const parseCore = (
     > => {
   const { aliasMap, commands, options, theme } = state;
 
-  /* c8 ignore start -- help/version output calls process.exit() */
+  /**
+   * Helper to create an early-exit result (for help, version, completions).
+   * Sets process.exitCode and returns a result with helpShown: true.
+   *
+   * @function
+   */
+  const earlyExit = (
+    exitCode: number,
+  ): ParseResult<unknown, readonly unknown[]> & {
+    command?: string;
+    helpShown: true;
+  } => {
+    process.exitCode = exitCode;
+    return { command: undefined, helpShown: true, positionals: [], values: {} };
+  };
+
   // Handle --help
   if (args.includes('--help') || args.includes('-h')) {
     // Check for command-specific help
@@ -852,8 +867,7 @@ const parseCore = (
               values: {},
             };
             // This will trigger the nested builder's help handling
-            // and call process.exit(0) if --help is handled
-            void internalNestedBuilder.__parseWithParentGlobals(
+            return internalNestedBuilder.__parseWithParentGlobals(
               nestedArgs,
               emptyGlobals,
               true,
@@ -861,18 +875,17 @@ const parseCore = (
           }
 
           // If no more args, show help for this nested command group
-          showNestedCommandHelp(state, commandName);
-          // showNestedCommandHelp calls process.exit(0)
+          return showNestedCommandHelp(state, commandName);
         }
 
         // Regular command help
         console.log(generateCommandHelpNew(state, commandName, theme));
-        process.exit(0);
+        return earlyExit(0);
       }
     }
 
     console.log(generateHelpNew(state, theme));
-    process.exit(0);
+    return earlyExit(0);
   }
 
   // Handle --version
@@ -883,7 +896,7 @@ const parseCore = (
     } else {
       console.log('Version information not available');
     }
-    process.exit(0);
+    return earlyExit(0);
   }
 
   // Handle shell completion (when enabled)
@@ -896,15 +909,15 @@ const parseCore = (
         console.error(
           'Error: --completion-script requires a shell argument (bash, zsh, or fish)',
         );
-        process.exit(1);
+        return earlyExit(1);
       }
       try {
         const shell = validateShell(shellArg);
         console.log(generateCompletionScript(state.name, shell));
-        process.exit(0);
+        return earlyExit(0);
       } catch (err) {
         console.error(`Error: ${(err as Error).message}`);
-        process.exit(1);
+        return earlyExit(1);
       }
     }
 
@@ -914,7 +927,7 @@ const parseCore = (
       const shellArg = args[getCompletionsIndex + 1];
       if (!shellArg) {
         // No shell specified, output nothing
-        process.exit(0);
+        return earlyExit(0);
       }
       try {
         const shell = validateShell(shellArg);
@@ -924,14 +937,13 @@ const parseCore = (
         if (candidates.length > 0) {
           console.log(candidates.join('\n'));
         }
-        process.exit(0);
+        return earlyExit(0);
       } catch {
         // Invalid shell, output nothing
-        process.exit(0);
+        return earlyExit(0);
       }
     }
   }
-  /* c8 ignore stop */
 
   // If we have commands, dispatch to the appropriate one
   if (commands.size > 0) {
@@ -947,15 +959,25 @@ const parseCore = (
  *
  * @function
  */
-/* c8 ignore start -- only called from help paths that call process.exit() */
 const showNestedCommandHelp = (
   state: InternalCliState,
   commandName: string,
-): void => {
+):
+  | (ParseResult<unknown, readonly unknown[]> & {
+      command?: string;
+      helpShown?: boolean;
+    })
+  | Promise<
+      ParseResult<unknown, readonly unknown[]> & {
+        command?: string;
+        helpShown?: boolean;
+      }
+    > => {
   const commandEntry = state.commands.get(commandName);
   if (!commandEntry || commandEntry.type !== 'nested') {
-    console.log(`Unknown command group: ${commandName}`);
-    process.exit(1);
+    console.error(`Unknown command group: ${commandName}`);
+    process.exitCode = 1;
+    return { command: undefined, helpShown: true, positionals: [], values: {} };
   }
 
   // Delegate to nested builder with --help
@@ -968,21 +990,20 @@ const showNestedCommandHelp = (
     values: {},
   };
 
-  // This will show the nested builder's help and call process.exit(0)
-  void internalNestedBuilder.__parseWithParentGlobals(
+  // This will show the nested builder's help
+  return internalNestedBuilder.__parseWithParentGlobals(
     ['--help'],
     emptyGlobals,
     true,
   );
 };
-/* c8 ignore stop */
 
 /**
  * Generate command-specific help.
  *
  * @function
  */
-/* c8 ignore start -- only called from help paths that call process.exit() */
+/* c8 ignore start -- only called from help paths */
 const generateCommandHelpNew = (
   state: InternalCliState,
   commandName: string,
@@ -993,11 +1014,10 @@ const generateCommandHelpNew = (
     return `Unknown command: ${commandName}`;
   }
 
-  // Handle nested commands - this shouldn't be reached as nested commands
-  // delegate to showNestedCommandHelp in parseCore, but handle it gracefully
+  // Nested commands are handled by showNestedCommandHelp in parseCore,
+  // so this function should never be called for nested commands
   if (commandEntry.type === 'nested') {
-    showNestedCommandHelp(state, commandName);
-    return ''; // Never reached, showNestedCommandHelp calls process.exit
+    return `${commandName} is a command group. Use --help after a subcommand.`;
   }
 
   // Regular command help
@@ -1024,7 +1044,7 @@ const generateCommandHelpNew = (
  *
  * @function
  */
-/* c8 ignore start -- only called from help paths that call process.exit() */
+/* c8 ignore start -- only called from help paths */
 const generateHelpNew = (state: InternalCliState, theme: Theme): string => {
   // Build options schema, adding built-in options
   let options = state.globalParser?.__optionsSchema;
