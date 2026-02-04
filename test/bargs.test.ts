@@ -1,7 +1,7 @@
 /**
  * Tests for the main bargs API.
  */
-import { expect, expectAsync } from 'bupkis';
+import { expect } from 'bupkis';
 import { describe, it } from 'node:test';
 
 import type { StringOption } from '../src/types.js';
@@ -189,17 +189,31 @@ describe('.parseAsync()', () => {
     expect(handlerCalled, 'to be', true);
   });
 
-  it('throws on unknown command', async () => {
-    const cli = bargs('test-cli').command(
-      'greet',
-      handle(opt.options({}), () => {}),
-    );
+  it('handles unknown command by showing help and setting exitCode', async () => {
+    const originalExitCode = process.exitCode;
+    const stderrWrites: string[] = [];
+    const originalStderrWrite = process.stderr.write.bind(process.stderr);
 
-    await expectAsync(
-      cli.parseAsync(['unknown']),
-      'to reject with error satisfying',
-      /Unknown command/,
-    );
+    process.stderr.write = ((chunk: unknown) => {
+      stderrWrites.push(String(chunk));
+      return true;
+    }) as typeof process.stderr.write;
+
+    try {
+      const cli = bargs('test-cli').command(
+        'greet',
+        handle(opt.options({}), () => {}),
+      );
+
+      const result = await cli.parseAsync(['unknown']);
+
+      expect(result.helpShown, 'to be true');
+      expect(process.exitCode, 'to equal', 1);
+      expect(stderrWrites.join(''), 'to contain', 'Unknown command: unknown');
+    } finally {
+      process.stderr.write = originalStderrWrite;
+      process.exitCode = originalExitCode;
+    }
   });
 
   it('returns parsed result with command name', async () => {
@@ -786,23 +800,108 @@ describe('merge() edge cases', () => {
 });
 
 describe('error paths', () => {
-  it('throws HelpError when no command specified and no default', async () => {
-    const cli = bargs('test-cli')
-      .command(
-        'run',
-        handle(opt.options({}), () => {}),
-      )
-      .command(
-        'build',
-        handle(opt.options({}), () => {}),
-      );
-    // No defaultCommand set
+  describe('HelpError handling', () => {
+    it('catches HelpError on no command, displays help, and sets exitCode', async () => {
+      const originalExitCode = process.exitCode;
+      const stderrWrites: string[] = [];
+      const originalStderrWrite = process.stderr.write.bind(process.stderr);
 
-    await expectAsync(
-      cli.parseAsync([]),
-      'to reject with error satisfying',
-      /No command specified/,
-    );
+      // Capture stderr
+      process.stderr.write = ((chunk: unknown) => {
+        stderrWrites.push(String(chunk));
+        return true;
+      }) as typeof process.stderr.write;
+
+      try {
+        const cli = bargs('test-cli')
+          .command(
+            'run',
+            handle(opt.options({}), () => {}),
+          )
+          .command(
+            'build',
+            handle(opt.options({}), () => {}),
+          );
+
+        // This should NOT throw - it should catch HelpError and handle it
+        const result = await cli.parseAsync([]);
+
+        // Verify exitCode was set to 1
+        expect(process.exitCode, 'to equal', 1);
+
+        // Verify error message was shown
+        const output = stderrWrites.join('');
+        expect(output, 'to contain', 'No command specified');
+
+        // Verify help was displayed
+        expect(output, 'to contain', 'USAGE');
+        expect(output, 'to contain', 'COMMANDS');
+
+        // Verify result indicates help was shown
+        expect(result.helpShown, 'to be true');
+      } finally {
+        process.stderr.write = originalStderrWrite;
+        process.exitCode = originalExitCode;
+      }
+    });
+
+    it('catches HelpError on unknown command, displays help, and sets exitCode', async () => {
+      const originalExitCode = process.exitCode;
+      const stderrWrites: string[] = [];
+      const originalStderrWrite = process.stderr.write.bind(process.stderr);
+
+      process.stderr.write = ((chunk: unknown) => {
+        stderrWrites.push(String(chunk));
+        return true;
+      }) as typeof process.stderr.write;
+
+      try {
+        const cli = bargs('test-cli').command(
+          'run',
+          handle(opt.options({}), () => {}),
+        );
+
+        const result = await cli.parseAsync(['unknown-command']);
+
+        expect(process.exitCode, 'to equal', 1);
+
+        const output = stderrWrites.join('');
+        expect(output, 'to contain', 'Unknown command: unknown-command');
+        expect(output, 'to contain', 'USAGE');
+
+        expect(result.helpShown, 'to be true');
+      } finally {
+        process.stderr.write = originalStderrWrite;
+        process.exitCode = originalExitCode;
+      }
+    });
+
+    it('catches HelpError in sync parse() as well', () => {
+      const originalExitCode = process.exitCode;
+      const stderrWrites: string[] = [];
+      const originalStderrWrite = process.stderr.write.bind(process.stderr);
+
+      process.stderr.write = ((chunk: unknown) => {
+        stderrWrites.push(String(chunk));
+        return true;
+      }) as typeof process.stderr.write;
+
+      try {
+        const cli = bargs('test-cli').command(
+          'run',
+          handle(opt.options({}), () => {}),
+        );
+
+        const result = cli.parse([]);
+
+        expect(process.exitCode, 'to equal', 1);
+        expect(stderrWrites.join(''), 'to contain', 'No command specified');
+        expect(result.helpShown, 'to be true');
+      } finally {
+        process.stderr.write = originalStderrWrite;
+        process.exitCode = originalExitCode;
+      }
+    });
   });
 
   it('handles async global transform in nested commands', async () => {

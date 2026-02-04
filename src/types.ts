@@ -162,20 +162,30 @@ export interface CliBuilder<
    * Parse arguments synchronously and run handlers.
    *
    * Throws if any transform or handler returns a Promise.
+   *
+   * When a HelpError occurs (e.g., unknown command, no command specified), help
+   * text is displayed to stderr, process.exitCode is set to 1, and a result
+   * with `helpShown: true` is returned instead of throwing.
    */
-  parse(
-    args?: string[],
-  ): ParseResult<TGlobalValues, TGlobalPositionals> & { command?: string };
+  parse(args?: string[]): ParseResult<TGlobalValues, TGlobalPositionals> & {
+    command?: string;
+    helpShown?: boolean;
+  };
 
   /**
    * Parse arguments asynchronously and run handlers.
    *
    * Supports async transforms and handlers.
+   *
+   * When a HelpError occurs (e.g., unknown command, no command specified), help
+   * text is displayed to stderr, process.exitCode is set to 1, and a result
+   * with `helpShown: true` is returned instead of rejecting.
    */
-  parseAsync(
-    args?: string[],
-  ): Promise<
-    ParseResult<TGlobalValues, TGlobalPositionals> & { command?: string }
+  parseAsync(args?: string[]): Promise<
+    ParseResult<TGlobalValues, TGlobalPositionals> & {
+      command?: string;
+      helpShown?: boolean;
+    }
   >;
 }
 

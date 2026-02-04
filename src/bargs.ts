@@ -760,22 +760,42 @@ const createCliBuilder = <V, P extends readonly unknown[]>(
 
     parse(
       args: string[] = process.argv.slice(2),
-    ): ParseResult<V, P> & { command?: string } {
-      const result = parseCore(state, args, false);
-      if (isThenable(result)) {
-        throw new BargsError(
-          'Async transform or handler detected. Use parseAsync() instead of parse().',
-        );
+    ): ParseResult<V, P> & { command?: string; helpShown?: boolean } {
+      try {
+        const result = parseCore(state, args, false);
+        if (isThenable(result)) {
+          throw new BargsError(
+            'Async transform or handler detected. Use parseAsync() instead of parse().',
+          );
+        }
+        return result as ParseResult<V, P> & { command?: string };
+      } catch (error) {
+        if (error instanceof HelpError) {
+          return handleHelpError(error, state) as ParseResult<V, P> & {
+            command?: string;
+            helpShown: true;
+          };
+        }
+        throw error;
       }
-      return result as ParseResult<V, P> & { command?: string };
     },
 
     async parseAsync(
       args: string[] = process.argv.slice(2),
-    ): Promise<ParseResult<V, P> & { command?: string }> {
-      return parseCore(state, args, true) as Promise<
-        ParseResult<V, P> & { command?: string }
-      >;
+    ): Promise<ParseResult<V, P> & { command?: string; helpShown?: boolean }> {
+      try {
+        return (await parseCore(state, args, true)) as ParseResult<V, P> & {
+          command?: string;
+        };
+      } catch (error) {
+        if (error instanceof HelpError) {
+          return handleHelpError(error, state) as ParseResult<V, P> & {
+            command?: string;
+            helpShown: true;
+          };
+        }
+        throw error;
+      }
     },
   };
 
@@ -1052,6 +1072,44 @@ const generateHelpNew = (state: InternalCliState, theme: Theme): string => {
   return generateHelp(config as Parameters<typeof generateHelp>[0], theme);
 };
 /* c8 ignore stop */
+
+/**
+ * Handle a HelpError by displaying the error message and help text to stderr,
+ * setting the exit code, and returning a result indicating help was shown.
+ *
+ * This prevents HelpError from bubbling up to global exception handlers while
+ * still providing useful feedback to the user.
+ *
+ * @function
+ */
+const handleHelpError = (
+  error: HelpError,
+  state: InternalCliState,
+): ParseResult<unknown, readonly unknown[]> & {
+  command?: string;
+  helpShown: true;
+} => {
+  const { theme } = state;
+
+  // Write error message to stderr
+  process.stderr.write(`Error: ${error.message}\n\n`);
+
+  // Generate and write help text to stderr
+  const helpText = generateHelpNew(state, theme);
+  process.stderr.write(helpText);
+  process.stderr.write('\n');
+
+  // Set exit code to indicate error (don't call process.exit())
+  process.exitCode = 1;
+
+  // Return a result indicating help was shown
+  return {
+    command: error.command,
+    helpShown: true,
+    positionals: [],
+    values: {},
+  };
+};
 
 /**
  * Check if something is a Parser (has __brand: 'Parser'). Parsers can be either

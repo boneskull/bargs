@@ -4,7 +4,7 @@
  * These tests focus on command dispatching and parsing behaviors complementary
  * to the tests in bargs.test.ts.
  */
-import { expect, expectAsync } from 'bupkis';
+import { expect } from 'bupkis';
 import { describe, it } from 'node:test';
 
 import { bargs, handle } from '../src/bargs.js';
@@ -96,22 +96,36 @@ describe('command parsing', () => {
     });
   });
 
-  it('throws on unknown command', async () => {
-    const cli = bargs('test-cli')
-      .command(
-        'add',
-        handle(opt.options({}), () => {}),
-      )
-      .command(
-        'remove',
-        handle(opt.options({}), () => {}),
-      );
+  it('handles unknown command by showing help and setting exitCode', async () => {
+    const originalExitCode = process.exitCode;
+    const stderrWrites: string[] = [];
+    const originalStderrWrite = process.stderr.write.bind(process.stderr);
 
-    await expectAsync(
-      cli.parseAsync(['unknown']),
-      'to reject with error satisfying',
-      /Unknown command: unknown/,
-    );
+    process.stderr.write = ((chunk: unknown) => {
+      stderrWrites.push(String(chunk));
+      return true;
+    }) as typeof process.stderr.write;
+
+    try {
+      const cli = bargs('test-cli')
+        .command(
+          'add',
+          handle(opt.options({}), () => {}),
+        )
+        .command(
+          'remove',
+          handle(opt.options({}), () => {}),
+        );
+
+      const result = await cli.parseAsync(['unknown']);
+
+      expect(result.helpShown, 'to be true');
+      expect(process.exitCode, 'to equal', 1);
+      expect(stderrWrites.join(''), 'to contain', 'Unknown command: unknown');
+    } finally {
+      process.stderr.write = originalStderrWrite;
+      process.exitCode = originalExitCode;
+    }
   });
 
   it('merges global and command options', async () => {
