@@ -101,7 +101,7 @@
     "npm-run-all2": "8.0.4",
     "prettier": "3.7.4",
     "prettier-plugin-jsdoc": "1.8.0",
-    "prettier-plugin-pkg": "0.21.2",
+    "prettier-plugin-pkg": "0.22.1",
     "prettier-plugin-sort-json": "4.1.1",
     "tsx": "4.21.0",
     "typedoc": "0.28.20",
